@@ -1,0 +1,20 @@
+CXX = g++
+CXXFLAGS = -g -Wall
+LIBS = -larmadillo
+DEPS = numerics.hpp
+TARGET = spectral
+
+all: interp_ex
+
+interp_ex: spectral_deriv_ex.o sincInterp.o eps.o wait.o
+	$(CXX) $(CXXFLAGS) -o $(TARGET) spectral_deriv_ex.o sincInterp.o eps.o wait.o $(LIBS)
+
+%.o: %.cpp $(DEPS)
+
+spectral_deriv_ex.o: examples/spectral_deriv_ex.cpp examples/gnuplot_i.hpp
+	$(CXX) -g -c examples/spectral_deriv_ex.cpp
+wait.o: examples/wait.cpp
+	$(CXX) -g -c examples/wait.cpp
+
+clean:
+	rm *.o

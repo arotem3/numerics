@@ -1,0 +1,24 @@
+CXX = g++
+CXXFLAGS = -g -Wall
+LIBS = -larmadillo
+DEPS = numerics.hpp statistics/statistics.hpp vector_operators.hpp
+TARGET = stats_ex
+
+all: stats_ex
+
+stats_ex: eps.o integrate.o roots.o distributions.o functions.o tests.o statistics_ex.o
+	$(CXX) $(CXXFLAGS) -o $(TARGET) eps.o integrate.o roots.o distributions.o functions.o tests.o statistics_ex.o $(LIBS)
+
+distributions.o: statistics/distributions.cpp numerics.hpp statistics/statistics.hpp
+	$(CXX) $(CXXFLAGS) -g -c statistics/distributions.cpp
+functions.o: statistics/functions.cpp numerics.hpp statistics/statistics.hpp
+	$(CXX) $(CXXFLAGS) -g -c statistics/functions.cpp
+tests.o: statistics/tests.cpp numerics.hpp statistics/statistics.hpp
+	$(CXX) $(CXXFLAGS) -g -c statistics/tests.cpp
+statistics_ex.o: examples/statistics_ex.cpp $(DEPS)
+	$(CXX) $(CXXFLAGS) -g -c examples/statistics_ex.cpp
+
+%.o: %.cpp $(DEPS)
+
+clean:
+	rm *.o

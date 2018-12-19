@@ -1,0 +1,29 @@
+CXX = g++
+CXXFLAGS = -g -Wall
+LIBS = -larmadillo
+DEPS = ODE.hpp ../numerics.hpp
+TARGET = odeEx
+
+all: odeEx
+
+odeEx: interp.o cinterp.o grad.o roots.o newton.o ivp_events.o am1.o am2.o rk4.o rk5i.o rk45.o bdf23.o IVP_solve.o wait.o ode_ex.o
+	$(CXX) $(CXXFLAGS) -o $(TARGET) *.o $(LIBS)
+
+%.o: %.cpp $(DEPS)
+interp.o: ../interp.cpp ../numerics.hpp
+	$(CXX) -g -c ../interp.cpp
+cinterp.o: ../cinterp.cpp ../numerics.hpp
+	$(CXX) -g -c ../cinterp.cpp
+newton.o: ../newton.cpp ../numerics.hpp
+	$(CXX) -g -c ../newton.cpp
+roots.o: ../roots.cpp ../numerics.hpp
+	$(CXX) -g -c ../roots.cpp
+grad.o: ../grad.cpp ../numerics.hpp
+	$(CXX) -g -c ../grad.cpp
+ode_ex.o: ../examples/ode_ex.cpp ../examples/gnuplot_i.hpp
+	$(CXX) -g -c ../examples/ode_ex.cpp
+wait.o: ../examples/wait.cpp
+	$(CXX) -g -c ../examples/wait.cpp
+
+clean:
+	rm *.o

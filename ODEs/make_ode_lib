@@ -1,0 +1,24 @@
+CXX = g++
+CXXFLAGS = -g -Wall -fPIC
+LDFLAGS = -shared
+LIBS = -larmadillo
+DEPS = numerics.hpp ODE.hpp
+TARGET = ODE.so
+
+SRCS = am1.cpp am2.cpp bdf23.cpp rk4.cpp rk5i.cpp rk45.cpp IVP_solve.cpp linear_bvp.cpp
+OBJS = $(SRCS:.cpp=.o)
+
+.PHONY: all
+all: ${TARGET}
+
+$(TARGET): $(OBJS)
+	$(CXX) ${LDFLAGS} -o $@ $^
+
+$(SRCS:.cpp=.d):%.d:%.cpp
+	$(CXX) $(CXXFLAGS) -MM $< >$@
+
+include $(SRCS:.cpp=.d)
+
+.PHONY: clean
+clean:
+	rm ${TARGET} ${OBJS} $(SRCS:.cpp=.d)
