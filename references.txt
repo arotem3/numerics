@@ -9,14 +9,17 @@ Armadillo:
 
 [2] Conrad Sanderson and Ryan Curtin.
         A User-Friendly Hybrid Sparse Matrix Class in C++.
-        Lecture Notes in Computer Science (LNCS), Vol. 10931, pp. 422-430, 2018. 
+        Lecture Notes in Computer Science (LNCS), Vol. 10931, pp. 422-430, 2018.
+
+GNU plot:
+[3] Gnu plot and Gnu plot interface with c++.
 
 algorithms:
-[3] Most of the methods here were adapted from algorithms taught at various classes I took (or am currently taking)
-        at the Colorado School of Mines within the Computational and Applied Math program.
+[4] Most of the methods here were adapted from algorithms taught at various classes I took (or am currently taking)
+        at the Colorado School of Mines within the Computational and Applied Math department.
 
-[4] LeVeque, Randall J. "Finite difference methods for ordinary and partial differential equations"
+[5] LeVeque, Randall J. "Finite difference methods for ordinary and partial differential equations"
 
-[5] Lloyd N. Trefethen "Spectral Methods in MATLAB"
+[6] Lloyd N. Trefethen "Spectral Methods in MATLAB"
 
-[6] a lot of Wikipedia...
+[7] a lot of Wikipedia...

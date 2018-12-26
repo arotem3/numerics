@@ -1,10 +1,13 @@
 #include "numerics.hpp"
 
+//--- empty constructor that does nothing ---//
 numerics::polyInterp::polyInterp() {
     // DOES NOTHING
 }
 
-
+//--- build polynomial interpolator ----------------------------------------//
+//----- X : domain ---------------------------------------------------------//
+//----- Y : values to interpolate, each col is a different set of values ---//
 numerics::polyInterp::polyInterp(const arma::vec& X, const arma::mat& Y) {
     if ( X.n_rows != Y.n_rows ) { // error with input arguments
         std::cerr << "polyInterp() error: interpolation could not be constructed. Input vectors must have the same length." << std::endl;
@@ -33,10 +36,12 @@ numerics::polyInterp::polyInterp(const arma::vec& X, const arma::mat& Y) {
     }
 }
 
+//--- load an interpolator object on construction ---//
 numerics::polyInterp::polyInterp(std::istream& in) {
     load(in);
 }
 
+//--- load an interpolator object from file ---//
 void numerics::polyInterp::load(std::istream& in) {
     int n, m;
     in >> n >> m;
@@ -52,6 +57,7 @@ void numerics::polyInterp::load(std::istream& in) {
     }
 }
 
+//--- save an interpolator object to file ---//
 void numerics::polyInterp::save(std::ostream& out) {
     out << p.n_rows << " " << p.n_cols << std::endl;
     out.precision(12);
@@ -61,6 +67,7 @@ void numerics::polyInterp::save(std::ostream& out) {
     temp.raw_print(out);
 }
 
+//--- evaluate interpolator as a function ---//
 arma::mat numerics::polyInterp::operator()(const arma::vec& u) {
     int n = x.n_elem - 1;
     if ( !arma::all(u - x(0) >= -0.01) || !arma::all(u - x(n) <= 0.01) ) { // input error

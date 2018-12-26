@@ -1,6 +1,6 @@
 #include "ODE.hpp"
 
-void ODE::bdf23(odefun f, arma::vec& t, arma::mat& U, ivp_options& opts) {
+void ODE::bdf23(const odefun& f, arma::vec& t, arma::mat& U, ivp_options& opts) {
     numerics::nonlin_opts roots_opts;
     roots_opts.max_iter = opts.max_nonlin_iter;
     roots_opts.err = opts.max_nonlin_err;
@@ -77,7 +77,7 @@ void ODE::bdf23(odefun f, arma::vec& t, arma::mat& U, ivp_options& opts) {
                     break;
                 }
             }
-            P = numerics::LPM(t(arma::span(j,i)), U.rows(arma::span(j,i)), {t_temp-k, t_temp-2*k}); // lagrange interpolation
+            P = numerics::lagrangeInterp(t(arma::span(j,i)), U.rows(arma::span(j,i)), {t_temp-k, t_temp-2*k}); // lagrange interpolation
             Un_half = P.row(0); // ~ U(n) needed for U* and V1 calculations
             Un_full = P.row(1); // ~ U(n-1) needed for V2 calculation
         
@@ -182,7 +182,7 @@ void ODE::bdf23(odefun f, arma::vec& t, arma::mat& U, ivp_options& opts) {
     U = U.rows( arma::span(0,i+1) );
 }
 
-ODE::ivp_options ODE::bdf23(odefun f, arma::vec& t, arma::mat& U) {
+ODE::ivp_options ODE::bdf23(const odefun& f, arma::vec& t, arma::mat& U) {
     ivp_options opts;
     opts.adaptive_max_err = 1e-4;
     opts.adaptive_step_max = rk45_kmax;

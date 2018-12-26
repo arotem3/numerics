@@ -1,5 +1,8 @@
 #include "numerics.hpp"
 
+//--- use k-means algorithm to cluster data ---------//
+//----- A : data matrix, each col is a data input ---//
+//----- k : number of clusters ----------------------//
 numerics::kmeans::kmeans(arma::mat& A, int k) {
     if (k <= 1) {
         std::cerr << "kmeans() error: invalid input for k (valid k > 1)." << std::endl;
@@ -55,10 +58,12 @@ numerics::kmeans::kmeans(arma::mat& A, int k) {
     dataCluster = operator()(A);
 }
 
+//--- load kmeans object from file on construction ---//
 numerics::kmeans::kmeans(std::istream& in) {
     load(in);
 }
 
+//--- load kmeans object from file ---//
 void numerics::kmeans::load(std::istream& in) {
     int numPts;
     in >> k >> dim >> numPts;
@@ -81,6 +86,7 @@ void numerics::kmeans::load(std::istream& in) {
     }
 }
 
+//--- save kmeans object to file ---//
 void numerics::kmeans::save(std::ostream& out) {
     out << k << " " << dim << " " << data->n_cols << std::endl;
     C.raw_print(out);
@@ -88,6 +94,7 @@ void numerics::kmeans::save(std::ostream& out) {
     dataCluster.raw_print(out);
 }
 
+//--- finding closest cluster to data point (private) ---//
 int numerics::kmeans::closestC(const arma::vec& x) {
     double min = arma::norm(C.col(0) - x);
     int c = 0;
@@ -103,18 +110,24 @@ int numerics::kmeans::closestC(const arma::vec& x) {
     return c;
 }
 
+//--- return the cluster number of each col of the original data input ---//
 arma::rowvec numerics::kmeans::getClusters() const {
     return dataCluster;
 }
 
+//--- returns a matrix where each col is a cluster mean ---//
 arma::mat numerics::kmeans::getCentroids() const {
     return C;
 }
 
+//--- assign cluster numbers to data ---------------//
+//----- B : data matrix each col is a data point ---//
 arma::rowvec numerics::kmeans::operator()(const arma::mat& B) {
     return place_in_cluster(B);
 }
 
+//--- assign cluster numbers to data ---------------//
+//----- B : data matrix each col is a data point ---//
 arma::rowvec numerics::kmeans::place_in_cluster(const arma::mat& B) {
     if ( B.n_rows != (unsigned)dim ) {
         std::cerr << "kmeans() error: cannot cluster " << B.n_rows << "dimensional data in a " << dim << "dimensional space." << std::endl
@@ -129,10 +142,14 @@ arma::rowvec numerics::kmeans::place_in_cluster(const arma::mat& B) {
     return clustering;
 }
 
+//--- assign cluster numbers to data ---//
+//----- x : single data point-----------//
 int numerics::kmeans::operator()(const arma::vec& x) {
     return place_in_cluster(x);
 }
 
+//--- assign cluster numbers to data ---//
+//----- x : single data point-----------//
 int numerics::kmeans::place_in_cluster(const arma::vec& x) {
     if (x.n_elem != dim) {
         std::cerr << "kmeans() error: cannot cluster " << x.n_elem << "dimensional data in a " << dim << "dimensional space." << std::endl
@@ -142,20 +159,8 @@ int numerics::kmeans::place_in_cluster(const arma::vec& x) {
     return closestC(x);
 }
 
-int numerics::kmeans::operator()(double x) {
-    return place_in_cluster(x);
-}
-
-int numerics::kmeans::place_in_cluster(double x) {
-    if (dim == 1) {
-        return operator()( arma::vec({x}) );
-    } else {
-        std::cerr << "kmeans() error: cannot cluster a 1 dimensional data point in a " << dim << "dimensional space." << std::endl
-                  << "\terror thrown during evaluation of kmeans::place_in_cluster() with an input of type double" << std::endl;
-        return -1;
-    }
-}
-
+//--- return all data points in a cluster ---//
+//----- i : cluster number ------------------//
 arma::mat numerics::kmeans::all_from_cluster(int i) {
     if (i < 0 || i >= k) {
         std::cerr << "kmeans() error: invalid choice of cluster, clusters are ordered 0 to " << k-1 << std::endl
@@ -167,10 +172,13 @@ arma::mat numerics::kmeans::all_from_cluster(int i) {
     return cluster;
 }
 
+//--- return all data points in a cluster ---//
+//----- i : cluster number ------------------//
 arma::mat numerics::kmeans::operator[](int i) {
     return all_from_cluster(i);
 }
 
+//--- print overview of kmeans analysis ---//
 void numerics::kmeans::print(std::ostream& out) {
     out << "----------------------------------------------------" << std::endl;
     out << "\t\tk-means clustering" << std::endl

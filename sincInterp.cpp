@@ -1,8 +1,12 @@
 #include "numerics.hpp"
 
-arma::vec numerics::sincInterp(const arma::vec& x, const arma::vec& y, const arma::vec& u) {
+//--- interpolate data points with sinc functions ---//
+//----- x : uniformly spaced domain data ------------//
+//----- y : points to interpolate -------------------//
+//----- u : points to evaluate interpolation on -----//
+arma::mat numerics::sincInterp(const arma::vec& x, const arma::mat& y, const arma::vec& u) {
     int n = x.n_elem;
-    if (arma::size(x) != arma::size(y)) { // dimension error
+    if (x.n_elem != y.n_rows) { // dimension error
         std::cerr << "sincInterp() error: interpolation could not be constructed, x and y vectors must be the same length." << std::endl
                   << "\tx has " << x.n_elem << " elements, y has " << y.n_elem << " elements." << std::endl;
         return {NAN};
@@ -23,15 +27,21 @@ arma::vec numerics::sincInterp(const arma::vec& x, const arma::vec& y, const arm
     }
 
     double h = x(1) - x(0);
-    arma::vec v(arma::size(u), arma::fill::zeros);
+    arma::mat v(u.n_elem, y.n_cols, arma::fill::zeros);
     for (int i(0); i < n; ++i) {
-        v += y(i) * arma::sinc(  (u - x(i))/h  );
+        arma::mat s = arma::repmat(y.row(i), u.n_elem, 1);
+        s.each_col() %= arma::sinc(  (u - x(i))/h  );
+        v += s;
     }
 
     return v;
 }
 
-arma::vec numerics::specral_deriv(std::function<double(double)> f, arma::vec& x, int sample_points) {
+//--- compute spectrally accurate derivative of function over an interval ---//
+//----- f : f(x) function to compute derivative of --------------------------//
+//----- x : points to evaluate derivative at --------------------------------//
+//----- sample_points: number of points to sample (more->more accurate) -----//
+arma::vec numerics::specral_deriv(const dfunc& f, arma::vec& x, int sample_points) {
     double a = x(0);
     int m = x.n_elem;
     double b = x(m-1);

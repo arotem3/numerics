@@ -6,7 +6,7 @@ TARGET = odeEx
 
 all: odeEx
 
-odeEx: interp.o cinterp.o grad.o roots.o newton.o ivp_events.o am1.o am2.o rk4.o rk5i.o rk45.o bdf23.o IVP_solve.o wait.o ode_ex.o
+odeEx: interp.o cinterp.o finite_dif.o roots.o newton.o broyd.o lmlsqr.o ivp_events.o am1.o am2.o rk4.o rk5i.o rk45.o bdf23.o IVP_solve.o wait.o ode_ex.o
 	$(CXX) $(CXXFLAGS) -o $(TARGET) *.o $(LIBS)
 
 %.o: %.cpp $(DEPS)
@@ -16,10 +16,14 @@ cinterp.o: ../cinterp.cpp ../numerics.hpp
 	$(CXX) -g -c ../cinterp.cpp
 newton.o: ../newton.cpp ../numerics.hpp
 	$(CXX) -g -c ../newton.cpp
+broyd.o: ../broyd.cpp ../numerics.hpp
+	$(CXX) -g -c ../broyd.cpp
+lmlsqr.o: ../lmlsqr.cpp ../numerics.hpp
+	$(CXX) -g -c ../lmlsqr.cpp
 roots.o: ../roots.cpp ../numerics.hpp
 	$(CXX) -g -c ../roots.cpp
-grad.o: ../grad.cpp ../numerics.hpp
-	$(CXX) -g -c ../grad.cpp
+finite_dif.o: ../finite_dif.cpp ../numerics.hpp
+	$(CXX) -g -c ../finite_dif.cpp
 ode_ex.o: ../examples/ode_ex.cpp ../examples/gnuplot_i.hpp
 	$(CXX) -g -c ../examples/ode_ex.cpp
 wait.o: ../examples/wait.cpp

@@ -1,5 +1,6 @@
 #include "numerics.hpp"
 
+//--- empty constructor, has no use ---//
 numerics::CubicInterp::CubicInterp() {
     n = 0;
 }
@@ -77,6 +78,12 @@ numerics::CubicInterp::CubicInterp(const arma::vec& X, const arma::mat& Y) {
     c = c.rows(arma::span(0,n-1));
 }
 
+//--- load cubic interpolator from file on construction ---//
+numerics::CubicInterp::CubicInterp(std::istream& in) {
+    load(in);
+}
+
+//--- save cubic interpolator to file ---//
 void numerics::CubicInterp::save(std::ostream& out) {
     out << n << " " << y.n_cols << std::endl;
     out.precision(12);
@@ -92,6 +99,7 @@ void numerics::CubicInterp::save(std::ostream& out) {
     temp.raw_print(out);
 }
 
+//--- load cubic interpolator from file ---//
 void numerics::CubicInterp::load(std::istream& in) {
     int m;
     in >> n >> m;
@@ -125,12 +133,7 @@ void numerics::CubicInterp::load(std::istream& in) {
     }  
 }
 
-numerics::CubicInterp::CubicInterp(std::istream& in) {
-    load(in);
-}
-
-//----- t  : points to evaluate interpolation on -//
-//----- s  : return var, array of evaluated pts --//
+//--- evaluate cubic interpolator like a function at specific values ---//
 arma::mat numerics::CubicInterp::operator()(const arma::vec& t) {
     if ( !arma::all(t - x(0) >= -0.01) || !arma::all(t - x(n) <= 0.01) ) { // input error
         std::cerr << "CubicInterp::operator() failed: one or more input value is outside the domain of the interpolation. No possible evaluation exists." << std::endl;
@@ -151,6 +154,7 @@ arma::mat numerics::CubicInterp::operator()(const arma::vec& t) {
     return s;
 }
 
+//--- evaluate cubic interpolator at linearly spaced points on the interval of definition ---//
 arma::mat numerics::CubicInterp::operator()(size_t num_pts) {
     arma::vec t = arma::linspace(x(0),x(n),num_pts);
     return operator()(t);

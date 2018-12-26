@@ -8,7 +8,7 @@ arma::vec binarr(int, int);
 //----- b  : upper bounds of box -------------------------------------------------//
 //----- err: estimate of upper bound on error of the integral --------------------//
 //----- N  : number of sample points ---------------------------------------------//
-double numerics::mcIntegrate(std::function<double(const arma::vec&)> f, const arma::vec& a, const arma::vec& b, double err, int N) {
+double numerics::mcIntegrate(const vec_dfunc& f, const arma::vec& a, const arma::vec& b, double err, int N) {
     arma::arma_rng::set_seed_random();
     double I = 0;
     int dim = a.n_elem;

@@ -235,9 +235,10 @@ ODE::dsolnp ODE::linear_BVP::solve(size_t m) {
     F(m) = gammaR;
 
     arma::vec U = arma::solve(L,F);
-    dsolnp linSol(numerics::polyInterp(x,U));
-    linSol.x = x;
-    linSol.U = U;
+    dsolnp linSol;
+    linSol.soln = numerics::polyInterp(x,U);
+    linSol.independent_var_values = x;
+    linSol.solution_values = U;
     return linSol;
 }
 

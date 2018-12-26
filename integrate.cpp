@@ -1,9 +1,9 @@
 #include "numerics.hpp"
 
-double Simp(std::function<double(double)>, double, double, int);
-double trap(std::function<double(double)>, double, double, int);
+double Simp(const numerics::dfunc&, double, double, int);
+double trap(const numerics::dfunc&, double, double, int);
 
-double numerics::integrate(std::function<double(double)> f, double a, double b, integrator i, double err) {
+double numerics::integrate(const dfunc& f, double a, double b, integrator i, double err) {
     double s = 0;
     if (i == SIMPSON) {
         s = Sintegrate(f,a,b,err);
@@ -22,7 +22,7 @@ double numerics::integrate(std::function<double(double)> f, double a, double b, 
 //----- a  : lower bound of integral -----------------------------//
 //----- b  : upper bound of integral -----------------------------//
 //----- err: upper bound on error of integral --------------------//
-double numerics::Sintegrate(std::function<double(double)> f, double a, double b, double err) { //adaptive method for integration
+double numerics::Sintegrate(const dfunc& f, double a, double b, double err) { //adaptive method for integration
     err = std::abs(err);
     double S1 = Simp(f,a,b,2);
     double S2 = Simp(f,a,b,4);
@@ -43,7 +43,7 @@ double numerics::Sintegrate(std::function<double(double)> f, double a, double b,
 //----- a  : lower bound of integral ------------------------------------------------------------//
 //----- b  : upper bound of integral ------------------------------------------------------------//
 //----- err: upper bound on error of integral ---------------------------------------------------//
-double numerics::Tintegrate(std::function<double(double)> f, double a, double b, double err) {
+double numerics::Tintegrate(const dfunc& f, double a, double b, double err) {
     err = std::abs(err);
     double T1 = trap(f,a,b,2);
     double T2 = trap(f, a,b,4);
@@ -61,7 +61,7 @@ double numerics::Tintegrate(std::function<double(double)> f, double a, double b,
 //----- a  : lower bound -------------------------------------------------------------------------//
 //----- b  : upper bound -------------------------------------------------------------------------//
 //----- err: upper bound on error ----------------------------------------------------------------//
-double numerics::Lintegrate(std::function<double(double)> f, double a, double b, double err) {
+double numerics::Lintegrate(const dfunc& f, double a, double b, double err) {
     err = std::abs(err);
     double bma = (b-a)/2;
     double bpa = (b+a)/2;
@@ -85,7 +85,7 @@ double numerics::Lintegrate(std::function<double(double)> f, double a, double b,
 //----- a  : lower bound of integral -----//
 //----- b  : upper bound of integral -----//
 //----- n  : number of subintervals ------//
-double Simp(std::function<double(double)> f, double a, double b, int n) { //simpson's rule for integration
+double Simp(const numerics::dfunc& f, double a, double b, int n) { //simpson's rule for integration
     double h = (b - a)/n;
     double s = f(a) + f(b);
     for (int i(2); i<=n; ++i) {
@@ -101,7 +101,7 @@ double Simp(std::function<double(double)> f, double a, double b, int n) { //simp
 }
 
 //--- trapezoid method for integration ---//
-double trap(std::function<double(double)> f, double a, double b, int n) {
+double trap(const numerics::dfunc& f, double a, double b, int n) {
     double h = (b-a)/n;
     double t = 0;
     double temp;

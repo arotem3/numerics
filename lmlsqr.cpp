@@ -4,7 +4,7 @@
 //----- f : function to find least squares solution of -----//
 //----- x : solution, initialized to a good guess ----------//
 //----- opts : options for controlling solver parameters ---//
-void numerics::lmlsqr(std::function<arma::vec(const arma::vec&)> f, arma::vec& x, lsqr_opts& opts) {
+void numerics::lmlsqr(const vector_func& f, arma::vec& x, lsqr_opts& opts) {
     double lam = opts.damping_param;
     double nu = opts.damping_scale;
     arma::vec delta = arma::ones(arma::size(x));
@@ -55,7 +55,7 @@ void numerics::lmlsqr(std::function<arma::vec(const arma::vec&)> f, arma::vec& x
     opts.final_jacobian = J;
 }
 
-numerics::lsqr_opts numerics::lmlsqr(std::function<arma::vec(const arma::vec&)> f, arma::vec& x) {
+numerics::lsqr_opts numerics::lmlsqr(const vector_func& f, arma::vec& x) {
     lsqr_opts opts;
     lmlsqr(f,x,opts);
     return opts;

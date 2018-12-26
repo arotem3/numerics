@@ -3,7 +3,7 @@
 #include "../numerics.hpp"
 
 namespace ODE {
-    // --- ode solver constants
+    // --- ode solver constants --- //
         const double rk45_kmin = 1.0e-4;
         const double rk45_kmax = 0.5;
         const double rk45_qmin = 1e-2;
@@ -11,7 +11,7 @@ namespace ODE {
         const double implicit_err = 1e-6;
 
         const int implicit_ode_max_iter = 400;
-
+    // --- enumerators ------------ //
         typedef enum ODE_SOLVER {
             RK45,
             BDF23,
@@ -21,36 +21,94 @@ namespace ODE {
             AM2
         } ode_solver;
 
+        typedef enum BVP_SOLVERS {
+            FOURTH_ORDER,
+            SECOND_ORDER,
+            CHEBYSHEV
+        } bvp_solvers;
+
         typedef enum EVENT_DIR {
             NEGATIVE = -1,
             ALL = 0,
             POSITIVE = 1
         } event_direction;
-
-        typedef struct IVP_EVENT_OUT {
-            event_direction dir;
-            double val;
-        } event_out;
-
-        typedef std::function<event_out(double t, const arma::rowvec&)> event_func;
+    // --- input objects ---------- //
         typedef std::function<arma::rowvec(double, const arma::rowvec&)> odefun;
+
+        typedef std::function<arma::vec(const arma::vec&,const arma::vec&)> pde2fun;
+
+        typedef std::function<arma::mat(const arma::vec&)> soln_init;
+
+        typedef struct BC2D {
+            double lower_x, lower_y, upper_x, upper_y;
+            std::function<arma::vec(const arma::vec&)> lower_x_bc, lower_y_bc, upper_x_bc, upper_y_bc;
+
+            BC2D() {
+                lower_x = -1;
+                lower_y = -1;
+                upper_x =  1;
+                upper_y =  1;
+                lower_x_bc = [](const arma::vec& x) -> arma::vec {return arma::zeros(arma::size(x));};
+                lower_y_bc = lower_x_bc;
+                upper_x_bc = lower_x_bc;
+                upper_y_bc = lower_x_bc;
+            }
+        } bcfun_2d;
+
         typedef struct BCFUN {
             double xL;
             double xR;
             std::function<arma::rowvec(const arma::rowvec&,const arma::rowvec&)> func;
         } bcfun;
-        typedef std::function<arma::mat(const arma::vec&)> soln_init;
+    // --- output objects --------- //
+        typedef struct SOLUTION_2D {
+            arma::mat X, Y, U;
+            void save(std::ostream& out) {
+                out << X.n_rows << " " << X.n_cols << std::endl;
+                out.precision(12);
+                X.raw_print(out);
+                Y.raw_print(out);
+                U.raw_print(out);
+            }
+            void load(std::istream& in) {
+                int n, m;
+                in >> n >> m;
+                X = arma::zeros(n,m);
+                Y = arma::zeros(n,m);
+                U = arma::zeros(n,m);
+                for (int i(0); i < n; ++i) {
+                    for (int j(0); j < m; ++j) {
+                        in >> X(i,j);
+                    }
+                }
+                for (int i(0); i < n; ++i) {
+                    for (int j(0); j < m; ++j) {
+                        in >> Y(i,j);
+                    }
+                }
+                for (int i(0); i < n; ++i) {
+                    for (int j(0); j < m; ++j) {
+                        in >> U(i,j);
+                    }
+                }
+            }
+        } soln_2d;
 
         typedef struct DSOLNP {
             arma::vec independent_var_values;
             arma::mat solution_values;
             numerics::polyInterp soln;
         } dsolnp;
+
         typedef numerics::CubicInterp dsolnc;
-    
-    // --- Utility --- //
-        void cheb(arma::mat& D, arma::vec& x, double L, double R, size_t m);
-    // --- IVPs --- //
+    // --- options objects -------- //
+        typedef struct IVP_EVENT_OUT {
+            event_direction dir;
+            double val;
+        } event_out;
+
+        typedef std::function<event_out(double t, const arma::rowvec&)> event_func;
+
         typedef struct IVP_OPTIONS {
             // inputs
             size_t max_nonlin_iter;
@@ -87,46 +145,58 @@ namespace ODE {
         } ivp_options;
 
         double event_handle(ivp_options& opts, double prev_t, const arma::rowvec& prev_U, double t, const arma::rowvec& V, double k);
-        
-        void rk45(odefun, arma::vec&, arma::mat&, ivp_options&);
-        ivp_options rk45(odefun, arma::vec&, arma::mat&);
+
+        typedef struct NONLIN_BVP_OPTS {
+            // inputs
+            size_t num_points;
+            numerics::lsqr_opts lsqropts;
+            numerics::nonlin_opts nlnopts;
+            numerics::nonlin_solver solver;
+            std::function<arma::mat(double,const arma::rowvec&)>* jacobian_func;
+
+            NONLIN_BVP_OPTS() {
+                num_points = 30;
+                solver = numerics::BROYD;
+                jacobian_func = nullptr;
+            }
+        } bvp_opts;
+    // --- Utility ---------------- //
+        void cheb(arma::mat& D, arma::vec& x, double L, double R, size_t m);
+        void cheb(arma::mat& D, arma::vec& x, size_t m);
+    // --- IVPs ------------------- //
+        void rk45(const odefun&, arma::vec&, arma::mat&, ivp_options&);
+        ivp_options rk45(const odefun&, arma::vec&, arma::mat&);
         arma::vec rk45(std::function<double(double,double)>, arma::vec&, double, ivp_options&);
         arma::vec rk45(std::function<double(double,double)>, arma::vec&, double);
 
-        void bdf23(odefun, arma::vec&, arma::mat&, ivp_options&);
-        ivp_options bdf23(odefun, arma::vec&, arma::mat&);
+        void bdf23(const odefun&, arma::vec&, arma::mat&, ivp_options&);
+        ivp_options bdf23(const odefun&, arma::vec&, arma::mat&);
         arma::vec bdf23(std::function<double(double,double)>, arma::vec&, double, ivp_options&);
         arma::vec bdf23(std::function<double(double,double)>, arma::vec&, double);
 
-        void rk4(odefun, arma::vec&, arma::mat&, ivp_options&);
-        ivp_options rk4(odefun, arma::vec&, arma::mat&);
+        void rk4(const odefun&, arma::vec&, arma::mat&, ivp_options&);
+        ivp_options rk4(const odefun&, arma::vec&, arma::mat&);
         arma::vec rk4(std::function<double(double,double)>, arma::vec&, double, ivp_options&);
         arma::vec rk4(std::function<double(double,double)>, arma::vec&, double);
 
-        void rk5i(odefun, arma::vec&, arma::mat&, ivp_options&);
-        ivp_options rk5i(odefun, arma::vec&, arma::mat&);
+        void rk5i(const odefun&, arma::vec&, arma::mat&, ivp_options&);
+        ivp_options rk5i(const odefun&, arma::vec&, arma::mat&);
         arma::vec rk5i(std::function<double(double,double)>, arma::vec&, double, ivp_options&);
         arma::vec rk5i(std::function<double(double,double)>, arma::vec&, double);
 
-        void am1(odefun, arma::vec&, arma::mat&, ivp_options&);
-        ivp_options am1(odefun, arma::vec&, arma::mat&);
+        void am1(const odefun&, arma::vec&, arma::mat&, ivp_options&);
+        ivp_options am1(const odefun&, arma::vec&, arma::mat&);
         arma::vec am1(std::function<double(double,double)>, arma::vec&, double, ivp_options&);
         arma::vec am1(std::function<double(double,double)>, arma::vec&, double);
 
-        void am2(odefun, arma::vec&, arma::mat&, ivp_options&);
-        ivp_options am2(odefun, arma::vec&, arma::mat&);
+        void am2(const odefun&, arma::vec&, arma::mat&, ivp_options&);
+        ivp_options am2(const odefun&, arma::vec&, arma::mat&);
         arma::vec am2(std::function<double(double,double)>, arma::vec&, double, ivp_options&);
         arma::vec am2(std::function<double(double,double)>, arma::vec&, double);
 
-        numerics::CubicInterp IVP_solve(odefun, arma::vec&, arma::mat&, ivp_options&, ode_solver solver = RK45);
-        numerics::CubicInterp IVP_solve(odefun, arma::vec&, arma::mat&, ode_solver solver = RK45);
-    // --- BVPs --- //
-        typedef enum BVP_SOLVERS {
-            FOURTH_ORDER,
-            SECOND_ORDER,
-            CHEBYSHEV
-        } bvp_solvers;
-
+        numerics::CubicInterp IVP_solve(const odefun&, arma::vec&, arma::mat&, ivp_options&, ode_solver solver = RK45);
+        numerics::CubicInterp IVP_solve(const odefun&, arma::vec&, arma::mat&, ode_solver solver = RK45);
+    // --- BVPs ------------------- //
         class linear_BVP {
             //--- u''(x) = a(x) + b(x)*u(x) + c(x)*u'(x) ---//
             //----- L <= x <= R ----------------------------//
@@ -151,22 +221,11 @@ namespace ODE {
             void set_c(std::function<double(double)>);
             void set_c(double);
             void solve(arma::vec&, arma::mat&, size_t, bvp_solvers solver = FOURTH_ORDER);
-            dsolnp solve(size_t);
+            dsolnp solve(size_t num_pts = 40);
         };
 
-        typedef struct NONLIN_BVP_OPTS {
-            // inputs
-            size_t num_points;
-            numerics::lsqr_opts lsqropts;
-            numerics::nonlin_opts nlnopts;
-            numerics::nonlin_solver solver;
-
-            NONLIN_BVP_OPTS() {
-                num_points = 30;
-                solver = numerics::BROYD;
-            }
-        } bvp_opts;
-
-        dsolnp bvp(odefun, bcfun, soln_init, bvp_opts&);
-        dsolnp bvp(odefun, bcfun, soln_init);
+        dsolnp bvp(const odefun&, const bcfun&, const soln_init&, bvp_opts&);
+        dsolnp bvp(const odefun&, const bcfun&, const soln_init&);
+    // --- PDEs ------------------- //
+        soln_2d poisson2d(const pde2fun&, const bcfun_2d&, size_t num_pts = 48);
 }

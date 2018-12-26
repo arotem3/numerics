@@ -4,7 +4,7 @@
 //----- f  : function to find root of -------------------------------------------------//
 //----- df : derivative of f ----------------------------------------------------------//
 //----- x0 : point near the root ------------------------------------------------------//
-double numerics::newton(std::function<double(double)> f, std::function<double(double)> df, double x0, double err) {
+double numerics::newton(const dfunc& f, const dfunc& df, double x0, double err) {
     auto p = [&f,&df](double x) -> double { return x - f(x)/df(x); };
     double x1 = x0;
     double x2 = p(x1);
@@ -23,8 +23,8 @@ double numerics::newton(std::function<double(double)> f, std::function<double(do
 
 //--- secant methods for finding roots of single variable functions ---//
 //----- f  : function to find root of ---------------------------------//
-//----- x1 : point near the root --------------------------------------//
-double numerics::secant(std::function<double(double)> f, double x0, double err) {
+//----- x0 : point near the root --------------------------------------//
+double numerics::secant(const dfunc& f, double x0, double err) {
     auto df = [&](double x) -> double {
         return deriv(f,x,err);
     };
@@ -35,7 +35,7 @@ double numerics::secant(std::function<double(double)> f, double x0, double err) 
 //----- f  : function to find root of -----------------------------------//
 //----- x1 : lower bound of search interval -----------------------------//
 //----- x2 : upper bound of search interval -----------------------------//
-double numerics::bisect(std::function<double(double)> f, double x1, double x2, double tol) {
+double numerics::bisect(const dfunc& f, double x1, double x2, double tol) {
     if (tol <= 0) tol = eps(x2); // check tolerance condition
     if (std::abs(f(x1)) < tol ) {
         return x1;
@@ -66,7 +66,7 @@ double numerics::bisect(std::function<double(double)> f, double x1, double x2, d
 //----- f  : function to find root of --------------------------------------------------//
 //----- x1 : lower bound of search interval --------------------------------------------//
 //----- x2 : upper bound of search interval --------------------------------------------//
-double numerics::roots(std::function<double(double)> f, double x1, double x2) {
+double numerics::roots(const dfunc& f, double x1, double x2) {
     if (std::abs(f(x1)) < eps(x1)) {
         return x1;
     } else if (std::abs(f(x2)) < eps(x2)) {

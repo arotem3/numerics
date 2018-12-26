@@ -1,7 +1,7 @@
 #include "../numerics.hpp"
 #include <iomanip>
 
-// g++ -Wall -g -o grad_ex examples/grad_ex.cpp grad.cpp -larmadillo
+// g++ -Wall -g -o finite_dif_ex examples/finite_dif_ex.cpp finite_dif.cpp -larmadillo
 
 using namespace numerics;
 

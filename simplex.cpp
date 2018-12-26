@@ -5,10 +5,13 @@
 //----- x  : where solution goes --------------------------------------------//
 //----- returns minimum value -----------------------------------------------//
 double numerics::simplex(arma::mat& A, arma::vec& x) {
-    int numRows = arma::size(A)(0);
-    int numCols = arma::size(A)(1);
+    int numRows = A.n_rows;
+    int numCols = A.n_cols;
     arma::mat D = A;
-    auto f = [&D,numRows,numCols](arma::vec x){ arma::rowvec b = D(numRows-1, arma::span(0,numCols-numRows-2)); return arma::dot(-b.t(), x); };
+    auto f = [&D,numRows,numCols](arma::vec x) -> double { // our objective function
+        arma::rowvec b = D(numRows-1, arma::span(0,numCols-numRows-2));
+        return arma::dot(-b.t(), x);
+    };
 
     short k = 0;
     while ( !arma::all(A.row(numRows-1) >= 0) ) {
@@ -39,13 +42,13 @@ double numerics::simplex(arma::mat& A, arma::vec& x) {
 }
 
 //--- simplex method overload for those who would rather not pre-format ---//
-//----- f  : z(x) = f.*x; function to maximize ----------------------------//
+//----- f  : z(x) = f*x = dot(f,x); function to maximize ------------------//
 //----- conRHS : right hand side of constraint equations ------------------//
 //----- conLHS : left hand side of constraint equations -------------------//
 //---------- conRHS*x <= conLHS -------------------------------------------//
 //----- x  : where solution is stored -------------------------------------//
 double numerics::simplex(const arma::rowvec& f, const arma::mat& conRHS, const arma::vec& conLHS, arma::vec& x) {
-    int numCons = arma::size(conRHS)(0);
+    int numCons = conRHS.n_elem;
     arma::mat A = arma::join_cols(conRHS, -f); // A = [RHS; f]
     A = arma::join_rows(A, arma::eye(numCons+1,numCons+1)); // A = [A , I]
     arma::vec z = {0};

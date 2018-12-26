@@ -1,6 +1,6 @@
 #include "../numerics.hpp"
 
-// g++ -Wall -g -o roots-ex examples/roots-ex.cpp roots.cpp eps.cpp
+// g++ -Wall -g -o roots_ex examples/roots_ex.cpp roots.cpp finite_dif.cpp
 
 using namespace numerics;
 using std::sin;
@@ -24,7 +24,7 @@ int main() {
               << "\t\tnewton() took:         " << (float)t/CLOCKS_PER_SEC << " seconds" << std::endl << std::endl;
     
     t = clock();
-    y = secant(g, 1.0, 2.0);
+    y = secant(g, 1.0);
     t = clock() - t;
 
     std::cout << "(2)\tfor secant method we need to starting points:" << std::endl

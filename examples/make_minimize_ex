@@ -1,0 +1,20 @@
+CXX = g++
+CXXFLAGS = -g -Wall
+LIBS = -larmadillo
+DEPS = numerics.hpp
+TARGET = minimize_ex
+
+all: minimize_ex
+
+minimize_ex: minimize_ex.o minimize_unc.o newton.o momentum.o sgd.o bfgs.o broyd.o lmlsqr.o nlcgd.o finite_dif.o cyc_queue.o wait.o
+	$(CXX) $(CXXFLAGS) -o $(TARGET) *.o $(LIBS)
+
+%.o: %.cpp $(DEPS)
+
+minimize_ex.o: examples/minimize_ex.cpp $(DEPS)
+	$(CXX) -g -c examples/minimize_ex.cpp
+wait.o: examples/wait.cpp
+	$(CXX) -g -c examples/wait.cpp
+
+clean:
+	rm *.o

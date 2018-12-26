@@ -6,8 +6,8 @@ TARGET = spectral
 
 all: interp_ex
 
-interp_ex: spectral_deriv_ex.o sincInterp.o eps.o wait.o
-	$(CXX) $(CXXFLAGS) -o $(TARGET) spectral_deriv_ex.o sincInterp.o eps.o wait.o $(LIBS)
+interp_ex: spectral_deriv_ex.o sincInterp.o wait.o
+	$(CXX) $(CXXFLAGS) -o $(TARGET) spectral_deriv_ex.o sincInterp.o wait.o $(LIBS)
 
 %.o: %.cpp $(DEPS)
 

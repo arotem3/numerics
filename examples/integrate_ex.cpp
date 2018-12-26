@@ -1,6 +1,6 @@
 #include "../numerics.hpp"
 
-// g++ -Wall -g -o integrate-ex examples/integrate-ex.cpp integrate.cpp eps.cpp
+// g++ -Wall -g -o integrate_ex examples/integrate_ex.cpp integrate.cpp
 
 using namespace numerics;
 

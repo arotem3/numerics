@@ -1,14 +1,15 @@
 #include "numerics.hpp"
 
 //--- box constrained maximization using a genetic algorithm ---//
-//----- f  : double = f(x) function to maximize -----------------//
-//----- x  : vec where the maximum is ---------------------------//
-//----- xMin : minimum bound for box constraints ----------------//
-//----- xMax : maximum bound for box constraints ----------------//
-double numerics::genOptim(std::function<double(const arma::vec&)> f, arma::vec& x, const arma::vec& xMin, const arma::vec& xMax) {
+//----- f  : double = f(x) function to maximize ----------------//
+//----- x  : vec where the maximum is --------------------------//
+//----- xMin : minimum bound for box constraints ---------------//
+//----- xMax : maximum bound for box constraints ---------------//
+//----- opts : pass solver parameters --------------------------//
+double numerics::genOptim(const vec_dfunc& f, arma::vec& x, const arma::vec& xMin, const arma::vec& xMax, gen_opts& opts) {
     arma::arma_rng::set_seed_random();
-    int dim = arma::size(xMin)(0); // dimenstion of domain space
-    int n = gen_pop; // number of members in the population
+    int dim = xMin.n_elem; // dimenstion of domain space
+    int n = opts.population_size; // number of members in the population
 
     auto T = [&](arma::vec& x){x = (xMax-xMin)%x + xMin;}; // [0,1] -> [xMin, xMax]
     auto fitness = [&f,n](arma::mat& x){ 
@@ -47,14 +48,14 @@ double numerics::genOptim(std::function<double(const arma::vec&)> f, arma::vec& 
     arma::mat A(dim, n, arma::fill::randu); // initialized population
     A.each_col(T);
 
-    double pc = gen_prob; // probability of reproduction for best member of population (value is arbitrary)
+    double pc = opts.reproduction_rate; // probability of reproduction for best member of population (value is arbitrary)
     arma::rowvec P(n, arma::fill::zeros); // probability of each member mating
     arma::mat nextA(dim,n,arma::fill::zeros); // next generation
     int numGens = 1;
 
     auto nextGen = [&]() {
         arma::rowvec B = 2*fitness(A);
-        if (numGens < gen_div_lim) {
+        if (numGens < opts.diversity_limit) {
             B += divers(A); // fitness + diversity = measure of good a member of a population is
         }
         arma::umat ind = arma::sort_index(-B);
@@ -101,7 +102,7 @@ double numerics::genOptim(std::function<double(const arma::vec&)> f, arma::vec& 
     }; // produce next generation
 
     nextGen(); // initialized nextA
-    while (arma::norm(A - nextA) > 0.01) {
+    while (arma::norm(A - nextA) > opts.err) {
         A = nextA;
         nextGen();
     }
@@ -109,14 +110,20 @@ double numerics::genOptim(std::function<double(const arma::vec&)> f, arma::vec& 
     return f(x);
 }
 
+double numerics::genOptim(const vec_dfunc& f, arma::vec& x, const arma::vec& xMin, const arma::vec& xMax) {
+    gen_opts opts;
+    return genOptim(f,x,xMin,xMax,opts);
+}
+
 //--- unconstrained maximization using a genetic algorithm ---//
 //----- f  : double = f(x) function to maximize --------------//
 //----- x0 : initial guess for local minimum -----------------//
 //----- search_radius : initial spread of data ---------------//
-double numerics::genOptim(std::function<double(const arma::vec&)> f, arma::vec& x0, double search_radius) {
+//----- opts : pass solver parameters ------------------------//
+double numerics::genOptim(const vec_dfunc& f, arma::vec& x0, gen_opts& opts) {
     arma::arma_rng::set_seed_random();
-    int dim = arma::size(x0)(0); // dimenstion of domain space
-    int n = gen_pop; // number of members in the population
+    int dim = x0.n_elem; // dimenstion of domain space
+    int n = opts.population_size; // number of members in the population
 
     auto fitness = [&f,n](arma::mat& x){ 
         arma::rowvec F(n,arma::fill::zeros);
@@ -153,9 +160,9 @@ double numerics::genOptim(std::function<double(const arma::vec&)> f, arma::vec& 
 
     arma::mat A(dim, n, arma::fill::randn); // initialized population
     arma::mat tempA = 2*arma::randu(dim,n) - 1;
-    A += search_radius * tempA;
+    A += opts.search_radius * tempA;
 
-    double pc = gen_prob; // probability of reproduction for best member of population (value is arbitrary)
+    double pc = opts.reproduction_rate; // probability of reproduction for best member of population (value is arbitrary)
     arma::rowvec P(n, arma::fill::zeros); // probability of each member mating
     arma::mat nextA(dim,n,arma::fill::zeros); // next generation
     int numGens = 1;
@@ -200,12 +207,17 @@ double numerics::genOptim(std::function<double(const arma::vec&)> f, arma::vec& 
     }; // produce next generation
 
     nextGen(); // initialized nextA
-    while (arma::norm(A - nextA) > 0.01) {
+    while (arma::norm(A - nextA) > opts.err) {
         A = nextA;
         nextGen();
     }
     x0 = nextA.col( eval(f,nextA).index_max() );
     return f(x0);
+}
+
+double numerics::genOptim(const vec_dfunc& f, arma::vec& x0) {
+    gen_opts opts;
+    return genOptim(f,x0,opts);
 }
 
 //--- boolean maximization using genetic algorithm ---//

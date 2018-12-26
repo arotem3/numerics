@@ -1,7 +1,7 @@
 #include "../ODEs/ODE.hpp"
 #include "gnuplot_i.hpp"
 
-// g++ -g -o bvp_ex polyInterp.cpp newton.cpp lmlsqr.cpp finite_dif.cpp ODEs/cheb.cpp ODEs/linear_bvp.cpp ODEs/nonlin_bvp.cpp examples/bvp_ex.cpp examples/wait.cpp -larmadillo -lsuperlu
+// g++ -g -o bvp_ex polyInterp.cpp newton.cpp broyd.cpp lmlsqr.cpp finite_dif.cpp ODEs/cheb.cpp ODEs/linear_bvp.cpp ODEs/nonlin_bvp.cpp examples/bvp_ex.cpp examples/wait.cpp -larmadillo -lsuperlu
 
 double afunc(double x) {
     return std::sin(x);
@@ -30,8 +30,8 @@ int main() {
 
     // problem.solve(x,U,40); // 4th order FD approximation
     // problem.solve(x,U,40, SECOND_ORDER); // 2nd order FD approximation
-    // problem.solve(x,U,20, CHEBYSHEV); // spectral order approximation
-    dsolnp y = problem.solve(20); x = arma::linspace(0,2*M_PI); U = y.soln(x); // spectral order approximation outputing cheb polynomial
+    problem.solve(x,U,20, CHEBYSHEV); // spectral order approximation
+    // dsolnp y = problem.solve(20); x = arma::linspace(0,2*M_PI); U = y.soln(x); // spectral order approximation outputing cheb polynomial
 
     arma::mat u = 0.25 * (arma::exp(-2*M_PI - x) % (-1 + 4*std::exp(2*M_PI)+arma::exp(2*x)) - 2*arma::sin(x));
 
@@ -61,6 +61,13 @@ int main() {
         return up;
     };
 
+    std::function<arma::mat(double,const arma::rowvec&)> J = [](double x,const arma::rowvec& u) -> arma::mat {
+        arma::mat A(2,2,arma::fill::zeros);
+        A(0,1) = 1;
+        A(1,0) = -std::cos(u(0));
+        return A;
+    };
+
     bcfun bc;
     bc.xL = 0;
     bc.xR = 2*M_PI;
@@ -79,6 +86,8 @@ int main() {
     };
 
     bvp_opts opts;
+    opts.num_points = 100;
+    opts.jacobian_func = &J; // providing a jacobian function improves runtime significantly
     // opts.solver = numerics::LMLSQR;
 
     dsolnp soln = bvp(f, bc, guess, opts);
@@ -87,9 +96,11 @@ int main() {
     stdv U2 = arma::conv_to<stdv>::from(soln.solution_values.col(1));
 
     graph.reset_plot();
-    graph.set_style("lines");
+    graph.set_style("points");
     graph.plot_xy(x1,U1,"u(x) -- guess of cos(x)");
     graph.plot_xy(x1,U2,"v(x) -- guess of sin(x)");
+
+    std::cout << "Number of nonlinear iterations needed by solver: " << opts.nlnopts.num_iters_returned << std::endl;
 
     guess = [](const arma::vec& x) -> arma::mat {
         arma::mat y = arma::zeros(x.n_elem,2);
@@ -105,6 +116,8 @@ int main() {
 
     graph.plot_xy(x1,U1,"u(x) -- guess of 1");
     graph.plot_xy(x1,U2,"v(x) -- guess of 0");
+
+    std::cout << "Number of nonlinear iterations needed by solver: " << opts.nlnopts.num_iters_returned << std::endl;
 
     wait_for_key();
 

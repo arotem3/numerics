@@ -7,7 +7,7 @@
 //----- t  : vector to store t-values initialized at {t0, tf} -----------------//
 //----- U  : vector to store the solution first row is u(t0) ------------------//
 //----- err: upper limit error bound, by default set to machine epsilon -------//
-void ODE::rk45(odefun f, arma::vec& t, arma::mat& U, ivp_options& opts) {
+void ODE::rk45(const odefun& f, arma::vec& t, arma::mat& U, ivp_options& opts) {
     double err = std::abs(opts.adaptive_max_err);   // if err is set to zero (or lower) set it to eps(U0)
     double kmin = opts.adaptive_step_min;           // the minimum step-size allowed
     double kmax = opts.adaptive_step_max;           // the maximum step-size allowed
@@ -102,7 +102,7 @@ void ODE::rk45(odefun f, arma::vec& t, arma::mat& U, ivp_options& opts) {
     U = U.rows( arma::span(0,j+1) );
 }
 
-ODE::ivp_options ODE::rk45(odefun f, arma::vec& t, arma::mat& U) {
+ODE::ivp_options ODE::rk45(const odefun& f, arma::vec& t, arma::mat& U) {
     ivp_options opts;
     opts.adaptive_max_err = 1e-6;
     opts.adaptive_step_min = rk45_kmin;

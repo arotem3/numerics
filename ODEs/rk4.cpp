@@ -6,7 +6,7 @@
 //----- t  : vector to store t-values initialized at {t0, tf} ---------------//
 //----- U  : vector to store the solution first row must be y0 --------------//
 //----- k  : t spacing i.e. |t(i+1) - t(i)| this method is O(k^4) -----------//
-void ODE::rk4(odefun f, arma::vec& t, arma::mat& U, ivp_options& opts) {
+void ODE::rk4(const odefun& f, arma::vec& t, arma::mat& U, ivp_options& opts) {
     double k = opts.step;
     int m = U.n_cols; // dimension of solution space
     if (m == 0) { // no initial conditions err
@@ -61,7 +61,7 @@ void ODE::rk4(odefun f, arma::vec& t, arma::mat& U, ivp_options& opts) {
     U = U.rows( arma::span(0,i) );
 }
 
-ODE::ivp_options ODE::rk4(odefun f, arma::vec& t, arma::mat& U) {
+ODE::ivp_options ODE::rk4(const odefun& f, arma::vec& t, arma::mat& U) {
     ivp_options opts;
     opts.step = std::max(std::abs(t(1)-t(0))/100, 1e-2 );
     rk4(f,t,U,opts);

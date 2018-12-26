@@ -1,6 +1,6 @@
 #include "ODE.hpp"
 
-numerics::CubicInterp ODE::IVP_solve(odefun f, arma::vec& t, arma::mat& U, ivp_options& opts, ode_solver solver) {
+numerics::CubicInterp ODE::IVP_solve(const odefun& f, arma::vec& t, arma::mat& U, ivp_options& opts, ode_solver solver) {
     if (solver == RK45) {
         rk45(f,t,U,opts);
     } else if (solver == BDF23) {
@@ -22,7 +22,7 @@ numerics::CubicInterp ODE::IVP_solve(odefun f, arma::vec& t, arma::mat& U, ivp_o
     return soln;
 }
 
-numerics::CubicInterp ODE::IVP_solve(odefun f, arma::vec& t, arma::mat& U, ode_solver solver) {
+numerics::CubicInterp ODE::IVP_solve(const odefun& f, arma::vec& t, arma::mat& U, ode_solver solver) {
     ivp_options opts;
     opts.adaptive_max_err = 1e-4;
     opts.adaptive_step_max = rk45_kmax;

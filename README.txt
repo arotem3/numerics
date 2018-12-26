@@ -10,7 +10,7 @@ numerics.hpp is a numeric library hosting:
     *) root finding methods (derivative, derivative free, and mixed methods).
     *) error control, and approximation options for root finding passed to solver via options struct.
 
-    *) optimization methods (unconstrained and box constraint. Function, Gradient, and Hessian based methods).
+    *) optimization methods (unconstrained and box constraints. Function, Gradient, and Hessian based methods).
 
     *) interpolation schemes (linear, lagrange, cubic, and fourier interpolation).
 
@@ -22,7 +22,7 @@ numerics.hpp is a numeric library hosting:
 ODE.hpp is a numerics library for solving ordinary differential equations
     *) explicit grid and adaptive IVP solvers (4th order)
     *) implicit grid and adaptive IVP solvers (1st, 2nd, 5th order)
-    *) implicit solvers use Newton like methods making them more efficient and accurate that fixed point iteration
+    *) implicit solvers use quasi-Newton methods making them more efficient and accurate that fixed point iteration
     *) event handling and other options passed to solver via options struct
 
     *) linear BVP solver (2nd, 4th, spectral order)
@@ -47,6 +47,6 @@ vector_operators.hpp is a template library with basic elementwise functions:
 
 There are example codes for every function and class.
 
-Disclaimer: I do not take credit for any algorithm, I just implemented them in C++ for fun...
+Disclaimer: I do not take credit for inventing any algorithm, I just implemented them in C++ for fun...
 This library is by no means exceptionally robust or efficient; it does what it can.
 Documentation is really only in the form of examples provided in the 'examples' directory.

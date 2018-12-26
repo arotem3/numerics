@@ -5,7 +5,7 @@
 //----- f  : f(t,u) [t must be the first variable, u the second] ----------------------------//
 //----- t  : vector to store t-values initialized at {t0, tf} -------------------------------//
 //----- U  : vector to store the solution first row must be u(t0) ---------------------------//
-void ODE::am1(odefun f, arma::vec& t, arma::mat& U, ivp_options& opts) {
+void ODE::am1(const odefun& f, arma::vec& t, arma::mat& U, ivp_options& opts) {
     numerics::nonlin_opts roots_opts;
     roots_opts.max_iter = implicit_ode_max_iter;
     roots_opts.err = implicit_err;
@@ -75,7 +75,7 @@ void ODE::am1(odefun f, arma::vec& t, arma::mat& U, ivp_options& opts) {
     U = U.rows( arma::span(0,i) );
 }
 
-ODE::ivp_options ODE::am1(odefun f, arma::vec& t, arma::mat& U) {
+ODE::ivp_options ODE::am1(const odefun& f, arma::vec& t, arma::mat& U) {
     ivp_options opts;
     opts.step = std::max(std::abs(t(1)-t(0))/100, 1e-2 );
     opts.max_nonlin_err = implicit_err;

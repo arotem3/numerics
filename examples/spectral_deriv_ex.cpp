@@ -1,7 +1,6 @@
 #include "../numerics.hpp"
 #include "gnuplot_i.hpp"
 
-
 void wait_for_key(std::string s);
 
 using namespace numerics;

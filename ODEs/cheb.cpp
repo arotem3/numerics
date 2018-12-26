@@ -13,3 +13,7 @@ void ODE::cheb(arma::mat& D, arma::vec& x, double L, double R, size_t m) {
     D = c * ( 1/c.t() ) / (D + arma::eye(m+1, m+1));
     D -= arma::diagmat(arma::sum(D,1));
 }
+
+void ODE::cheb(arma::mat& D, arma::vec& x, size_t m) {
+    cheb(D,x,-1,1,m);
+}

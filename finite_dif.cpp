@@ -4,7 +4,8 @@
 //----- f  : f(x) whose jacobian to approximate ------------------//
 //----- x  : vector to evaluate jacobian at ----------------------//
 //----- err: approximate upper error bound -----------------------//
-void numerics::approx_jacobian(std::function<arma::vec(const arma::vec&)> f, arma::mat& J, const arma::vec& x, double err, bool catch_zero) {
+//----- catch_zero: rounds near zero elements to zero ------------//
+void numerics::approx_jacobian(const vector_func& f, arma::mat& J, const arma::vec& x, double err, bool catch_zero) {
     size_t m = f(x).n_elem; // num functions -> num rows
     size_t n = x.n_elem; // num variables -> num cols
     J = arma::zeros(m,n);
@@ -21,7 +22,8 @@ void numerics::approx_jacobian(std::function<arma::vec(const arma::vec&)> f, arm
 //----- f  : f(x) whose gradient to approximate -------------------//
 //----- x  : vector to evaluate gradient at -----------------------//
 //----- err: approximate upper error bound ------------------------//
-arma::vec numerics::grad(std::function<double(const arma::vec&)> f, const arma::vec& x, double err, bool catch_zero) {
+//----- catch_zero: rounds near zero elements to zero -------------//
+arma::vec numerics::grad(const vec_dfunc& f, const arma::vec& x, double err, bool catch_zero) {
     size_t n = x.n_elem;
     arma::vec g(n,arma::fill::zeros);
     for (size_t i(0); i < n; ++i) {
@@ -39,7 +41,8 @@ arma::vec numerics::grad(std::function<double(const arma::vec&)> f, const arma::
 //----- f  : f(x) whose derivative to approximate ------------------------------//
 //----- x  : point to evaluate derivative --------------------------------------//
 //----- err: approximate upper error bound; method is O(h^4) -------------------//
-double numerics::deriv(std::function<double(double)> f, double x, double err, bool catch_zero) {
+//----- catch_zero: rounds near zero elements to zero --------------------------//
+double numerics::deriv(const dfunc& f, double x, double err, bool catch_zero) {
     double h = 1e-2;
     double df = f(x - 2*h) - 8*f(x - h) + 8*f(x + h) - f(x + 2*h);
     df /= 12*h;

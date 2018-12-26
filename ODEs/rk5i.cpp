@@ -5,7 +5,7 @@
 //----- f  : f(t,u) [t must be the first variable, u the second] ---------------------------//
 //----- t  : vector to store t-values initialized at {t0, tf} ------------------------------//
 //----- U  : vector to store the solution first row must be y0 -----------------------------//
-void ODE::rk5i(odefun f, arma::vec& t, arma::mat& U, ivp_options& opts) {
+void ODE::rk5i(const odefun& f, arma::vec& t, arma::mat& U, ivp_options& opts) {
     numerics::nonlin_opts roots_opts;
     roots_opts.max_iter = opts.max_nonlin_iter;
     roots_opts.err = opts.max_nonlin_err;
@@ -109,7 +109,7 @@ void ODE::rk5i(odefun f, arma::vec& t, arma::mat& U, ivp_options& opts) {
     U = U.rows( arma::span(0,i) );
 }
 
-ODE::ivp_options ODE::rk5i(odefun f, arma::vec& t, arma::mat& U) {
+ODE::ivp_options ODE::rk5i(const odefun& f, arma::vec& t, arma::mat& U) {
     ivp_options opts;
     opts.step = std::max(std::abs(t(1)-t(0))/100, 1e-2 );
     opts.max_nonlin_err = implicit_err;

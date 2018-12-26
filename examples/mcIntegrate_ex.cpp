@@ -2,7 +2,7 @@
 #include <iomanip>
 #include <string>
 
-// g++ -g -Wall -o mcIntegrate-ex examples/mcIntegrate-ex.cpp mcIntegrate.cpp eval.cpp -larmadillo
+// g++ -g -Wall -o mcIntegrate_ex examples/mcIntegrate_ex.cpp mcIntegrate.cpp eval.cpp -larmadillo
 
 using namespace numerics;
 
