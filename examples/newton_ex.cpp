@@ -1,12 +1,14 @@
 #include "../numerics.hpp"
 #include <iomanip>
 
-// g++ -Wall -g -o newton_ex examples/newton_ex.cpp newton.cpp broyd.cpp lmlsqr.cpp finite_dif.cpp -larmadillo
+// g++ -Wall -g -o newton_ex examples/newton_ex.cpp newton.cpp broyd.cpp lmlsqr.cpp finite_dif.cpp cyc_queue.cpp wolfe_step.cpp -larmadillo
 
 using namespace numerics;
 
 int main() {
-    auto f = [](const arma::vec& x) -> arma::vec { // function
+    arma::arma_rng::set_seed_random();
+
+    vector_func f = [](const arma::vec& x) -> arma::vec { // function
         arma::vec y = {0,0,0};
         y(0) = x(0)*x(1) - 1;
         y(1) = x(0) + x(1)*x(2);
@@ -26,11 +28,11 @@ int main() {
 
     arma::vec root = {-1.25992, -0.793701, -1.5874};
 
-    std::cout << "In this file you can test the nonlinear solvers: Newton's method, BFGS, Broyden's method, and Levenberg-Marquardt." << std::endl;
+    std::cout << "In this file you can test the nonlinear solvers: Newton's method, Broyden's method, and Levenberg-Marquardt." << std::endl;
     std::cout << "we will try to find roots of f(x,y,z) = [xy - 1, x + yz, 2y - z] with initial guess [-1,-1,-1]." << std::endl;
     std::cout << "for newton we will need the jacobian: " << std::endl << "[y   x   0]\n[1   z   y]\n[0   2  -1]" << std::endl;
     std::cout << "we also know there is only one root at: [-1.25992, -0.793701, -1.5874]" << std::endl;
-    arma::vec x0 = {-1,-1,-1};
+    arma::vec x0 = 4*arma::randu(3) - 2;
 
     nonlin_opts opts;
     opts.use_FD_jacobian = true;

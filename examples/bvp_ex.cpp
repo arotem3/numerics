@@ -1,8 +1,6 @@
 #include "../ODEs/ODE.hpp"
 #include "gnuplot_i.hpp"
 
-// g++ -g -o bvp_ex polyInterp.cpp newton.cpp broyd.cpp lmlsqr.cpp finite_dif.cpp ODEs/cheb.cpp ODEs/linear_bvp.cpp ODEs/nonlin_bvp.cpp examples/bvp_ex.cpp examples/wait.cpp -larmadillo -lsuperlu
-
 double afunc(double x) {
     return std::sin(x);
 }
@@ -28,9 +26,9 @@ int main() {
     arma::vec x;
     arma::mat U;
 
-    // problem.solve(x,U,40); // 4th order FD approximation
+    problem.solve(x,U,40); // 4th order FD approximation
     // problem.solve(x,U,40, SECOND_ORDER); // 2nd order FD approximation
-    problem.solve(x,U,20, CHEBYSHEV); // spectral order approximation
+    // problem.solve(x,U,20, CHEBYSHEV); // spectral order approximation
     // dsolnp y = problem.solve(20); x = arma::linspace(0,2*M_PI); U = y.soln(x); // spectral order approximation outputing cheb polynomial
 
     arma::mat u = 0.25 * (arma::exp(-2*M_PI - x) % (-1 + 4*std::exp(2*M_PI)+arma::exp(2*x)) - 2*arma::sin(x));
@@ -73,7 +71,7 @@ int main() {
     bc.xR = 2*M_PI;
     bc.func = [](const arma::rowvec& uL, const arma::rowvec& uR) -> arma::rowvec {
         arma::rowvec v(2,arma::fill::zeros);
-        v(0) = uL(0) - 1;
+        v(0) = uL(0) - 1; // solution fixed as 1 at end points
         v(1) = uR(0) - 1;
         return v;
     };
@@ -87,8 +85,7 @@ int main() {
 
     bvp_opts opts;
     opts.num_points = 100;
-    opts.jacobian_func = &J; // providing a jacobian function improves runtime significantly
-    // opts.solver = numerics::LMLSQR;
+    // opts.jacobian_func = &J; // providing a jacobian function improves runtime significantly
 
     dsolnp soln = bvp(f, bc, guess, opts);
     x1 = arma::conv_to<stdv>::from(soln.independent_var_values);
@@ -96,7 +93,7 @@ int main() {
     stdv U2 = arma::conv_to<stdv>::from(soln.solution_values.col(1));
 
     graph.reset_plot();
-    graph.set_style("points");
+    graph.set_style("lines");
     graph.plot_xy(x1,U1,"u(x) -- guess of cos(x)");
     graph.plot_xy(x1,U2,"v(x) -- guess of sin(x)");
 

@@ -9,6 +9,20 @@
 #define ARMA_USE_SUPERLU 1
 #include <armadillo>
 
+/* Copyright 2019 Amit Rotem
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
+
 namespace numerics {
     // --- utitility -------------- //
         // --- integral constants
@@ -155,7 +169,6 @@ namespace numerics {
                 size_t max_iter;
                 size_t grad_nelem;
                 double damping_param;
-                double step_size;
                 size_t stochastic_batch_size;
 
                 // outputs
@@ -165,7 +178,6 @@ namespace numerics {
                     max_iter = gd_max_iter;
                     grad_nelem = 0;
                     damping_param = 0.99;
-                    step_size = 3e-3;
                     num_iters_returned = 0;
                     stochastic_batch_size = 10;
                 }
@@ -184,7 +196,6 @@ namespace numerics {
                 double wolfe_c1; // -- lbfgs, bfgs
                 double wolfe_c2; // -- lbfgs, bfgs
                 double wolfe_scaling; // -- lbfgs, bfgs
-                double step_size; // -- mgd, sgd
                 size_t stochastic_batch_size; // -- sgd
                 size_t num_iters_to_remember; // -- lbfgs
                 arma::mat* init_hessian; // -- bfgs, lbfgs, lmlsqr
@@ -207,7 +218,6 @@ namespace numerics {
                     wolfe_c1 = 0;
                     wolfe_c2 = 0;
                     wolfe_scaling = 0;
-                    step_size = 3e-3;
                     init_hessian = nullptr;
                     init_hessian_inv = nullptr;
                     hessian_func = nullptr;
@@ -237,7 +247,6 @@ namespace numerics {
                     wolfe_c1 = 1e-4;
                     wolfe_c2 = 0.9;
                     wolfe_scaling = 0.5;
-                    step_size = 0;
                     init_hessian = nullptr;
                     init_hessian_inv = nullptr;
                     stochastic_batch_size = 0;
@@ -262,7 +271,6 @@ namespace numerics {
                     wolfe_c1 = 1e-4;
                     wolfe_c2 = 0.9;
                     wolfe_scaling = 0.5;
-                    step_size = 0;
                     init_hessian = nullptr;
                     init_hessian_inv = nullptr;
                     stochastic_batch_size = 0;
@@ -288,7 +296,6 @@ namespace numerics {
                     wolfe_c1 = 1e-4;
                     wolfe_c2 = 0.9;
                     wolfe_scaling = 0.5;
-                    step_size = 0;
                     init_hessian = nullptr;
                     init_hessian_inv = nullptr;
                     stochastic_batch_size = 0;
@@ -314,7 +321,6 @@ namespace numerics {
                     wolfe_c1 = 0;
                     wolfe_c2 = 0;
                     wolfe_scaling = 0;
-                    step_size = 0;
                     init_hessian = nullptr;
                     init_hessian_inv = nullptr;
                     stochastic_batch_size = 0;
@@ -340,7 +346,6 @@ namespace numerics {
                     wolfe_c1 = 0;
                     wolfe_c2 = 0;
                     wolfe_scaling = 0;
-                    step_size = 3e-3;
                     init_hessian = nullptr;
                     init_hessian_inv = nullptr;
                     stochastic_batch_size = 0;
@@ -366,15 +371,35 @@ namespace numerics {
                     wolfe_c1 = 0;
                     wolfe_c2 = 0;
                     wolfe_scaling = 0;
-                    step_size = 5e-2;
                     init_hessian = nullptr;
                     init_hessian_inv = nullptr;
                     stochastic_batch_size = 10;
                     num_iters_to_remember = 0;
                 }
 
-                void use_lncgd(vector_func* gradient) {
-                    use_bfgs(gradient);
+                void use_nlcgd(vector_func* gradient) {
+                    if (gradient == nullptr) {
+                        std::cerr << "optim_opts::use_nlcgd() error: nlcgd requires a gradient input." << std::endl;
+                        return;
+                    }
+                    solver = NLCGD;
+                    tolerance = root_err;
+                    max_iter = bfgs_max_iter;
+                    hessian_func = nullptr;
+                    gradient_func = gradient;
+                    indexed_gradient_func = nullptr;
+                    use_FD_gradient = false;
+                    use_FD_hessian = false;
+                    use_scale_invariance = false;
+                    damping_param = 0;
+                    damping_scale = 0;
+                    wolfe_c1 = 0;
+                    wolfe_c2 = 0;
+                    wolfe_scaling = 0;
+                    init_hessian = nullptr;
+                    init_hessian_inv = nullptr;
+                    stochastic_batch_size = 0;
+                    num_iters_to_remember = 0;
                 }
             } optim_opts;
 
@@ -416,17 +441,21 @@ namespace numerics {
             size_t max_elem;
             size_t size;
             size_t head;
-            arma::mat A;
 
             public:
+            arma::mat A;
             cyc_queue(size_t num_rows, size_t max_size);
-            void push(arma::vec& x);
+            void push(const arma::vec& x);
             arma::vec operator()(size_t i);
+            arma::vec end();
             int length();
             int col_size();
+            void clear();
+            arma::mat data();
         };
 
         double wolfe_step(const vec_dfunc&, const vector_func&, const arma::vec&, const arma::vec&, double, double, double);
+        double line_min(const dfunc&);
     // --- integration ------------ //
         double integrate(const dfunc&, double, double, integrator i = SIMPSON, double err = 1e-5);
         double Sintegrate(const dfunc&, double, double, double err = 1e-5);
@@ -469,10 +498,10 @@ namespace numerics {
         gd_opts sgd(const sp_vector_func&, arma::vec&);
 
         //--- univariate ---//
+        double fzero(const dfunc&, double, double);
         double newton(const dfunc&, const dfunc&, double, double err = 1e-10);
-        double secant(const dfunc&, double, double err = 1e-8);
+        double secant(const dfunc&, double, double err = 1e-10);
         double bisect(const dfunc&, double, double, double tol = 1e-8);
-        double roots(const dfunc&, double, double);
     // --- optimization ----------- //
         double minimize_unc(const vec_dfunc&, arma::vec&, optim_opts&);
         double minimize_unc(const vec_dfunc&, arma::vec&);
@@ -525,6 +554,8 @@ namespace numerics {
         arma::mat lagrangeInterp(const arma::vec&, const arma::mat&, const arma::vec&);
         arma::mat sincInterp(const arma::vec&, const arma::mat&, const arma::vec&);
     // --- difference methods ----- //
+        arma::vec jacobian_diag(const vector_func&, const arma::vec&);
+
         void approx_jacobian(const vector_func&, arma::mat&, const arma::vec&, double err = 1e-2, bool catch_zero = true);
 
         arma::vec grad(const vec_dfunc&, const arma::vec&, double err = 1e-5, bool catch_zero = true);

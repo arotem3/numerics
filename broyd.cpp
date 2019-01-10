@@ -13,6 +13,9 @@ void numerics::broyd(const vector_func& f, arma::vec& x, nonlin_opts& opts) {
     else if (opts.init_jacobian != nullptr) {
         Jinv = *opts.init_jacobian;
         Jinv = arma::pinv(Jinv);
+    } else if (opts.jacobian_func != nullptr) {
+        Jinv = opts.jacobian_func->operator()(x);
+        Jinv = arma::pinv(Jinv);
     } else { // FD approximation always used to initialize.
         approx_jacobian(f,Jinv,x,1e-4);
         Jinv = arma::pinv(Jinv);

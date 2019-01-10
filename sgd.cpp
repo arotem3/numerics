@@ -7,18 +7,13 @@
 void numerics::sgd(const sp_vector_func& f, arma::vec& x, gd_opts& opts) {
     int n = x.n_elem;
     int bs = opts.stochastic_batch_size;
-    double alpha = opts.step_size;
-    double gamma = opts.damping_param;
 
-    arma::vec p = arma::zeros(n);
-    arma::uvec ind = arma::shuffle( arma::regspace<arma::uvec>(0,n-1) );
-    ind = ind( arma::span(0,bs-1) );
-    for (int i(0); i < bs; ++i) {
-        p( ind(i) ) = f( x, ind(i) );
-    }
+    double alpha;
+    double r;
+    arma::vec p;
     
     size_t k = 0;
-    while (arma::norm(p,"inf") > opts.err) {
+    do {
         if (k > opts.max_iter) { // too many iterations
             std::cerr << "sgd() error: too many iterations needed for convegence to a root." << std::endl
                       << "returning current best result." << std::endl
@@ -27,17 +22,26 @@ void numerics::sgd(const sp_vector_func& f, arma::vec& x, gd_opts& opts) {
             opts.num_iters_returned = k;
             return;
         }
-        x -= alpha*p;
-
-        arma::vec g = arma::zeros(n);
-        ind = arma::shuffle( arma::regspace<arma::uvec>(0,n-1) );
+        p = arma::zeros(n);
+        arma::uvec ind = arma::shuffle( arma::regspace<arma::uvec>(0,n-1) );
         ind = ind( arma::span(0,bs-1) );
         for (int i(0); i < bs; ++i) {
-            g( ind(i) ) = f( x, ind(i) );
+            p( ind(i) ) = f( x, ind(i) );
         }
-        p = gamma*p + g;
+        r = arma::norm(p,"inf");
+        alpha = line_min(
+            [&f,&ind,&p,&x,n,bs,r](double a) -> double {
+                arma::vec z = arma::zeros(n);
+                arma::vec q = (-1.0/r)*p;
+                for (int i(0); i < bs; ++i) {
+                    z( ind(i) ) = f(x + a*q, ind(i));
+                }
+                return arma::dot(q,z);
+            }
+        );
+        x += (-alpha/r)*p;
         k++;
-    }
+    } while (std::abs(alpha*r) > opts.err);
     opts.num_iters_returned = k;
 }
 

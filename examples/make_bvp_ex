@@ -1,0 +1,26 @@
+CXX = g++
+CXXFLAGS = -g -Wall
+LIBS = -larmadillo -lsuperlu
+DEPS = ODEs/ODE.hpp
+TARGET = bvp_ex
+
+all: bvp_ex
+
+bvp_ex: bvp_ex.o polyInterp.o wolfe_step.o newton.o broyd.o lmlsqr.o finite_dif.o cheb.o linear_bvp.o nonlin_bvp.o wait.o
+	$(CXX) $(CXXFLAGS) -o $(TARGET) *.o $(LIBS)
+
+%.o: %.cpp $(DEPS)
+cheb.o: ODEs/cheb.cpp $(DEPS)
+	$(CXX) -g -Wall -c ODEs/cheb.cpp
+linear_bvp.o: ODEs/linear_bvp.cpp $(DEPS)
+	$(CXX) -g -Wall -c ODEs/linear_bvp.cpp
+nonlin_bvp.o: ODEs/nonlin_bvp.cpp $(DEPS)
+	$(CXX) -g -Wall -c ODEs/nonlin_bvp.cpp
+bvp_ex.o: examples/bvp_ex.cpp $(DEPS)
+	$(CXX) -g -Wall -c examples/bvp_ex.cpp
+wait.o: examples/wait.cpp
+	$(CXX) -g -Wall -c examples/wait.cpp
+
+clean:
+	rm *.o
+	rm bvp_ex

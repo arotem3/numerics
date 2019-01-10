@@ -22,14 +22,14 @@ double numerics::minimize_unc(const vec_dfunc& f, arma::vec& x, optim_opts& opts
                   << "\talternatively enabling FD hessian evaluations can be efficient for well conditioned objective functions." << std::endl
                   << "3) L-BFGS (or limited memory BFGS) has the benefits of BFGS but is more memory efficient." << std::endl
                   << "\tif memory is a problem then L-BFGS should be used over BFGS, though BFGS typically converges slightly faster." << std::endl
-                  << "4) Levenberg-Marquardt behaves similarly to BFGS and is the prefered method for nonlinear least squares problems," << std::endl
+                  << "4) The nonlinear conjugate gradient method is optimal when optimizing in few variables, and when hessian computations are expensive" << std::endl
+                  << "5) Levenberg-Marquardt behaves similarly to BFGS and is the prefered method for nonlinear least squares problems," << std::endl
                   << "\tif you are solving a least squares problem, consider instead using lmlsqr() and providing the system g_i(b) = y_i - f(x_i;b)" << std::endl
-                  << "5) Momentum gradient descent is used when Hessian based computations are too expensive," << std::endl
+                  << "6) Momentum gradient descent is used when Hessian based computations are too expensive," << std::endl
                   << "\tthis method typically requires many more iterations than Hessian based methods" << std::endl
-                  << "6) Stochastic gradient descent is used when even gradient based computations are too expensive." << std::endl
-                  << "\tchoosing a batch size, max number of iterations, and momentum parameters are all important choices for the success of this algorithm" << std::endl
-                  << "7) Broyden's method provides an alternative as well, but BFGS is the prefered alternative for optimization." << std::endl
-                  << "\tBroyden's method is ideal for generic root finding; for such problems, consider using broyd() instead." << std::endl
+                  << "7) Stochastic gradient descent is used when even gradient based computations are too expensive." << std::endl
+                  << "\tchoosing a batch size and max number of iterations are all important choices for the success of this algorithm" << std::endl
+                  << "\tFor generic root finding use Broyden's method provided by broyd()." << std::endl
                   << std::endl << "\t\t\tGood Luck!" << std::endl;
     }
 
@@ -38,7 +38,6 @@ double numerics::minimize_unc(const vec_dfunc& f, arma::vec& x, optim_opts& opts
         options.err = opts.tolerance;
         options.max_iter = opts.max_iter;
         options.damping_param = opts.damping_param;
-        options.step_size = opts.step_size;
         if (opts.gradient_func == nullptr) { // no gradient provided
             std::cerr << "minimize_unc() warning: using FD gradients may be very slow!" << std::endl;
             options.max_iter = no_grad_max_iter;
@@ -155,8 +154,6 @@ double numerics::minimize_unc(const vec_dfunc& f, arma::vec& x, optim_opts& opts
         gd_opts options;
         options.err = opts.tolerance;
         options.max_iter = opts.max_iter;
-        options.damping_param = opts.damping_param;
-        options.step_size = opts.step_size;
         options.stochastic_batch_size = opts.stochastic_batch_size;
         if (opts.indexed_gradient_func == nullptr) { // no gradient provided
             std::cerr << "minimize_unc() warning: using FD gradients may be very slow!" << std::endl;
@@ -189,6 +186,7 @@ double numerics::minimize_unc(const vec_dfunc& f, arma::vec& x, optim_opts& opts
         } else {
             nlcgd(*opts.gradient_func, x, options);
         }
+        opts.num_iters_returned = options.num_iters_returned;
     }
 
     return f(x);

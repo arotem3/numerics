@@ -6,15 +6,13 @@ TARGET = minimize_ex
 
 all: minimize_ex
 
-minimize_ex: minimize_ex.o minimize_unc.o newton.o momentum.o sgd.o bfgs.o broyd.o lmlsqr.o nlcgd.o finite_dif.o cyc_queue.o wait.o
+minimize_ex: minimize_ex.o minimize_unc.o newton.o momentum.o sgd.o bfgs.o broyd.o lmlsqr.o nlcgd.o finite_dif.o cyc_queue.o line_min.o roots.o wolfe_step.o
 	$(CXX) $(CXXFLAGS) -o $(TARGET) *.o $(LIBS)
 
 %.o: %.cpp $(DEPS)
 
 minimize_ex.o: examples/minimize_ex.cpp $(DEPS)
 	$(CXX) -g -c examples/minimize_ex.cpp
-wait.o: examples/wait.cpp
-	$(CXX) -g -c examples/wait.cpp
 
 clean:
 	rm *.o

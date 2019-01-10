@@ -15,7 +15,7 @@ ODE::dsolnp ODE::bvp(const odefun& f, const bcfun& bc, const soln_init& guess, b
     arma::vec x;
     cheb(D, x, bc.xL, bc.xR, m-1);
     
-    auto ff = [&](const arma::vec& u) -> arma::vec {
+    numerics::vector_func ff = [&](const arma::vec& u) -> arma::vec {
         arma::mat U = arma::reshape(u,m,n);
         arma::rowvec BC = bc.func(u.row(0), u.row(m-1));
         arma::mat A = D;
@@ -30,7 +30,7 @@ ODE::dsolnp ODE::bvp(const odefun& f, const bcfun& bc, const soln_init& guess, b
         return z;
     }; // wrapper for root finding function
 
-    std::function<arma::mat(const arma::vec&)> J = [&](const arma::vec& u) -> arma::mat {
+    numerics::vec_mat_func J = [&](const arma::vec& u) -> arma::mat {
         arma::mat U = arma::reshape(u,m,n);
         arma::mat DF = arma::zeros(m*n,m*n);
         if (opts.jacobian_func != nullptr) { // Jacobian provided
@@ -82,8 +82,8 @@ ODE::dsolnp ODE::bvp(const odefun& f, const bcfun& bc, const soln_init& guess, b
         opts.lsqropts.jacobian_func = &J;
         numerics::lmlsqr(ff, U0, opts.lsqropts);
     } else { // use Broyden solver
-        arma::mat J0 = J(U0);
-        opts.nlnopts.init_jacobian = &J0;
+        arma::mat JJ = J(U0);
+        opts.nlnopts.init_jacobian = &JJ;
         numerics::broyd(ff, U0, opts.nlnopts);
     }
 

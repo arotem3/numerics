@@ -18,6 +18,13 @@ void numerics::approx_jacobian(const vector_func& f, arma::mat& J, const arma::v
     }
 }
 
+arma::vec numerics::jacobian_diag(const vector_func& f, const arma::vec& x) {
+    double h = 1e-3;
+    arma::vec J = f(x - 2*h) - 8*f(x - h) + 8*f(x + h) - f(x + 2*h);
+    J /= 12*h;
+    return J;
+}
+
 //--- computes the gradient of a function of multiple variables ---//
 //----- f  : f(x) whose gradient to approximate -------------------//
 //----- x  : vector to evaluate gradient at -----------------------//

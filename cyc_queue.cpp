@@ -11,7 +11,7 @@ numerics::cyc_queue::cyc_queue(size_t num_rows, size_t max_size) {
 }
 
 //--- add an element to the queue, removing first in element if the queue is full ---//
-void numerics::cyc_queue::push(arma::vec& x) {
+void numerics::cyc_queue::push(const arma::vec& x) {
     if (size < max_elem) { // queue not full
         A.col(size) = x;
         size++;
@@ -26,11 +26,14 @@ arma::vec numerics::cyc_queue::operator()(size_t i) {
     if (i >= size) {
         std::cerr << "cyc_queue::element access out of bounds." << std::endl;
         return {0};
-    }
-    else {
+    } else {
         int ind = mod(i + head, size);
         return A.col(ind);
     }
+}
+
+arma::vec numerics::cyc_queue::end() {
+    return A.col(size-1);
 }
 
 //--- return current length of cyclic queue (relevent especially when not full) ---//
@@ -41,4 +44,16 @@ int numerics::cyc_queue::length() {
 //--- return num_rows of the elements (each a vector) of the queue ---//
 int numerics::cyc_queue::col_size() {
     return A.n_rows;
+}
+
+void numerics::cyc_queue::clear() {
+    A.fill(0);
+}
+
+arma::mat numerics::cyc_queue::data() {
+    arma::mat D  = arma::zeros(A.n_rows, size);
+    for (unsigned int i(0); i < size; ++i) {
+        D.col(i) = operator()(i);
+    }
+    return D;
 }
