@@ -71,7 +71,7 @@ void ODE::rk45(const odefun& f, arma::vec& t, arma::mat& U, ivp_options& opts) {
             }
 
         // (3) --- determine our next step-size q = (err/R)^(1/4)
-            q = std::pow(err/R, 0.25);
+            q = std::pow(err/R, 0.2);
             if (q < rk45_qmin) {                  // we want to control how quickly q changes so we limit q by the arbitrary values [0.1, 4]
                 k *= rk45_qmin;
             }
@@ -98,8 +98,8 @@ void ODE::rk45(const odefun& f, arma::vec& t, arma::mat& U, ivp_options& opts) {
             }
         // (4) --- loop again
     }
-    t = t( arma::span(0,j+1) );
-    U = U.rows( arma::span(0,j+1) );
+    t = t( arma::span(0,j) );
+    U = U.rows( arma::span(0,j) );
 }
 
 ODE::ivp_options ODE::rk45(const odefun& f, arma::vec& t, arma::mat& U) {

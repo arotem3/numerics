@@ -142,7 +142,7 @@ void ODE::bdf23(const odefun& f, arma::vec& t, arma::mat& U, ivp_options& opts) 
 
         // (3) step size adjustment
             double R = arma::norm(V1 - V2, "Inf");
-            double Q = std::sqrt(opts.adaptive_max_err/R);
+            double Q = std::pow(opts.adaptive_max_err/R, 1.0/3.0);
 
             double kk = event_handle(opts,t(i), U.row(i), t_temp, V1, k); // new k based on events
             if (R < opts.adaptive_max_err) {
@@ -178,8 +178,8 @@ void ODE::bdf23(const odefun& f, arma::vec& t, arma::mat& U, ivp_options& opts) 
 
             if (t_temp >= tf) done = true;
     }
-    t = t( arma::span(0,i+1) );
-    U = U.rows( arma::span(0,i+1) );
+    t = t( arma::span(0,i) );
+    U = U.rows( arma::span(0,i) );
 }
 
 ODE::ivp_options ODE::bdf23(const odefun& f, arma::vec& t, arma::mat& U) {

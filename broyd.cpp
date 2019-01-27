@@ -46,9 +46,14 @@ void numerics::broyd(const vector_func& f, arma::vec& x, nonlin_opts& opts) {
         x += dx;
         // update inverse jacobian based on current condition of the approximation
         if ( opts.use_FD_jacobian && (arma::norm(f(x)) > arma::norm(F)) ) { // Jinv has become innaccurate, FD approx needed
-            approx_jacobian(f,Jinv,x);
-            Jinv = arma::pinv(Jinv);
-            opts.num_FD_approx_needed++;
+            if (opts.jacobian_func != nullptr) {
+                Jinv = opts.jacobian_func->operator()(x);
+                Jinv = arma::pinv(Jinv);
+            } else {
+                approx_jacobian(f,Jinv,x);
+                Jinv = arma::pinv(Jinv);
+                opts.num_FD_approx_needed++;
+            }
         } else { // broyden update is suitable
             y = f(x) - F;
             Jinv += (dx - Jinv*y)*dx.t()*Jinv/arma::dot(dx,Jinv*y);

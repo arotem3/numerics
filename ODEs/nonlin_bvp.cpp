@@ -76,7 +76,7 @@ ODE::dsolnp ODE::bvp(const odefun& f, const bcfun& bc, const soln_init& guess, b
         DF = arma::join_cols(DF,bc_jac);
         return DF;
     }; // jacobian function
-
+    
     arma::vec U0 = arma::vectorise( guess(x) );
     if (opts.solver == numerics::LMLSQR) {
         opts.lsqropts.jacobian_func = &J;
@@ -84,6 +84,7 @@ ODE::dsolnp ODE::bvp(const odefun& f, const bcfun& bc, const soln_init& guess, b
     } else { // use Broyden solver
         arma::mat JJ = J(U0);
         opts.nlnopts.init_jacobian = &JJ;
+        opts.nlnopts.jacobian_func = &J;
         numerics::broyd(ff, U0, opts.nlnopts);
     }
 

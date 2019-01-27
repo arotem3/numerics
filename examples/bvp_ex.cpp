@@ -59,8 +59,8 @@ int main() {
         return up;
     };
 
-    std::function<arma::mat(double,const arma::rowvec&)> J = [](double x,const arma::rowvec& u) -> arma::mat {
-        arma::mat A(2,2,arma::fill::zeros);
+    odeJac J = [](double x,const arma::rowvec& u) -> arma::mat {
+        arma::mat A = arma::zeros(2,2);
         A(0,1) = 1;
         A(1,0) = -std::cos(u(0));
         return A;
@@ -85,7 +85,8 @@ int main() {
 
     bvp_opts opts;
     opts.num_points = 100;
-    // opts.jacobian_func = &J; // providing a jacobian function improves runtime significantly
+    // opts.solver = numerics::LMLSQR;
+    opts.jacobian_func = &J; // providing a jacobian function improves runtime significantly
 
     dsolnp soln = bvp(f, bc, guess, opts);
     x1 = arma::conv_to<stdv>::from(soln.independent_var_values);

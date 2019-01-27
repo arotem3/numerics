@@ -58,7 +58,8 @@ namespace numerics {
                 LMLSQR,
                 NLCGD,
                 MGD,
-                SGD
+                SGD,
+                ADJGD
             } nonlin_solver;
         // --- input objects
             typedef std::function<arma::vec(const arma::vec&)> vector_func;
@@ -182,6 +183,20 @@ namespace numerics {
                     stochastic_batch_size = 10;
                 }
             } gd_opts;
+
+            typedef struct FPI_OPTS {
+                double err;
+                unsigned int max_iter;
+                unsigned int steps_to_remember;
+
+                unsigned int num_iters_returned;
+
+                FPI_OPTS() {
+                    err = root_err;
+                    max_iter = broyd_max_iter;
+                    steps_to_remember = 5;
+                }
+            } fpi_opts;
 
             typedef struct UNCONSTRAINED_OPTIM_OPTS {
                 // inputs
@@ -401,6 +416,31 @@ namespace numerics {
                     stochastic_batch_size = 0;
                     num_iters_to_remember = 0;
                 }
+
+                void use_adj_gd(vector_func* gradient) {
+                    if (gradient == nullptr) {
+                        std::cerr << "optim_opts::use_adj_gd() error: nlcgd requires a gradient input." << std::endl;
+                        return;
+                    }
+                    solver = ADJGD;
+                    tolerance = root_err;
+                    max_iter = bfgs_max_iter;
+                    hessian_func = nullptr;
+                    gradient_func = gradient;
+                    indexed_gradient_func = nullptr;
+                    use_FD_gradient = false;
+                    use_FD_hessian = false;
+                    use_scale_invariance = false;
+                    damping_param = 0;
+                    damping_scale = 0;
+                    wolfe_c1 = 0;
+                    wolfe_c2 = 0;
+                    wolfe_scaling = 0;
+                    init_hessian = nullptr;
+                    init_hessian_inv = nullptr;
+                    stochastic_batch_size = 0;
+                    num_iters_to_remember = 0;
+                }
             } optim_opts;
 
             typedef struct GENETIC_OPTS {
@@ -473,14 +513,14 @@ namespace numerics {
         void lmlsqr(const vector_func&, arma::vec&, lsqr_opts&);
         lsqr_opts lmlsqr(const vector_func&, arma::vec&);
 
+        void mix_fpi(const vector_func&, arma::vec&, fpi_opts&);
+        fpi_opts mix_fpi(const vector_func&, arma::vec&);
+
         void cgd(const arma::mat&, const arma::vec&, arma::vec&, cg_opts&);
         cg_opts cgd(const arma::mat&, const arma::vec&, arma::vec&);
 
         void sp_cgd(const arma::sp_mat&, const arma::vec&, arma::vec&, cg_opts&);
         cg_opts sp_cgd(const arma::sp_mat&, const arma::vec&, arma::vec&);
-
-        void nlcgd(const vector_func&, arma::vec&, nonlin_opts&);
-        nonlin_opts nlcgd(const vector_func&, arma::vec&);
         
         //--- for optimization ---//
         void newton(const vec_dfunc&, const vector_func&, const vec_mat_func&, arma::vec&, nonlin_opts& opts);
@@ -496,6 +536,12 @@ namespace numerics {
 
         void sgd(const sp_vector_func&, arma::vec&, gd_opts&);
         gd_opts sgd(const sp_vector_func&, arma::vec&);
+
+        void nlcgd(const vector_func&, arma::vec&, nonlin_opts&);
+        nonlin_opts nlcgd(const vector_func&, arma::vec&);
+
+        void adj_gd(const vector_func&, arma::vec&, nonlin_opts&);
+        nonlin_opts adj_gd(const vector_func&, arma::vec&);
 
         //--- univariate ---//
         double fzero(const dfunc&, double, double);

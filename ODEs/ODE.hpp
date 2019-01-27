@@ -49,6 +49,8 @@ namespace ODE {
     // --- input objects ---------- //
         typedef std::function<arma::rowvec(double, const arma::rowvec&)> odefun;
 
+        typedef std::function<arma::mat(double, const arma::rowvec&)> odeJac;
+
         typedef std::function<arma::vec(const arma::vec&,const arma::vec&)> pde2fun;
 
         typedef std::function<arma::mat(const arma::vec&)> soln_init;
@@ -133,7 +135,7 @@ namespace ODE {
             double step;
             size_t stopping_event;
             std::vector<event_func> events;
-            std::function<arma::mat(double,const arma::rowvec&)>* ode_jacobian;
+            odeJac* ode_jacobian;
 
             IVP_OPTIONS() {
                 max_nonlin_iter = 100;
@@ -166,7 +168,7 @@ namespace ODE {
             numerics::lsqr_opts lsqropts;
             numerics::nonlin_opts nlnopts;
             numerics::nonlin_solver solver;
-            std::function<arma::mat(double,const arma::rowvec&)>* jacobian_func;
+            odeJac* jacobian_func;
 
             NONLIN_BVP_OPTS() {
                 num_points = 30;

@@ -6,10 +6,9 @@
 void numerics::nlcgd(const vector_func& f, arma::vec& x, nonlin_opts& opts) {
     int n = x.n_elem;
     
-    arma::vec p;
-    arma::vec prev_x;
-    double alpha;
-    double r;
+    arma::vec p = -f(x);
+    arma::vec s;
+    double alpha, r;
 
     size_t k = 0;
     do {
@@ -20,20 +19,26 @@ void numerics::nlcgd(const vector_func& f, arma::vec& x, nonlin_opts& opts) {
                  << "||f(x)|| = " << arma::norm(p, "inf") << " > 0" << std::endl << std::endl;
             break;
         }
-        if (2*n-4 == 0) prev_x = x;
-        for (int i(1); i <= 2*n-2; ++i) {
-            p = -f(x);
-            r = arma::norm(p,"inf");
-            alpha = line_min( [&p,&x,&f,r](double a) -> double {return arma::dot(p/r,f(x + (a/r)*p));} );
-            x += (alpha/r)*p;
-            k++;
-            if (i == 2*n - 4) prev_x = x;
+        r = 1/arma::norm(p, "inf");
+        alpha = line_min( [&p,&x,&f,r](double a) -> double {return r*arma::dot(p,f(x + (a*r)*p));} );
+        double sts = arma::norm(s,2);
+        arma::vec ds = (alpha*r)*p - s;
+
+        s = (alpha*r)*p;
+        if (s.has_nan()) {
+            std::cerr << "nlcgd() warning: encountered NAN before convergence." << std::endl
+                      << "returning current best estimate." << std::endl
+                      << "!!!---not necessarily a good estimate---!!!" << std::endl
+                      << "||f(x)|| = " << arma::norm(p, "inf") << " > 0" << std::endl << std::endl;
+            break;
         }
-        p = prev_x - x;
-        r = arma::norm(p,"inf");
-        alpha = line_min( [&p,&x,&f,r](double a) -> double {return arma::dot(p/r,f(x + (a/r)*p));} );
-        x += (alpha/r)*p;
+        x += s;
         k++;
+        if (k%n == 0) p = -f(x);
+        else {
+            double beta = std::max(arma::dot(s,ds)/sts, 0.0);
+            p = -f(x) + beta*p;
+        }
     } while (std::abs(alpha*r) > opts.err);
 
     opts.num_iters_returned = k;

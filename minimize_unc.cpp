@@ -175,9 +175,6 @@ double numerics::minimize_unc(const vec_dfunc& f, arma::vec& x, optim_opts& opts
         nonlin_opts options;
         options.max_iter = opts.max_iter;
         options.err = opts.tolerance;
-        options.init_jacobian = opts.init_hessian;
-        options.use_FD_jacobian = opts.use_FD_hessian;
-        options.jacobian_func = opts.hessian_func;
         if (opts.gradient_func == nullptr) { // no gradient function
             std::cerr << "minimize_unc() warning: using FD gradients may be very slow!" << std::endl;
             options.max_iter = no_grad_max_iter;
@@ -185,6 +182,19 @@ double numerics::minimize_unc(const vec_dfunc& f, arma::vec& x, optim_opts& opts
             nlcgd(df, x, options);
         } else {
             nlcgd(*opts.gradient_func, x, options);
+        }
+        opts.num_iters_returned = options.num_iters_returned;
+    } else if (opts.solver == ADJGD) { // using "adjusted" gradient descent
+        nonlin_opts options;
+        options.max_iter = opts.max_iter;
+        options.err = opts.tolerance;
+        if (opts.gradient_func == nullptr) { // no gradient function
+            std::cerr << "minimize_unc() warning: using FD gradients may be very slow!" << std::endl;
+            options.max_iter = no_grad_max_iter;
+            auto df = [f,opts](const arma::vec& u) -> arma::vec {return grad(f,u,opts.tolerance);};
+            adj_gd(df, x, options);
+        } else {
+            adj_gd(*opts.gradient_func, x, options);
         }
         opts.num_iters_returned = options.num_iters_returned;
     }
