@@ -4,6 +4,13 @@ Last modified: 02/05/2019
 These headers take advantage of the armadillo linear algebra library and require it to compile and function.
 All the functions can be found in the header file.
 
+### basic installation instructions:
+I have only a simple CMakeLists.txt, so any modifications will have to be provided by you, the user. (sorry...)
+1. cd /numeric-lib/
+2. cmake .
+3. make
+4. sudo make install
+
 ## numerics.hpp is a numeric library hosting:
 * integration (2nd, 4th, 7-pt lobatto order).
 
