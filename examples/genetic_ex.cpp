@@ -1,6 +1,6 @@
-#include "../numerics.hpp"
+#include "numerics.hpp"
 
-// g++ -Wall -g -o genetic_ex examples/genetic_ex.cpp genetic.cpp eval.cpp -larmadillo
+// g++ -Wall -g -o genetic examples/genetic_ex.cpp -lnumerics -larmadillo
 
 using namespace numerics;
 

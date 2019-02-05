@@ -1,13 +1,13 @@
-#include "../ODEs/ODE.hpp"
-#include "gnuplot_i.hpp"
+#include "ODE.hpp"
+#include "plot.hpp"
+
+// g++ -g -Wall -o bvp examples/bvp_ex.cpp examples/wait.cpp  -lnumerics -larmadillo
 
 double afunc(double x) {
     return std::sin(x);
 }
 
 void wait_for_key();
-
-typedef std::vector<double> stdv;
 
 using namespace ODE;
 
@@ -34,14 +34,8 @@ int main() {
     arma::mat u = 0.25 * (arma::exp(-2*M_PI - x) % (-1 + 4*std::exp(2*M_PI)+arma::exp(2*x)) - 2*arma::sin(x));
 
     Gnuplot graph;
-    stdv x1 = arma::conv_to<stdv>::from(x);
-    stdv U1 = arma::conv_to<stdv>::from(U);
-    stdv u1 = arma::conv_to<stdv>::from(u);
-
-    graph.set_style("points");
-    graph.plot_xy(x1,U1,"U - solution");
-    graph.set_style("lines");
-    graph.plot_xy(x1,u1,"u - exact");
+    plot(graph, x, U, "U - solution", "ob");
+    plot(graph, x, u, "u - exact");
 
     wait_for_key();
 
@@ -84,19 +78,15 @@ int main() {
     };
 
     bvp_opts opts;
-    opts.num_points = 100;
+    opts.num_points = 25;
     // opts.solver = numerics::LMLSQR;
     opts.jacobian_func = &J; // providing a jacobian function improves runtime significantly
 
     dsolnp soln = bvp(f, bc, guess, opts);
-    x1 = arma::conv_to<stdv>::from(soln.independent_var_values);
-    U1 = arma::conv_to<stdv>::from(soln.solution_values.col(0));
-    stdv U2 = arma::conv_to<stdv>::from(soln.solution_values.col(1));
 
     graph.reset_plot();
-    graph.set_style("lines");
-    graph.plot_xy(x1,U1,"u(x) -- guess of cos(x)");
-    graph.plot_xy(x1,U2,"v(x) -- guess of sin(x)");
+    plot(graph, soln.independent_var_values, arma::mat(soln.solution_values.col(0)), "u(x) -- guess of cos(x)", "-ob");
+    plot(graph, soln.independent_var_values, arma::mat(soln.solution_values.col(1)), "v(x) -- guess of sin(x)", "-or");
 
     std::cout << "Number of nonlinear iterations needed by solver: " << opts.nlnopts.num_iters_returned << std::endl;
 
@@ -108,12 +98,9 @@ int main() {
     };
 
     soln = bvp(f, bc, guess, opts);
-    x1 = arma::conv_to<stdv>::from(soln.independent_var_values);
-    U1 = arma::conv_to<stdv>::from(soln.solution_values.col(0));
-    U2 = arma::conv_to<stdv>::from(soln.solution_values.col(1));
 
-    graph.plot_xy(x1,U1,"u(x) -- guess of 1");
-    graph.plot_xy(x1,U2,"v(x) -- guess of 0");
+    plot(graph, soln.independent_var_values, arma::mat(soln.solution_values.col(0)), "u(x) -- guess of 1", "-sp");
+    plot(graph, soln.independent_var_values, arma::mat(soln.solution_values.col(1)), "v(x) -- guess of 0", "-sk");
 
     std::cout << "Number of nonlinear iterations needed by solver: " << opts.nlnopts.num_iters_returned << std::endl;
 

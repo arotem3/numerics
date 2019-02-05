@@ -1,7 +1,6 @@
-#include "../numerics.hpp"
-#include <iomanip>
+#include "numerics.hpp"
 
-// g++ -Wall -g -o newton_ex examples/newton_ex.cpp fpi.cpp newton.cpp broyd.cpp lmlsqr.cpp finite_dif.cpp cyc_queue.cpp wolfe_step.cpp -larmadillo
+// g++ -Wall -g -o newton examples/newton_ex.cpp -lnumerics -larmadillo
 
 using namespace numerics;
 

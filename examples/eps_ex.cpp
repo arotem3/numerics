@@ -1,6 +1,6 @@
-#include "../numerics.hpp"
+#include "numerics.hpp"
 
-// g++ -Wall -g -o eps-ex examples/eps-ex.cpp eps.cpp
+// g++ -Wall -g -o eps examples/eps_ex.cpp -lnumerics
 
 using namespace numerics;
 

@@ -15,7 +15,7 @@ GNU plot:
 [3] Gnu plot and Gnu plot interface with c++.
 
 algorithms:
-[4] Most of the methods here were adapted from algorithms taught at various classes I took (or am currently taking)
+[4] Many of the methods here were adapted from algorithms taught at various classes I took (or am currently taking)
         at the Colorado School of Mines within the Computational and Applied Math department.
 
 [5] LeVeque, Randall J. "Finite difference methods for ordinary and partial differential equations"

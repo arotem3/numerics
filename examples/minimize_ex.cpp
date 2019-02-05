@@ -1,6 +1,8 @@
-#include "../numerics.hpp"
+#include "numerics.hpp"
 
 using namespace numerics;
+
+// g++ -g -Wall -o minimize examples/minimize_ex.cpp -lnumerics -larmadillo
 
 typedef std::vector<double> vvd;
 

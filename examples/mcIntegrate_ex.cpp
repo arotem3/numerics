@@ -1,8 +1,6 @@
-#include "../numerics.hpp"
-#include <iomanip>
-#include <string>
+#include "numerics.hpp"
 
-// g++ -g -Wall -o mcIntegrate_ex examples/mcIntegrate_ex.cpp mcIntegrate.cpp eval.cpp -larmadillo
+// g++ -g -Wall -o mcIntegrate examples/mcIntegrate_ex.cpp -lnumerics -larmadillo
 
 using namespace numerics;
 

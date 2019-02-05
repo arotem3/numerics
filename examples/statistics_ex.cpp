@@ -1,5 +1,7 @@
-#include "../statistics/statistics.hpp"
+#include "statistics.hpp"
 #include <fstream>
+
+// g++ -g -Wall -o statistics examples/statistics_ex.cpp -lnumerics -larmadillo
 
 using namespace statistics;
 

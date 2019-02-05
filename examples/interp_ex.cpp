@@ -1,11 +1,11 @@
-#include "../numerics.hpp"
-#include "gnuplot_i.hpp"
+#include "numerics.hpp"
+#include "plot.hpp"
+
+// g++ -g -Wall -o interp examples/interp_ex.cpp examples/wait.cpp -lnumerics -larmadillo
 
 void wait_for_key(std::string s);
 
 using namespace numerics;
-
-typedef std::vector<double> stdv;
 
 arma::mat f(const arma::vec& x) {
     arma::mat y(x.n_elem, 2);
@@ -28,12 +28,8 @@ int main() {
     arma::vec u = (b-a)*arma::regspace<arma::vec>(0,n)/n + a;
     arma::mat v;
 
-    Gnuplot fig("interpolation examples");
+    Gnuplot fig;
     fig.set_yrange(-1.5,1.5);
-    stdv x0 = arma::conv_to<stdv>::from(x);
-    stdv y0 = arma::conv_to<stdv>::from(y.col(0));
-    stdv y1 = arma::conv_to<stdv>::from(y.col(1));
-    stdv u0 = arma::conv_to<stdv>::from(u);
     
     for (int i(0); i < 5; ++i) {
         std::string title;
@@ -46,15 +42,11 @@ int main() {
         std::cout << std::endl << title << std::endl;
         std::cout << "max error : " << arma::norm(v - f(u), "inf") << std::endl;
 
-        stdv v0 = arma::conv_to<stdv>::from(v.col(0));
-        stdv v1 = arma::conv_to<stdv>::from(v.col(1));
+        scatter(fig, x, (arma::mat)y.col(0), "original x,y", 'r');
+        scatter(fig, x, (arma::mat)y.col(1), "original x,y", 'b');
 
-        fig.set_style("points");
-        fig.plot_xy(x0,y0,"original x,y");
-        fig.plot_xy(x0,y1,"original x,y");
-        fig.set_style("lines");
-        fig.plot_xy(u0,v0,title);
-        fig.plot_xy(u0,v1,title);
+        lines(fig, u, (arma::mat)v.col(0), title);
+        lines(fig, u, (arma::mat)v.col(1), title);
 
         wait_for_key("Press ENTER for next example...");
         fig.reset_plot();

@@ -1,14 +1,11 @@
-#include "../numerics.hpp"
-#include "gnuplot_i.hpp"
-#include <iomanip>
+#include "numerics.hpp"
+#include "plot.hpp"
 
-// g++ -g -Wall -o lmlsqr_ex examples/lmlsqr_ex.cpp lmlsqr.cpp finite_dif.cpp examples/wait.cpp -larmadillo
+// g++ -g -Wall -o lmlsqr examples/lmlsqr_ex.cpp examples/wait.cpp -lnumerics -larmadillo
 
 using namespace numerics;
 
 void wait_for_key();
-
-typedef std::vector<double> stdv;
 
 arma::vec f_true(const arma::vec& t) {
     return arma::exp(-t%t);
@@ -64,18 +61,11 @@ int main() {
 
     arma::vec y_hat = b_hat(0) + b_hat(1) / (b_hat(2) + b_hat(3)*t%t);
     
-    Gnuplot graph;
-    stdv x1 = arma::conv_to<stdv>::from(x);
-    stdv t1 = arma::conv_to<stdv>::from(t);
-    stdv y_true1 = arma::conv_to<stdv>::from(y_true);
-    stdv y1 = arma::conv_to<stdv>::from(y);
-    stdv y_hat1 = arma::conv_to<stdv>::from(y_hat);
+    Gnuplot fig;
 
-    graph.set_style("points");
-    graph.plot_xy(x1,y1,"data");
-    graph.set_style("lines");
-    graph.plot_xy(t1,y_true1,"exact model");
-    graph.plot_xy(t1,y_hat1,"least squares model");
+    scatter(fig, x, y, "data");
+    lines(fig, t, y_true, "exact model", 'b');
+    lines(fig, t, y_hat, "least squares model", 'r');
     
     wait_for_key();
 

@@ -1,4 +1,4 @@
-#include "../vector_operators.hpp"
+#include "vector_operators.hpp"
 
 // g++ -o vec_op_ex examples/vec_op_ex.cpp
 

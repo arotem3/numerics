@@ -1,7 +1,7 @@
-#include "../ODEs/ODE.hpp"
-#include "gnuplot_i.hpp"
+#include "ODE.hpp"
+#include "plot.hpp"
 
-// g++ -Wall -g -o pois_ex examples/poisson_ex.cpp ODEs/cheb.cpp ODEs/poisson.cpp meshgrid.cpp examples/wait.cpp -larmadillo
+// g++ -Wall -g -o pois examples/poisson_ex.cpp examples/wait.cpp -lnumerics -larmadillo
 
 using namespace ODE;
 using namespace numerics;
@@ -12,10 +12,8 @@ arma::vec potential(const arma::vec& x, const arma::vec& y) {
 
 void wait_for_key();
 
-typedef std::vector<double> stdv;
-
 int main() {
-    int num_pts = 48;
+    int num_pts = 24;
 
     bcfun_2d bc;
     bc.lower_x = -1;
@@ -36,17 +34,14 @@ int main() {
     soln.save(data);
     data.close(); */
 
-    Gnuplot fig("2d poisson");
-    fig.set_style("lines");
+    Gnuplot fig;
+    fig.set_title("2d poisson");
 
-    for (int i(0); i < num_pts; ++i) {
-        stdv x = arma::conv_to<stdv>::from(soln.X.row(i));
-        stdv y = arma::conv_to<stdv>::from(soln.Y.row(i));
-        stdv u = arma::conv_to<stdv>::from(soln.U.row(i));
-        fig.plot_xyz(x,y,u);
-    }
+    plot3d(fig, soln.X, soln.Y, soln.U);
 
     wait_for_key();
+
+    std::remove("data.csv");
 
     return 0;
 }

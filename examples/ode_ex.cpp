@@ -1,5 +1,7 @@
-#include "../ODEs/ODE.hpp"
-#include "gnuplot_i.hpp"
+#include "ODE.hpp"
+#include "plot.hpp"
+
+// g++ -g -Wall -o diffeq examples/ode_ex.cpp examples/wait.cpp -lnumerics -larmadillo
 
 using namespace numerics;
 using namespace ODE;
@@ -49,18 +51,11 @@ int main() {
     opts.events.push_back(evnt); // enable events
     rk45(f,t,U,opts); // we will use our rk45() approximation as the exact solution
 
-    Gnuplot fig1("test");
-    fig1.set_style("lines");
+    Gnuplot fig;
 
-    typedef std::vector<double> stdv;
-    stdv t1 = arma::conv_to<stdv>::from(t);
-    stdv U1 = arma::conv_to<stdv>::from(U.col(0));
-    stdv U2 = arma::conv_to<stdv>::from(U.col(1));
+    lines(fig, t, (arma::mat)U.col(0), "U1 - exact");
+    lines(fig, t, (arma::mat)U.col(1), "U2 - exact");
 
-    fig1.plot_xy(t1,U1,"U1 - exact");
-    fig1.plot_xy(t1,U2,"U2 - exact");
-
-    fig1.set_style("points");
     t = {t0, tf};
     U = {U0_1, U0_2};
 
@@ -77,12 +72,8 @@ int main() {
         t = arma::linspace(t0,t(t.n_elem-1),1000);
         U = soln(t); */
 
-    t1 = arma::conv_to<stdv>::from(t);
-    U1 = arma::conv_to<stdv>::from(U.col(0));
-    U2 = arma::conv_to<stdv>::from(U.col(1));
-
-    fig1.plot_xy(t1,U1,"U1 - test");
-    fig1.plot_xy(t1,U2,"U2 - test");
+    plot(fig, t, (arma::mat)U.col(0), "U1 - test", "or");
+    plot(fig, t, (arma::mat)U.col(1), "U2 - test", "ob");
 
     wait_for_key();
 

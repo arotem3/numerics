@@ -1,11 +1,11 @@
-#include "../numerics.hpp"
-#include "gnuplot_i.hpp"
+#include "numerics.hpp"
+#include "plot.hpp"
+
+// g++ -g -Wall -o spectralD examples/spectral_deriv_ex.cpp examples/wait.cpp -lnumerics -larmadillo
 
 void wait_for_key(std::string s);
 
 using namespace numerics;
-
-typedef std::vector<double> stdv;
 
 double f(double x) {
     return std::exp(-x*x);
@@ -24,16 +24,10 @@ int main() {
     arma::vec u = {a,b};
     arma::vec v = specral_deriv(f,u,m);
 
-    stdv x0 = arma::conv_to<stdv>::from(x);
-    stdv y0 = arma::conv_to<stdv>::from(y);
-    stdv u0 = arma::conv_to<stdv>::from(u);
-    stdv v0 = arma::conv_to<stdv>::from(v);
-
-    Gnuplot fig("spectral derivative");
-    fig.set_style("lines");
-    fig.plot_xy(x0,y0,"actual x,y");
-    fig.set_style("points");
-    fig.plot_xy(u0,v0,"spectral approx");
+    Gnuplot fig;
+    fig.set_title("spectral derivative");
+    lines(fig, x, y, "actual x,y");
+    scatter(fig, u, v, "spectral approx",'r');
 
     std::cout << "max error : " << arma::norm(v - df(u), "inf") << std::endl;
 

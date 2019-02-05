@@ -1,6 +1,6 @@
-#include "../numerics.hpp"
+#include "numerics.hpp"
 
-// g++ -Wall -g -o integrate_ex examples/integrate_ex.cpp integrate.cpp
+// g++ -Wall -g -o integrate examples/integrate_ex.cpp -lnumerics -larmadillo
 
 using namespace numerics;
 
