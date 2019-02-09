@@ -38,6 +38,7 @@ add_library(numerics SHARED
         src/ODEs/am2.cpp
         src/ODEs/bdf23.cpp
         src/ODEs/cheb.cpp
+        src/ODEs/diffmat.cpp
         src/ODEs/ivp_events.cpp
         src/ODEs/IVP_solve.cpp
         src/ODEs/linear_bvp.cpp

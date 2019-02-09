@@ -168,15 +168,19 @@ namespace ODE {
             numerics::lsqr_opts lsqropts;
             numerics::nonlin_opts nlnopts;
             numerics::nonlin_solver solver;
+            bvp_solvers order;
             odeJac* jacobian_func;
 
             NONLIN_BVP_OPTS() {
                 num_points = 30;
                 solver = numerics::BROYD;
+                order = bvp_solvers::FOURTH_ORDER;
                 jacobian_func = nullptr;
             }
         } bvp_opts;
     // --- Utility ---------------- //
+        void diffmat4(arma::mat& D, arma::vec& x, double L, double R, size_t m);
+        void diffmat2(arma::mat& D, arma::vec& x, double L, double R, size_t m);
         void cheb(arma::mat& D, arma::vec& x, double L, double R, size_t m);
         void cheb(arma::mat& D, arma::vec& x, size_t m);
     // --- IVPs ------------------- //

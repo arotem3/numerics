@@ -26,10 +26,10 @@ int main() {
     arma::vec x;
     arma::mat U;
 
-    problem.solve(x,U,40); // 4th order FD approximation
-    // problem.solve(x,U,40, SECOND_ORDER); // 2nd order FD approximation
-    // problem.solve(x,U,20, CHEBYSHEV); // spectral order approximation
-    // dsolnp y = problem.solve(20); x = arma::linspace(0,2*M_PI); U = y.soln(x); // spectral order approximation outputing cheb polynomial
+    problem.solve(x,U,40); std::cout << "using fourth order solver..." << std::endl;
+    // problem.solve(x,U,40, SECOND_ORDER); std::cout << "using second order solver..." << std::endl;
+    // problem.solve(x,U,20, CHEBYSHEV); std::cout << "using spectral solver..." << std::endl;
+    // dsolnp y = problem.solve(20); x = arma::linspace(0,2*M_PI); U = y.soln(x); std::cout << "using spectral solver..." << std::endl;
 
     arma::mat u = 0.25 * (arma::exp(-2*M_PI - x) % (-1 + 4*std::exp(2*M_PI)+arma::exp(2*x)) - 2*arma::sin(x));
 
@@ -44,7 +44,8 @@ int main() {
               << "\t0 < x < 2*pi" << std::endl
               << "\tu(0) = 1\tu(2*pi) = 1" << std::endl
               << "we will use an initial guess of u(x) = cos(x) and v(x) = sin(x) i.e. the result from linearization" << std::endl
-              << "we will also use an intial guess of u(x) = 1 and v(x) = 0 as another example.\n(this will demonstrate non-uniqueness depending on your choice of solver)." << std::endl;
+              << "we will also use an intial guess of u(x) = 1 and v(x) = 0 as another example.\n(this will demonstrate non-uniqueness depending on your choice of solver)."
+              << std::endl << std::endl;
 
     odefun f = [](double x, const arma::rowvec& u) -> arma::rowvec {
         arma::rowvec up(2, arma::fill::zeros);
@@ -78,7 +79,10 @@ int main() {
     };
 
     bvp_opts opts;
-    opts.num_points = 25;
+    // opts.order = bvp_solvers::SECOND_ORDER; std::cout << "using second order solver..." << std::endl;
+    // opts.order = bvp_solvers::FOURTH_ORDER; std::cout << "using fourth order solver..." << std::endl;
+    opts.order = bvp_solvers::CHEBYSHEV; std::cout << "using spectral solver" << std::endl;
+    opts.num_points = 30;
     // opts.solver = numerics::LMLSQR;
     opts.jacobian_func = &J; // providing a jacobian function improves runtime significantly
 

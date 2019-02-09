@@ -76,12 +76,12 @@ inline void lines(const T& x, const S& y, const std::string& label = "", char cl
 
 template<class T, class S>
 inline void scatter(Gnuplot& fig, const T& x, const S& y, const std::string& label = "", char clr = 'k') {
-    plot(fig, x, y, label, std::string(".") + clr);
+    plot(fig, x, y, label, std::string("o") + clr);
 }
 
 template<class T, class S>
 inline void scatter(const T& x, const S& y, const std::string& label = "", char clr = 'k') {
-    plot(x, y, label, std::string(".") + clr);
+    plot(x, y, label, std::string("o") + clr);
 }
 
 template<class A,class B, class C>

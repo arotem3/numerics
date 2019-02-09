@@ -304,6 +304,33 @@ src/ODEs/cheb.cpp.s:
 	$(MAKE) -f CMakeFiles/numerics.dir/build.make CMakeFiles/numerics.dir/src/ODEs/cheb.cpp.s
 .PHONY : src/ODEs/cheb.cpp.s
 
+src/ODEs/diffmat.o: src/ODEs/diffmat.cpp.o
+
+.PHONY : src/ODEs/diffmat.o
+
+# target to build an object file
+src/ODEs/diffmat.cpp.o:
+	$(MAKE) -f CMakeFiles/numerics.dir/build.make CMakeFiles/numerics.dir/src/ODEs/diffmat.cpp.o
+.PHONY : src/ODEs/diffmat.cpp.o
+
+src/ODEs/diffmat.i: src/ODEs/diffmat.cpp.i
+
+.PHONY : src/ODEs/diffmat.i
+
+# target to preprocess a source file
+src/ODEs/diffmat.cpp.i:
+	$(MAKE) -f CMakeFiles/numerics.dir/build.make CMakeFiles/numerics.dir/src/ODEs/diffmat.cpp.i
+.PHONY : src/ODEs/diffmat.cpp.i
+
+src/ODEs/diffmat.s: src/ODEs/diffmat.cpp.s
+
+.PHONY : src/ODEs/diffmat.s
+
+# target to generate assembly for a file
+src/ODEs/diffmat.cpp.s:
+	$(MAKE) -f CMakeFiles/numerics.dir/build.make CMakeFiles/numerics.dir/src/ODEs/diffmat.cpp.s
+.PHONY : src/ODEs/diffmat.cpp.s
+
 src/ODEs/ivp_events.o: src/ODEs/ivp_events.cpp.o
 
 .PHONY : src/ODEs/ivp_events.o
@@ -1358,6 +1385,9 @@ help:
 	@echo "... src/ODEs/cheb.o"
 	@echo "... src/ODEs/cheb.i"
 	@echo "... src/ODEs/cheb.s"
+	@echo "... src/ODEs/diffmat.o"
+	@echo "... src/ODEs/diffmat.i"
+	@echo "... src/ODEs/diffmat.s"
 	@echo "... src/ODEs/ivp_events.o"
 	@echo "... src/ODEs/ivp_events.i"
 	@echo "... src/ODEs/ivp_events.s"

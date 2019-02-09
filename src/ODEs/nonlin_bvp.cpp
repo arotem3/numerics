@@ -14,7 +14,9 @@ ODE::dsolnp ODE::bvp(const odefun& f, const bcfun& bc, const soln_init& guess, b
     int n = guess({bc.xL}).n_elem;
     arma::mat D;
     arma::vec x;
-    cheb(D, x, bc.xL, bc.xR, m-1);
+    if (opts.order == bvp_solvers::CHEBYSHEV) cheb(D, x, bc.xL, bc.xR, m-1);
+    else if (opts.order == bvp_solvers::SECOND_ORDER) diffmat2(D, x, bc.xL, bc.xR, m-1);
+    else diffmat4(D, x, bc.xL, bc.xR, m-1);
     
     numerics::vector_func ff = [&](const arma::vec& u) -> arma::vec {
         arma::mat U = arma::reshape(u,m,n);
@@ -31,7 +33,9 @@ ODE::dsolnp ODE::bvp(const odefun& f, const bcfun& bc, const soln_init& guess, b
         return z;
     }; // wrapper for root finding function
 
-    numerics::vec_mat_func J = [&](const arma::vec& u) -> arma::mat {
+    numerics::vec_mat_func J; // jacobian function
+
+    J = [&](const arma::vec& u) -> arma::mat {
         arma::mat U = arma::reshape(u,m,n);
         arma::mat DF = arma::zeros(m*n,m*n);
         if (opts.jacobian_func != nullptr) { // Jacobian provided
@@ -76,7 +80,7 @@ ODE::dsolnp ODE::bvp(const odefun& f, const bcfun& bc, const soln_init& guess, b
         }
         DF = arma::join_cols(DF,bc_jac);
         return DF;
-    }; // jacobian function
+    };
     
     arma::vec U0 = arma::vectorise( guess(x) );
     if (opts.solver == numerics::LMLSQR) {
