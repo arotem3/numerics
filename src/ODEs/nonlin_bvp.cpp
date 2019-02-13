@@ -1,7 +1,6 @@
 #include "ODE.hpp"
 
 /* BVP : solves general systems of  (potentially) nonlinear boudary value problems.
- * currently uses spectral solver only, so ideal for smooth functions only.
  * --- f  : u'(x) = f(x,u) is a vector valued function.
  * --- bc : boundary conditions struct.
  * ----- bc.xL : lower limit of x
@@ -87,8 +86,8 @@ ODE::dsolnp ODE::bvp(const odefun& f, const bcfun& bc, const soln_init& guess, b
         opts.lsqropts.jacobian_func = &J;
         numerics::lmlsqr(ff, U0, opts.lsqropts);
     } else { // use Broyden solver
-        arma::mat JJ = J(U0);
-        opts.nlnopts.init_jacobian = &JJ;
+        // arma::mat JJ = J(U0);
+        // opts.nlnopts.init_jacobian = &JJ;
         opts.nlnopts.jacobian_func = &J;
         numerics::broyd(ff, U0, opts.nlnopts);
     }

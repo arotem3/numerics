@@ -214,8 +214,8 @@ namespace ODE {
         arma::vec am2(std::function<double(double,double)>, arma::vec&, double, ivp_options&);
         arma::vec am2(std::function<double(double,double)>, arma::vec&, double);
 
-        dsolnc IVP_solve(const odefun&, arma::vec&, arma::mat&, ivp_options&, ode_solver solver = RK45);
-        dsolnc IVP_solve(const odefun&, arma::vec&, arma::mat&, ode_solver solver = RK45);
+        dsolnc ivp(const odefun&, arma::vec&, arma::mat&, ivp_options&, ode_solver solver = RK45);
+        dsolnc ivp(const odefun&, arma::vec&, arma::mat&, ode_solver solver = RK45);
     // --- BVPs ------------------- //
         class linear_BVP {
             //--- u''(x) = a(x) + b(x)*u(x) + c(x)*u'(x) ---//

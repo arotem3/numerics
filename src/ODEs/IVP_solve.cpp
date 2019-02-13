@@ -7,7 +7,7 @@
  * --- U  : vector to store the solution first row must be initial value u(t0).
  * --- opts : solver options.
  * --- solver : choice of solver. */
-numerics::CubicInterp ODE::IVP_solve(const odefun& f, arma::vec& t, arma::mat& U, ivp_options& opts, ode_solver solver) {
+numerics::CubicInterp ODE::ivp(const odefun& f, arma::vec& t, arma::mat& U, ivp_options& opts, ode_solver solver) {
     if (solver == RK45) {
         rk45(f,t,U,opts);
     } else if (solver == BDF23) {
@@ -35,7 +35,7 @@ numerics::CubicInterp ODE::IVP_solve(const odefun& f, arma::vec& t, arma::mat& U
  * --- t  : vector to store t-values initialized at {t_initial, t_final}.
  * --- U  : vector to store the solution first row must be initial value u(t0).
  * --- solver : choice of solver. */
-numerics::CubicInterp ODE::IVP_solve(const odefun& f, arma::vec& t, arma::mat& U, ode_solver solver) {
+numerics::CubicInterp ODE::ivp(const odefun& f, arma::vec& t, arma::mat& U, ode_solver solver) {
     ivp_options opts;
     opts.adaptive_max_err = 1e-4;
     opts.adaptive_step_max = rk45_kmax;
@@ -43,5 +43,5 @@ numerics::CubicInterp ODE::IVP_solve(const odefun& f, arma::vec& t, arma::mat& U
     opts.max_nonlin_err = implicit_err;
     opts.max_nonlin_iter = implicit_ode_max_iter;
     opts.step = std::max(std::abs(t(1)-t(0))/100, 1e-2 );
-    return IVP_solve(f,t,U,opts,solver);
+    return ivp(f,t,U,opts,solver);
 }

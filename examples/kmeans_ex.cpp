@@ -22,8 +22,8 @@ int main() {
 
     Gnuplot fig;
 
-    scatter(fig, (arma::mat)c0.row(0), (arma::mat)c0.row(1), "cluster 0", 'r');
-    scatter(fig, (arma::mat)c1.row(0), (arma::mat)c1.row(1), "cluster 1", 'b');
+    plot(fig, (arma::mat)c0.row(0), (arma::mat)c0.row(1), {{"legend","cluster 0"},{"linespec","o"}});
+    plot(fig, (arma::mat)c1.row(0), (arma::mat)c1.row(1), {{"legend","cluster 1"},{"linespec","o"}});
 
     kmu.summary(std::cout);
 

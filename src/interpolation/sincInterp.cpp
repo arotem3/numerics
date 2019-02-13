@@ -47,7 +47,6 @@ arma::vec numerics::specral_deriv(const dfunc& f, arma::vec& x, int sample_point
     double b = x(m-1);
     double h = (b - a)/sample_points;
     x = h * arma::regspace(1,sample_points) + a;
-    std::cout << h << std::endl;
     arma::vec up = x;
     up.for_each(  [f](arma::vec::elem_type& u){u = f(u);}  );
     arma::cx_colvec up_hat = arma::fft(up);

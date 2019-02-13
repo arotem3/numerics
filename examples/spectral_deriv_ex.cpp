@@ -16,7 +16,7 @@ arma::vec df(arma::vec x) {
 }
 
 int main() {
-    double a = -3; double b = 3; double m = 200;
+    double a = -3; double b = 3; double m = 30;
 
     arma::vec x = arma::linspace(a,b);
     arma::vec y = df(x);
@@ -26,8 +26,8 @@ int main() {
 
     Gnuplot fig;
     fig.set_title("spectral derivative");
-    lines(fig, x, y, "actual x,y");
-    scatter(fig, u, v, "spectral approx",'r');
+    lines(fig, x, y, {{"legend","actual x,y"}});
+    scatter(fig, u, v, {{"legend","spectral approx"},{"linespec","r"}});
 
     std::cout << "max error : " << arma::norm(v - df(u), "inf") << std::endl;
 

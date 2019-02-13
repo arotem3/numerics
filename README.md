@@ -33,7 +33,7 @@ I have only a simple CMakeLists.txt, so any modifications will have to be provid
 * event handling and other options passed to solver via options struct
 
 * linear BVP solver (2nd, 4th, spectral order)
-* nonlinear BVP solver (spectral order)
+* nonlinear BVP solver (2nd, 4th, spectral order)
 
 ## statistics.hpp is a statistics (mostly) template library with hypothesis tests, it features:
 * basic statistics like mean, median, and variance

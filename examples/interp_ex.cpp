@@ -42,11 +42,11 @@ int main() {
         std::cout << std::endl << title << std::endl;
         std::cout << "max error : " << arma::norm(v - f(u), "inf") << std::endl;
 
-        scatter(fig, x, (arma::mat)y.col(0), "original x,y", 'r');
-        scatter(fig, x, (arma::mat)y.col(1), "original x,y", 'b');
+        plot(fig, x, (arma::mat)y.col(0), {{"legend","original x,y"},{"linespec","or"}});
+        plot(fig, x, (arma::mat)y.col(1), {{"legend","original x,y"},{"linespec","ob"}});
 
-        lines(fig, u, (arma::mat)v.col(0), title);
-        lines(fig, u, (arma::mat)v.col(1), title);
+        plot(fig, u, (arma::mat)v.col(0), {{"legend",title},{"linespec","-r"}});
+        plot(fig, u, (arma::mat)v.col(1), {{"legend",title},{"linespec","-b"}});
 
         wait_for_key("Press ENTER for next example...");
         fig.reset_plot();

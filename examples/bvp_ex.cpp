@@ -34,8 +34,8 @@ int main() {
     arma::mat u = 0.25 * (arma::exp(-2*M_PI - x) % (-1 + 4*std::exp(2*M_PI)+arma::exp(2*x)) - 2*arma::sin(x));
 
     Gnuplot graph;
-    plot(graph, x, U, "U - solution", "ob");
-    plot(graph, x, u, "u - exact");
+    plot(graph, x, U, {{"legend","U - solution"},{"linespec","ob"}});
+    plot(graph, x, u, {{"legend","u - exact"}});
 
     wait_for_key();
 
@@ -82,15 +82,15 @@ int main() {
     // opts.order = bvp_solvers::SECOND_ORDER; std::cout << "using second order solver..." << std::endl;
     // opts.order = bvp_solvers::FOURTH_ORDER; std::cout << "using fourth order solver..." << std::endl;
     opts.order = bvp_solvers::CHEBYSHEV; std::cout << "using spectral solver" << std::endl;
-    opts.num_points = 30;
+    opts.num_points = 50;
     // opts.solver = numerics::LMLSQR;
     opts.jacobian_func = &J; // providing a jacobian function improves runtime significantly
 
     dsolnp soln = bvp(f, bc, guess, opts);
 
     graph.reset_plot();
-    plot(graph, soln.independent_var_values, arma::mat(soln.solution_values.col(0)), "u(x) -- guess of cos(x)", "-ob");
-    plot(graph, soln.independent_var_values, arma::mat(soln.solution_values.col(1)), "v(x) -- guess of sin(x)", "-or");
+    plot(graph, soln.independent_var_values, arma::mat(soln.solution_values.col(0)), {{"legend","u(x) -- guess of cos(x)"},{"linespec","-ob"}});
+    plot(graph, soln.independent_var_values, arma::mat(soln.solution_values.col(1)), {{"legend","v(x) -- guess of sin(x)"},{"linespec","-or"}});
 
     std::cout << "Number of nonlinear iterations needed by solver: " << opts.nlnopts.num_iters_returned << std::endl;
 
@@ -103,8 +103,8 @@ int main() {
 
     soln = bvp(f, bc, guess, opts);
 
-    plot(graph, soln.independent_var_values, arma::mat(soln.solution_values.col(0)), "u(x) -- guess of 1", "-sp");
-    plot(graph, soln.independent_var_values, arma::mat(soln.solution_values.col(1)), "v(x) -- guess of 0", "-sk");
+    plot(graph, soln.independent_var_values, arma::mat(soln.solution_values.col(0)), {{"legend","u(x) -- guess of 1"},{"linespec","-sp"}});
+    plot(graph, soln.independent_var_values, arma::mat(soln.solution_values.col(1)), {{"legend","v(x) -- guess of 0"},{"linespec","-sk"}});
 
     std::cout << "Number of nonlinear iterations needed by solver: " << opts.nlnopts.num_iters_returned << std::endl;
 

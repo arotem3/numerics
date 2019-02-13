@@ -18,7 +18,7 @@ int main() {
               << "\ty = f(x) = b(0) + b(1) / (b(2) + b(3)*x^2)" << std::endl;
     
     arma::arma_rng::set_seed_random();
-    double lower = -M_PI; double upper = M_PI;
+    double lower = -5; double upper = 5;
     arma::vec x = (upper-lower)*arma::randu(1000) + lower;
     arma::vec t = arma::linspace(lower,upper);
     arma::vec y_true = f_true(t);
@@ -63,9 +63,9 @@ int main() {
     
     Gnuplot fig;
 
-    scatter(fig, x, y, "data");
-    lines(fig, t, y_true, "exact model", 'b');
-    lines(fig, t, y_hat, "least squares model", 'r');
+    scatter(fig, x, y, {{"legend","data"},{"linespec","g"}});
+    lines(fig, t, y_true,{{"legend","exact model"},{"linespec","k"},{"linewidth","3"}});
+    lines(fig, t, y_hat,{{"legend","least squares model"},{"linespec","r"},{"linewidth","3"}});
     
     wait_for_key();
 

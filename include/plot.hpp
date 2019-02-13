@@ -43,45 +43,69 @@ std::string to_cmd(const std::string& s) {
         cmd += ls(c);
     }
 
-    if (!color) {
-        cmd += "lc rgb '#000000' ";
+    // if (!color) {
+    //     cmd += "lc rgb '#000000' ";
+    // }
+
+    if (lines && points) return "linespoints " + cmd;
+    else if (points) return "points " + cmd;
+    else return "lines " + cmd;
+}
+
+
+template<class T, class S>
+void plot(Gnuplot& fig, const T& x, const S& y, std::map<std::string, std::string> args) {
+    std::string cmd, leg, title, xlab, ylab;
+    bool linespec = false, linewidth = false, markersize = false;
+    for (auto arg : args) {
+        if (arg.first == "title") {
+            title = arg.second;
+        } else if (arg.first == "linespec" && !linespec) {
+            cmd += to_cmd(arg.second);
+            linespec = true;
+        } else if (arg.first == "linewidth" && !linewidth) {
+            cmd += "lw " + arg.second + " ";
+            linewidth = true;
+        } else if (arg.first == "markersize" && !markersize) {
+            cmd += "ps " + arg.second + " ";
+            markersize = true;
+        } else if (arg.first == "legend") {
+            leg = arg.second;
+        } else if (arg.first == "xlabel") {
+            xlab = arg.second;
+        } else if (arg.first == "ylabel") {
+            ylab = arg.second;
+        }
     }
 
-    if (lines && points) return "linespoints " + cmd + "lw 2 ps 1.5";
-    else if (points) return "points " + cmd + "ps 1.5";
-    else return "lines " + cmd + "lw 2";
+    if (!linespec) cmd += to_cmd("-k");
+
+    if (cmd.find("points") != std::string::npos) { // want to specify ps
+        if (!markersize) cmd += "ps 1.5 ";
+    }
+    if (cmd.find("lines") != std::string::npos) { // want to specify lw
+        if (!linewidth) cmd += "lw 1.5 ";
+    }
+    
+    fig.set_style(cmd);
+    fig.set_xlabel(xlab);
+    fig.set_ylabel(ylab);
+    fig.set_title(title);
+    fig.plot_xy(x, y, leg);
 }
 
 template<class T, class S>
-void plot(Gnuplot& fig, const T& x, const S& y, const std::string& label = "", const std::string& linespec = "-k") {
-    fig.set_style( to_cmd(linespec) );
-    fig.plot_xy(x, y, label);
+void lines(Gnuplot& fig, const T& x, const S& y, std::map<std::string, std::string> args) {
+    if (args["linespec"].empty()) args["linespec"] = "-";
+    else args["linespec"] = "-" + args["linespec"];
+    plot(fig, x, y, args);
 }
 
 template<class T, class S>
-inline void plot(const T& x, const S& y, const std::string& label = "", const std::string& linespec = "-k") {
-    Gnuplot fig;
-    plot(fig, x, y, label, linespec);
-}
-
-template<class T, class S>
-inline void lines(Gnuplot& fig, const T& x, const S& y, const std::string& label = "", char clr = 'k') {
-    plot(fig, x, y, label, std::string("-") + clr);
-}
-
-template<class T, class S>
-inline void lines(const T& x, const S& y, const std::string& label = "", char clr = 'k') {
-    plot(x, y, label, std::string("-") + clr);
-}
-
-template<class T, class S>
-inline void scatter(Gnuplot& fig, const T& x, const S& y, const std::string& label = "", char clr = 'k') {
-    plot(fig, x, y, label, std::string("o") + clr);
-}
-
-template<class T, class S>
-inline void scatter(const T& x, const S& y, const std::string& label = "", char clr = 'k') {
-    plot(x, y, label, std::string("o") + clr);
+void scatter(Gnuplot& fig, const T& x, const S& y, std::map<std::string, std::string> args) {
+    if (args["linespec"].empty()) args["linespec"] = "o";
+    else args["linespec"] = "o" + args["linespec"];
+    plot(fig, x, y, args);
 }
 
 template<class A,class B, class C>
