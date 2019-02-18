@@ -82,22 +82,15 @@ ODE::dsolnp ODE::bvp(const odefun& f, const bcfun& bc, const soln_init& guess, b
     };
     
     arma::vec U0 = arma::vectorise( guess(x) );
-    if (opts.solver == numerics::LMLSQR) {
-        opts.lsqropts.jacobian_func = &J;
-        numerics::lmlsqr(ff, U0, opts.lsqropts);
-    } else { // use Broyden solver
-        // arma::mat JJ = J(U0);
-        // opts.nlnopts.init_jacobian = &JJ;
-        opts.nlnopts.jacobian_func = &J;
-        numerics::broyd(ff, U0, opts.nlnopts);
-    }
+    opts.nlnopts.jacobian_func = &J;
+    numerics::broyd(ff, U0, opts.nlnopts);
 
     arma::mat U = arma::reshape(U0,m,n);
 
     dsolnp Soln;
     Soln.independent_var_values = x;
     Soln.solution_values = U;
-    Soln.soln = numerics::polyInterp(x,U);
+    if (opts.order == bvp_solvers::CHEBYSHEV) Soln.soln = numerics::polyInterp(x,U);
     return Soln;
 }
 

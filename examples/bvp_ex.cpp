@@ -79,11 +79,11 @@ int main() {
     };
 
     bvp_opts opts;
+    opts.nlnopts.err = 1e-10; // play around with the nonlinear solver tolerance
     // opts.order = bvp_solvers::SECOND_ORDER; std::cout << "using second order solver..." << std::endl;
-    // opts.order = bvp_solvers::FOURTH_ORDER; std::cout << "using fourth order solver..." << std::endl;
-    opts.order = bvp_solvers::CHEBYSHEV; std::cout << "using spectral solver" << std::endl;
+    opts.order = bvp_solvers::FOURTH_ORDER; std::cout << "using fourth order solver..." << std::endl;
+    // opts.order = bvp_solvers::CHEBYSHEV; std::cout << "using spectral solver" << std::endl;
     opts.num_points = 50;
-    // opts.solver = numerics::LMLSQR;
     opts.jacobian_func = &J; // providing a jacobian function improves runtime significantly
 
     dsolnp soln = bvp(f, bc, guess, opts);

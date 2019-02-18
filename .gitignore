@@ -1,0 +1,8 @@
+# ignore directories personal to my make build process and IDE setup
+/build
+/CMakeFiles
+/.vscode
+Makefile
+makefile
+*.cmake
+CMakeCache.txt

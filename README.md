@@ -6,10 +6,11 @@ All the functions can be found in the header file.
 
 ### basic installation instructions:
 I have only a simple CMakeLists.txt, so any modifications will have to be provided by you, the user. (sorry...)
-1. cd /numeric-lib/
-2. cmake .
-3. make
-4. sudo make install
+0. install [Armadillo +v9.2](http://arma.sourceforge.net/) and [gnuplot](http://www.gnuplot.info/).
+1. `cd /numeric-lib/`
+2. `cmake .`
+3. `make`
+4. `sudo make install`
 
 ## numerics.hpp is a numeric library hosting:
 * integration (2nd, 4th, 7-pt lobatto order).
@@ -59,4 +60,4 @@ There are example codes for every function and class.
 
 Disclaimer: I do not take credit for inventing any algorithm, I just implemented them in C++ for fun...
 This library is by no means exceptionally robust or efficient; it does what it can.
-Documentation is really only in the form of examples provided in the 'examples' directory.
+Documentation is now in progress...

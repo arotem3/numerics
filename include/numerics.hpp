@@ -223,16 +223,16 @@ namespace numerics {
                 size_t num_iters_returned;
 
                 UNCONSTRAINED_OPTIM_OPTS() {
-                    solver = MGD;
+                    solver = LBFGS;
                     tolerance = 1e-2;
-                    max_iter = gd_max_iter;
-                    use_FD_hessian = false;
+                    max_iter = 100;
+                    use_FD_hessian = true;
                     use_FD_gradient = true;
-                    damping_param = 0.99;
-                    damping_scale = 2;
-                    wolfe_c1 = 0;
-                    wolfe_c2 = 0;
-                    wolfe_scaling = 0;
+                    damping_param = 0;
+                    damping_scale = 0;
+                    wolfe_c1 = 1e-4;
+                    wolfe_c2 = 0.9;
+                    wolfe_scaling = 0.5;
                     init_hessian = nullptr;
                     init_hessian_inv = nullptr;
                     hessian_func = nullptr;
@@ -497,7 +497,7 @@ namespace numerics {
         double wolfe_step(const vec_dfunc&, const vector_func&, const arma::vec&, const arma::vec&, double, double, double);
         double line_min(const dfunc&);
     // --- integration ------------ //
-        double integrate(const dfunc&, double, double, integrator i = SIMPSON, double err = 1e-5);
+        double integrate(const dfunc&, double, double, integrator i = LOBATTO, double err = 1e-5);
         double Sintegrate(const dfunc&, double, double, double err = 1e-5);
         double Tintegrate(const dfunc&, double, double, double err = 1e-2);
         double Lintegrate(const dfunc&, double, double, double err = 1e-5);
@@ -549,7 +549,7 @@ namespace numerics {
         //--- univariate ---//
         double fzero(const dfunc&, double, double);
         double newton(const dfunc&, const dfunc&, double, double err = 1e-10);
-        double secant(const dfunc&, double, double err = 1e-10);
+        double secant(const dfunc&, double, double);
         double bisect(const dfunc&, double, double, double tol = 1e-8);
     // --- optimization ----------- //
         //--- unconstrained : generic ---//

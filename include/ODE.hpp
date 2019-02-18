@@ -165,15 +165,12 @@ namespace ODE {
         typedef struct NONLIN_BVP_OPTS {
             // inputs
             size_t num_points;
-            numerics::lsqr_opts lsqropts;
             numerics::nonlin_opts nlnopts;
-            numerics::nonlin_solver solver;
             bvp_solvers order;
             odeJac* jacobian_func;
 
             NONLIN_BVP_OPTS() {
                 num_points = 30;
-                solver = numerics::BROYD;
                 order = bvp_solvers::FOURTH_ORDER;
                 jacobian_func = nullptr;
             }
