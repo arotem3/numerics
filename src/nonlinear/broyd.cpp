@@ -39,7 +39,7 @@ void numerics::broyd(const vector_func& f, arma::vec& x, nonlin_opts& opts) {
                  << "returning current best estimate." << std::endl
                  << "!!!---not necessarily a good estimate---!!!" << std::endl
                  << "inf norm of f(x) = " << arma::norm(f(x), "inf") << " > 0" << std::endl << std::endl;
-            return;
+            break;
         }
         F = f(x);
         dx = -Jinv * F;

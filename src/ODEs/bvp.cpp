@@ -19,22 +19,19 @@ ODE::dsolnp ODE::bvp(const odefun& f, const bcfun& bc, const soln_init& guess, b
     
     numerics::vector_func ff = [&](const arma::vec& u) -> arma::vec {
         arma::mat U = arma::reshape(u,m,n);
-        arma::rowvec BC = bc.func(u.row(0), u.row(m-1));
-        arma::mat A = D;
+        arma::rowvec BC = bc.func(U.row(0), U.row(m-1));
         
         arma::mat F = arma::zeros(m,n);
         for (int i(0); i < m; ++i) {
             F.row(i) = f( x(i), U.row(i) );
         }
 
-        A = A*U - F;
-        arma::vec z = arma::join_cols( arma::vectorise(A), arma::vectorise(BC) );
+        arma::mat A = D*U - F;
+        arma::vec z = arma::join_cols( arma::vectorise(A), BC.t() );
         return z;
     }; // wrapper for root finding function
 
-    numerics::vec_mat_func J; // jacobian function
-
-    J = [&](const arma::vec& u) -> arma::mat {
+    numerics::vec_mat_func J = [&](const arma::vec& u) -> arma::mat {
         arma::mat U = arma::reshape(u,m,n);
         arma::mat DF = arma::zeros(m*n,m*n);
         if (opts.jacobian_func != nullptr) { // Jacobian provided
@@ -63,7 +60,7 @@ ODE::dsolnp ODE::bvp(const odefun& f, const bcfun& bc, const soln_init& guess, b
         DF = DF + arma::kron(arma::eye(n,n), D);
 
         auto bc_wrapper = [&](const arma::vec& v) -> arma::vec {
-            arma::mat V = arma::reshape(v,2,n);
+            arma::mat V = arma::reshape(v,2,n).t(); // fills by row...
             return bc.func(V.row(0), V.row(1)).t();
         };
         arma::vec vv = arma::join_rows( U.row(0), U.row(m-1) ).t();
