@@ -8,3 +8,4 @@ makefile
 CMakeCache.txt
 install_manifest.txt
 libnumerics.so
+research.md

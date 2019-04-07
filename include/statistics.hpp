@@ -138,8 +138,8 @@ namespace statistics {
         template<class X>
         double mean(X &x) {
             double x_bar = 0;
-            size_t n = x.size();
-            for (size_t i(0); i < n; ++i) {
+            uint n = x.size();
+            for (uint i(0); i < n; ++i) {
                 x_bar += x.at(i);
             }
             x_bar /= n;
@@ -150,8 +150,8 @@ namespace statistics {
         double var(X &x) {
             double x_var = 0;
             double x_bar = mean<X>(x);
-            size_t n = x.size();
-            for (size_t i(0); i < n; ++i) {
+            uint n = x.size();
+            for (uint i(0); i < n; ++i) {
                 x_var += std::pow(x.at(i) - x_bar, 2);
             }
             x_var /= n-1;
@@ -161,7 +161,7 @@ namespace statistics {
         template<class X>
         double median(X &x) {
             std::sort(x.begin(), x.end());
-            size_t n = x.size();
+            uint n = x.size();
             if (n%2 == 0) { // even elements, need intermediate value
                 int n2f = std::floor(n/2.0);
                 int n2c = n2f + 1;

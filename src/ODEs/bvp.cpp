@@ -10,7 +10,7 @@
  * --- opts  : struct containing options and results for bvp. */
 ODE::dsolnp ODE::bvp(const odefun& f, const bcfun& bc, const soln_init& guess, bvp_opts& opts) {
     int m = opts.num_points;
-    int n = guess({bc.xL}).n_elem;
+    int n = guess({bc.xL}).n_elem; // system dimension
     arma::mat D;
     arma::vec x;
     if (opts.order == bvp_solvers::CHEBYSHEV) cheb(D, x, bc.xL, bc.xR, m-1);
@@ -49,7 +49,7 @@ ODE::dsolnp ODE::bvp(const odefun& f, const bcfun& bc, const soln_init& guess, b
                     return f( x(i), v.t() ).t();
                 };
                 arma::mat JJ;
-                numerics::approx_jacobian(fff,JJ,U.row(i).t(),1e-4);
+                numerics::approx_jacobian(fff,JJ,U.row(i).t(),1e-6);
                 for (int j(0); j < n; ++j) {
                     for (int k(0); k < n; ++k) {
                         DF(m*j+i, m*k+i) = JJ(j,k);
@@ -57,7 +57,7 @@ ODE::dsolnp ODE::bvp(const odefun& f, const bcfun& bc, const soln_init& guess, b
                 }
             }
         }
-        DF = DF + arma::kron(arma::eye(n,n), D);
+        DF += arma::kron(arma::eye(n,n), D);
 
         auto bc_wrapper = [&](const arma::vec& v) -> arma::vec {
             arma::mat V = arma::reshape(v,2,n).t(); // fills by row...
@@ -66,7 +66,8 @@ ODE::dsolnp ODE::bvp(const odefun& f, const bcfun& bc, const soln_init& guess, b
         arma::vec vv = arma::join_rows( U.row(0), U.row(m-1) ).t();
         arma::mat X;
         numerics::approx_jacobian(bc_wrapper, X, vv);
-        arma::mat bc_jac = arma::zeros(n,m*n);
+        int p = X.n_rows;
+        arma::mat bc_jac = arma::zeros(p,m*n);
         short j = 0;
         for (int i(0); i < n; ++i) {
             bc_jac.col(i*m) = X.col(j);
@@ -78,11 +79,34 @@ ODE::dsolnp ODE::bvp(const odefun& f, const bcfun& bc, const soln_init& guess, b
         return DF;
     };
     
-    arma::vec U0 = arma::vectorise( guess(x) );
-    opts.nlnopts.jacobian_func = &J;
-    numerics::broyd(ff, U0, opts.nlnopts);
+    arma::mat U = arma::vectorise( guess(x) );
+    arma::mat Jinv = arma::pinv( J(U) );
+    arma::vec F,F1 = ff(U),du,JiY;
+    uint k = 0;
+    do {
+        if (k > opts.nlnopts.max_iter) {
+            std::cerr << "bvp() failed: too many iterations needed for convergence." << std::endl
+                      << "returning current best estimate." << std::endl
+                      << "!!!---not necessarily a good estimate---!!!" << std::endl
+                      << "least squares error = " << arma::norm(ff(x),"inf") << " > 0" << std::endl;
+            break;
+        }
+        F = F1;
+        du = -(Jinv * F);
+        U += du;
+        F1 = ff(U);
 
-    arma::mat U = arma::reshape(U0,m,n);
+        JiY = Jinv*(F1 - F);
+        Jinv += (du - JiY)*du.t()*Jinv/arma::dot(du, JiY);
+        if ( Jinv.has_nan() ) {
+            Jinv = arma::pinv( J(U) );
+            opts.nlnopts.num_FD_approx_needed++;
+        }
+
+        k++;
+    } while (arma::norm(du,"inf") > opts.nlnopts.err);
+    opts.nlnopts.num_iters_returned = k;
+    U = arma::reshape(U,m,n);
 
     dsolnp Soln;
     Soln.independent_var_values = x;

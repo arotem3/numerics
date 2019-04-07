@@ -89,7 +89,7 @@ void ODE::linear_BVP::set_c(double p) {
  * --- x  : vector to store x values.
  * --- U  : vector to store U values.
  * --- m  : number of interior grid points. */
-void ODE::linear_BVP::solve2(arma::vec& x, arma::mat& U, size_t m) {
+void ODE::linear_BVP::solve2(arma::vec& x, arma::mat& U, uint m) {
     if (m < 2) {
         std::cerr << "solve4() error: too few grid points." << std::endl;
         return;
@@ -142,7 +142,7 @@ void ODE::linear_BVP::solve2(arma::vec& x, arma::mat& U, size_t m) {
  * --- x  : vector to store x values.
  * --- U  : vector to store U values.
  * --- m  : number of interior grid points. */
-void ODE::linear_BVP::solve4(arma::vec& x, arma::mat& U, size_t m) {
+void ODE::linear_BVP::solve4(arma::vec& x, arma::mat& U, uint m) {
     if (m < 4) {
         std::cerr << "solve4() error: too few grid points." << std::endl;
         return;
@@ -211,7 +211,7 @@ void ODE::linear_BVP::solve4(arma::vec& x, arma::mat& U, size_t m) {
  * --- x  : vector to store x values.
  * --- U  : vector to store U values.
  * --- m  : number of interior grid points. */
-void ODE::linear_BVP::spectral_solve(arma::vec& x, arma::mat& U, size_t m) {
+void ODE::linear_BVP::spectral_solve(arma::vec& x, arma::mat& U, uint m) {
     arma::mat D;
     cheb(D,x,xL,xR,m);
 
@@ -231,7 +231,7 @@ void ODE::linear_BVP::spectral_solve(arma::vec& x, arma::mat& U, size_t m) {
 
 /* SOLVE : returns polynomial interpolator with spectral solution.
  * --- m : number of interior grid points. */
-ODE::dsolnp ODE::linear_BVP::solve(size_t m) {
+ODE::dsolnp ODE::linear_BVP::solve(uint m) {
     arma::vec x;
     arma::mat D;
     cheb(D,x,xL,xR,m);
@@ -260,7 +260,7 @@ ODE::dsolnp ODE::linear_BVP::solve(size_t m) {
  * --- U  : vector to store U values.
  * --- m  : number of interior grid points. 
  * --- solver : choice of solver, 4th order by default. */
-void ODE::linear_BVP::solve(arma::vec& x, arma::mat& U, size_t m, bvp_solvers solver) {
+void ODE::linear_BVP::solve(arma::vec& x, arma::mat& U, uint m, bvp_solvers solver) {
     if (solver == FOURTH_ORDER) {
         solve4(x,U,m);
     } else if (solver == SECOND_ORDER) {

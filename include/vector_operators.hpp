@@ -445,7 +445,7 @@ namespace vector_operators {
             return {};
         }
         std::vector<T> vout;
-        for (size_t i(0); i < v1.size(); ++i) {
+        for (uint i(0); i < v1.size(); ++i) {
             vout.push_back(atan2(v1.at(i), v2.at(i)));
         }
         return vout;
@@ -548,7 +548,7 @@ namespace vector_operators {
             return {};
         }
         std::vector<T> vout;
-        for (size_t i(0); i < v1.size(); ++i) {
+        for (uint i(0); i < v1.size(); ++i) {
             vout.push_back(std::pow(v1.at(i), v2.at(i)));
         }
         return vout;
@@ -651,7 +651,7 @@ namespace vector_operators {
             return {};
         }
         std::vector<T> vout;
-        for (size_t i(0); i < v1.size(); ++i) {
+        for (uint i(0); i < v1.size(); ++i) {
             vout.push_back(std::fmod(v1.at(i), v2.at(i)));
         }
         return vout;

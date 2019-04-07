@@ -7,7 +7,7 @@
  * --- opts : nonlinear options for controlling solver parameters. */
 void numerics::newton(const vector_func& f, const vec_mat_func& J, arma::vec& x, nonlin_opts& opts) {    
     arma::vec dx = {1};
-    size_t k = 1;
+    uint k = 1;
     
     while ( arma::norm(dx, "Inf") > opts.err ) {
         if (k > opts.max_iter) { //newton method takes too long
@@ -46,7 +46,7 @@ numerics::nonlin_opts numerics::newton(const vector_func& f, const vec_mat_func&
  * --- opts : nonlinear options for controlling solver parameters. */
 void numerics::newton(const vec_dfunc& obj_func, const vector_func& f, const vec_mat_func& J, arma::vec& x, nonlin_opts& opts) {
     arma::vec s = {1};
-    size_t k = 1;
+    uint k = 1;
     
     while ( arma::norm(s, "Inf") > opts.err ) {
         if (k > opts.max_iter) { //newton method takes too long

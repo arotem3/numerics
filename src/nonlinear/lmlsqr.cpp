@@ -22,14 +22,14 @@ void numerics::lmlsqr(const vector_func& f, arma::vec& x, lsqr_opts& opts) {
 
     arma::vec F = f(x);
 
-    size_t k = 0;
+    uint k = 0;
     while (arma::norm(F,"inf") > opts.err) {
         if (k >= opts.max_iter) { // too many iterations needed
             std::cerr << "\nlmlsqr() failed: too many iterations needed for convergence." << std::endl
                       << "Returning current best estimate." << std::endl
                       << "!!!---not necessarily a good estimate---!!!" << std::endl
                       << "system norm: " << arma::norm(f(x),"inf") << " > " << opts.err << std::endl << std::endl;
-            return;
+            break;
         }
         
         arma::vec RHS = -J.t() * F;

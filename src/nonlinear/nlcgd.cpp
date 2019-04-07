@@ -11,7 +11,7 @@ void numerics::nlcgd(const vector_func& f, arma::vec& x, nonlin_opts& opts) {
     arma::vec s;
     double alpha, r;
 
-    size_t k = 0;
+    uint k = 0;
     do {
         if (k >= opts.max_iter) { // too many iterations
             std::cerr << "\nnlcgd() failed: too many iterations needed for convergence." << std::endl

@@ -15,7 +15,7 @@ int main() {
     std::cout << "\tintegrate() estimate: " << I << std::endl << "\tactual value: " << val << std::endl
               << "\terror: " << std::abs(I - val) << std::endl;
     
-    I = Sintegrate(f,0,1,1);
+    I = simpson_integral(f,0,1,1);
     std::cout << "|error| < 1" << std::endl;
     std::cout << "\tintegrate() estimate: " << I << std::endl << "\tactual value: " << val << std::endl
               << "\terror: " << std::abs(I - val) << std::endl; 
@@ -27,25 +27,19 @@ int main() {
     std::cout << "using |err| < 0.001" << std::endl;
     double y;
     clock_t t = clock();
-    y = Sintegrate(g, 0, 2*M_PI, 0.001);
+    y = simpson_integral(g, 0, 2*M_PI, 0.001);
     t = clock() - t;
-    std::cout << "Sintegrate() approx: " << y << " it took " << (float)t/CLOCKS_PER_SEC << " secs" << std::endl;
+    std::cout << "simpson_integral() approx: " << y << " it took " << (float)t/CLOCKS_PER_SEC << " secs" << std::endl;
     std::cout << "\ttrue error: " << std::abs(val - y) << std::endl;
 
     t = clock();
-    y = Tintegrate(g, 0, 2*M_PI, 0.001);
+    y = lobatto_integral(g,0,2*M_PI, 0.001);
     t = clock() - t;
-    std::cout << "Tintegrate() approx: " << y << " it took " << (float)t/CLOCKS_PER_SEC << " secs" << std::endl;
-    std::cout << "\ttrue error: " << std::abs(val - y) << std::endl;
-
-    t = clock();
-    y = Lintegrate(g,0,2*M_PI, 0.001);
-    t = clock() - t;
-    std::cout << "Lintegrate() approx: " << y << " it took " << (float)t/CLOCKS_PER_SEC << " secs" << std::endl;
+    std::cout << "lobatto_integral() approx: " << y << " it took " << (float)t/CLOCKS_PER_SEC << " secs" << std::endl;
     std::cout << "\t true error: " << std::abs(val - y) << std::endl;
 
-    std::cout << "\nwhile integrate() typically converges faster to a true solution, tIntegrate() benefits from spectral convergence for periodic functions." << std::endl;
-    std::cout << "\ngIntegrate() is very useful for easy to evaluate (and smooth) functions, but not recommended for 'bad' functions" << std::endl;
+    std::cout << "\nsimpson_integral() is more efficient in how it evaluates the objective function." << std::endl;
+    std::cout << "\nlobatto_integral() is very useful for easy to evaluate (and smooth) functions, but not recommended for 'bad' functions" << std::endl;
 
     return 0;
 }

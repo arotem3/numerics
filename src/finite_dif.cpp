@@ -6,10 +6,10 @@
      * --- err: approximate upper error bound.
      * --- catch_zero: rounds near zero elements to zero. */
 void numerics::approx_jacobian(const vector_func& f, arma::mat& J, const arma::vec& x, double err, bool catch_zero) {
-    size_t m = f(x).n_elem; // num functions -> num rows
-    size_t n = x.n_elem; // num variables -> num cols
+    uint m = f(x).n_elem; // num functions -> num rows
+    uint n = x.n_elem; // num variables -> num cols
     J = arma::zeros(m,n);
-    for (size_t i(0); i < m; ++i) {
+    for (uint i(0); i < m; ++i) {
         auto ff = [f,i](const arma::vec& u) -> double {
             arma::vec z = f(u);
             return z(i);
@@ -34,9 +34,9 @@ arma::vec numerics::jacobian_diag(const vector_func& f, const arma::vec& x) {
  * --- err: approximate upper error bound.
  * --- catch_zero: rounds near zero elements to zero. */
 arma::vec numerics::grad(const vec_dfunc& f, const arma::vec& x, double err, bool catch_zero) {
-    size_t n = x.n_elem;
+    uint n = x.n_elem;
     arma::vec g(n,arma::fill::zeros);
-    for (size_t i(0); i < n; ++i) {
+    for (uint i(0); i < n; ++i) {
         auto ff = [f,x,i](double t) -> double {
             arma::vec y = x;
             y(i) = t;

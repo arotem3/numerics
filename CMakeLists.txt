@@ -54,6 +54,7 @@ add_library(numerics SHARED
         src/utility/cyc_queue.cpp
         src/utility/eval.cpp
         src/utility/meshgrid.cpp
+        src/utility/sample_from.cpp
         src/finite_dif.cpp
         src/kmeans.cpp
         )

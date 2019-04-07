@@ -160,7 +160,7 @@ arma::mat numerics::CubicInterp::operator()(const arma::vec& t) {
 
 /* CUBICINTERP(n) : evaluate interpolator like a function at uniformly spaced values.
  * --- n : number of points to evaluate interpolation on. */
-arma::mat numerics::CubicInterp::operator()(size_t num_pts) {
+arma::mat numerics::CubicInterp::operator()(uint num_pts) {
     arma::vec t = arma::linspace(x(0),x(n),num_pts);
     return operator()(t);
 }

@@ -8,7 +8,7 @@ void numerics::broyd(const vector_func& f, arma::vec& x, nonlin_opts& opts) {
     opts.num_FD_approx_needed = 0;
 
     arma::mat Jinv;
-    //--- (1) initialize approximation of inverse Jacobian
+    //--- (1) initialize approximation of inverse Jacobian (least squares inverse)
     if (opts.init_jacobian_inv != nullptr) Jinv = *opts.init_jacobian_inv;
     else if (opts.init_jacobian != nullptr) {
         Jinv = *opts.init_jacobian;
@@ -31,8 +31,9 @@ void numerics::broyd(const vector_func& f, arma::vec& x, nonlin_opts& opts) {
     //--- (3) update inverse approximation
     arma::vec y = f(x) - F; // change in f(x), needed for inverse update
     Jinv += (dx - Jinv*y)*dx.t()*Jinv/arma::dot(dx,Jinv*y);
+    arma::vec F1;
 
-    size_t k = 1;
+    uint k = 1;
     while (arma::norm(dx,"inf") > opts.err) {
         if (k > opts.max_iter) { // stop if takes too long
             std::cerr << "\nbroyd() failed: too many iterations needed for convergence." << std::endl
@@ -44,6 +45,7 @@ void numerics::broyd(const vector_func& f, arma::vec& x, nonlin_opts& opts) {
         F = f(x);
         dx = -Jinv * F;
         x += dx;
+        
         // update inverse jacobian based on current condition of the approximation
         if ( opts.use_FD_jacobian && (arma::norm(f(x)) > arma::norm(F)) ) { // Jinv has become innaccurate, FD approx needed
             if (opts.jacobian_func != nullptr) {

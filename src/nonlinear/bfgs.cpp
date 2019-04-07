@@ -33,7 +33,7 @@ void numerics::bfgs(const vec_dfunc& obj_func, const vector_func& f, arma::vec& 
     //---(1.e) define next B:
     H = H + (1 + arma::dot(y, H*y)/arma::dot(s,y))*(s*s.t())/arma::dot(s,y) - (s*y.t()*H + H*y*s.t())/arma::dot(y,s);
     //---(2) iterate this process.
-    size_t k = 1;
+    uint k = 1;
     while ( arma::norm(s,"inf") > opts.err ) {
         //---check if bfgs takes too long
         if (k >= opts.max_iter) {
@@ -132,7 +132,7 @@ void numerics::lbfgs(const vec_dfunc& obj_func, const vector_func& f, arma::vec&
     S_history.push(s);
     Y_history.push(y);
 
-    size_t k = 0;
+    uint k = 0;
     while (arma::norm(s,"inf") > opts.err) {
         if (k > opts.max_iter) {
             std::cerr << "\nlbfgs() failed: too many iterations needed for convergence." << std::endl

@@ -3,7 +3,7 @@
 /* CYC_QUEUE : build cyclic queue with random access, utility class.
  * --- num_rows: number of rows per element (each element is a vector).
  * --- max_size: total number of elements in cyclic queue. */
-numerics::cyc_queue::cyc_queue(size_t num_rows, size_t max_size) {
+numerics::cyc_queue::cyc_queue(uint num_rows, uint max_size) {
     max_elem = max_size;
     size = 0;
     head = 0;
@@ -22,7 +22,7 @@ void numerics::cyc_queue::push(const arma::vec& x) {
 }
 
 /* CYC_QUEUE(i) : element access. */
-arma::vec numerics::cyc_queue::operator()(size_t i) {
+arma::vec numerics::cyc_queue::operator()(uint i) {
     if (i >= size) {
         std::cerr << "cyc_queue::element access out of bounds." << std::endl;
         return {0};

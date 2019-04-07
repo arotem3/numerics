@@ -5,7 +5,7 @@
  * --- x : x values overwhich to calc diff mat
  * --- L,R : limits on x.
  * --- m : number of points. */
-void ODE::diffmat4(arma::mat& D, arma::vec& x, double L, double R, size_t m) {
+void ODE::diffmat4(arma::mat& D, arma::vec& x, double L, double R, uint m) {
     x = arma::regspace(0,m)/m; // regspace on [0,1] with m+1 points
     double h = (R - L)/m; // spacing
     x = (R - L) * x + L; // transformation from [0,1] -> [L,R]
@@ -28,7 +28,7 @@ void ODE::diffmat4(arma::mat& D, arma::vec& x, double L, double R, size_t m) {
  * --- x : x values overwhich to calc diff mat
  * --- L,R : limits on x.
  * --- m : number of points. */
-void ODE::diffmat2(arma::mat& D, arma::vec& x, double L, double R, size_t m) {
+void ODE::diffmat2(arma::mat& D, arma::vec& x, double L, double R, uint m) {
     x = arma::regspace(0,m)/m; // regspace on [0,1] with m+1 points
     double h = (R - L)/m; // spacing
     x = (R - L) * x + L; // transformation from [0,1] -> [L,R]

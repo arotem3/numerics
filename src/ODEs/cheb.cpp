@@ -5,7 +5,7 @@
  * --- x : grid value storage.
  * --- L,R : limits on x.
  * --- m : number of points. */
-void ODE::cheb(arma::mat& D, arma::vec& x, double L, double R, size_t m) {
+void ODE::cheb(arma::mat& D, arma::vec& x, double L, double R, uint m) {
     x = arma::regspace(0,m);
     x = -1*arma::cos(M_PI * x / m); // standard cheb nodes on [-1,1]
     x = (R - L) * x/2 + (L + R)/2; // transformation from [-1,1] -> [L,R]
@@ -23,6 +23,6 @@ void ODE::cheb(arma::mat& D, arma::vec& x, double L, double R, size_t m) {
  * --- D : cheb matrix storage.
  * --- x : grid storage.
  * --- m : number of points on interval. */
-void ODE::cheb(arma::mat& D, arma::vec& x, size_t m) {
+void ODE::cheb(arma::mat& D, arma::vec& x, uint m) {
     cheb(D,x,-1,1,m);
 }

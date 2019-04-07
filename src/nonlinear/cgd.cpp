@@ -6,7 +6,7 @@
  * --- x : initial guess and solution stored here
  * --- opts : options struct */
 void numerics::cgd(arma::mat& A, arma::vec& b, arma::vec& x, cg_opts& opts) {
-    size_t n = opts.max_iter;
+    uint n = opts.max_iter;
     if (n==0) n = 1.1*b.n_elem;
     
     if (!opts.is_symmetric || !A.is_square() || !A.is_symmetric()) {
@@ -16,7 +16,7 @@ void numerics::cgd(arma::mat& A, arma::vec& b, arma::vec& x, cg_opts& opts) {
 
     arma::vec r = b - A*x;
     arma::vec p;
-    size_t k = 0;
+    uint k = 0;
     if (opts.preconditioner.empty()) { // not preconditioned
         p = r;
         while (arma::norm(r, "inf") > opts.err) {
@@ -74,7 +74,7 @@ numerics::cg_opts numerics::cgd(arma::mat& A, arma::vec& b, arma::vec& x) {
  * --- x : initial guess and solution stored here
  * --- opts : options struct */
 void numerics::sp_cgd(const arma::sp_mat& A, const arma::vec& b, arma::vec& x, cg_opts& opts) {
-    size_t n = opts.max_iter;
+    uint n = opts.max_iter;
     if (n==0) n = 1.1*b.n_elem;
 
     if (!opts.is_symmetric || !A.is_symmetric()) {
@@ -84,7 +84,7 @@ void numerics::sp_cgd(const arma::sp_mat& A, const arma::vec& b, arma::vec& x, c
 
     arma::vec r = b - A*x;
     arma::vec p;
-    size_t k = 0;
+    uint k = 0;
     if (opts.sp_precond == nullptr) { // not preconditioned
         p = r;
         while (arma::norm(r, "inf") > opts.err) {

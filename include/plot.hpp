@@ -54,7 +54,7 @@ std::string to_cmd(const std::string& s) {
 
 
 template<class T, class S>
-void plot(Gnuplot& fig, const T& x, const S& y, std::map<std::string, std::string> args) {
+void plot(Gnuplot& fig, const T& x, const S& y, std::map<std::string, std::string> args = {}) {
     std::string cmd, leg, title, xlab, ylab;
     bool linespec = false, linewidth = false, markersize = false;
     for (auto arg : args) {
@@ -95,14 +95,14 @@ void plot(Gnuplot& fig, const T& x, const S& y, std::map<std::string, std::strin
 }
 
 template<class T, class S>
-void lines(Gnuplot& fig, const T& x, const S& y, std::map<std::string, std::string> args) {
+void lines(Gnuplot& fig, const T& x, const S& y, std::map<std::string, std::string> args = {}) {
     if (args["linespec"].empty()) args["linespec"] = "-";
     else args["linespec"] = "-" + args["linespec"];
     plot(fig, x, y, args);
 }
 
 template<class T, class S>
-void scatter(Gnuplot& fig, const T& x, const S& y, std::map<std::string, std::string> args) {
+void scatter(Gnuplot& fig, const T& x, const S& y, std::map<std::string, std::string> args = {}) {
     if (args["linespec"].empty()) args["linespec"] = "o";
     else args["linespec"] = "o" + args["linespec"];
     plot(fig, x, y, args);

@@ -3,7 +3,7 @@
 /* POISSON2D : Solves the 2D Poisson's Equation: L*u(x,y) = f(x,y) with simple BCs.
  * --- f  : f(x,y).
  * --- bc : boundary conditions struct. */
-ODE::soln_2d ODE::poisson2d(const pde2fun& f, const bcfun_2d& bc, size_t num_pts) {
+ODE::soln_2d ODE::poisson2d(const pde2fun& f, const bcfun_2d& bc, uint num_pts) {
     auto change_x = [&](const arma::vec& x) -> arma::vec { // [-1,1] -> [lower_x, upper_x]
         return (bc.upper_x - bc.lower_x)*x/2 + (bc.upper_x + bc.lower_x)/2;
     };

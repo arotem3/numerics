@@ -31,7 +31,7 @@ double numerics::newton(const dfunc& f, const dfunc& df, double x, double err) {
  * --- f  : function to find root of.
  * --- a,b : bracket for root. */
 double numerics::secant(const dfunc& f, double a, double b) {
-    double tol = 1e-8; int max_iter = 100;
+    double tol = 1e-12; int max_iter = 100;
 
     double fa = f(a), fb = f(b);
     int k = 2;

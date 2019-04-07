@@ -12,32 +12,32 @@ void wait_for_key();
 using namespace ODE;
 
 int main() {
-    std::cout << "We will solve the linear boundary value problem:" << std::endl
-              << "\tu''(x) = sin(x) + u(x)\t0 < x < 2*pi" << std::endl
-              << "\tu(0) = 1\tu(2*pi) + u'(2*pi) = 0" << std::endl;
-    linear_BVP problem;
-    problem.set_boundaries(0,2*M_PI); // 0 < x < 2*pi
-    problem.set_LBC(1,0,1); // u(0) = 1
-    problem.set_RBC(1,1,0); // u(2pi) + u'(2pi) = 0
-    // u''(x) = sin(x) + u(x)
-    problem.set_a( afunc );
-    problem.set_b(1.0);
-    
-    arma::vec x;
-    arma::mat U;
+    /* std::cout << "We will solve the linear boundary value problem:" << std::endl
+                << "\tu''(x) = sin(x) + u(x)\t0 < x < 2*pi" << std::endl
+                << "\tu(0) = 1\tu(2*pi) + u'(2*pi) = 0" << std::endl;
+        linear_BVP problem;
+        problem.set_boundaries(0,2*M_PI); // 0 < x < 2*pi
+        problem.set_LBC(1,0,1); // u(0) = 1
+        problem.set_RBC(1,1,0); // u(2pi) + u'(2pi) = 0
+        // u''(x) = sin(x) + u(x)
+        problem.set_a( afunc );
+        problem.set_b(1.0);
+        
+        arma::vec x;
+        arma::mat U;
 
-    problem.solve(x,U,40); std::cout << "using fourth order solver..." << std::endl;
-    // problem.solve(x,U,40, SECOND_ORDER); std::cout << "using second order solver..." << std::endl;
-    // problem.solve(x,U,20, CHEBYSHEV); std::cout << "using spectral solver..." << std::endl;
-    // dsolnp y = problem.solve(20); x = arma::linspace(0,2*M_PI); U = y.soln(x); std::cout << "using spectral solver..." << std::endl;
+        problem.solve(x,U,40); std::cout << "using fourth order solver..." << std::endl;
+        // problem.solve(x,U,40, SECOND_ORDER); std::cout << "using second order solver..." << std::endl;
+        // problem.solve(x,U,20, CHEBYSHEV); std::cout << "using spectral solver..." << std::endl;
+        // dsolnp y = problem.solve(20); x = arma::linspace(0,2*M_PI); U = y.soln(x); std::cout << "using spectral solver..." << std::endl;
 
-    arma::mat u = 0.25 * (arma::exp(-2*M_PI - x) % (-1 + 4*std::exp(2*M_PI)+arma::exp(2*x)) - 2*arma::sin(x));
+        arma::mat u = 0.25 * (arma::exp(-2*M_PI - x) % (-1 + 4*std::exp(2*M_PI)+arma::exp(2*x)) - 2*arma::sin(x)); */
 
     Gnuplot graph;
-    plot(graph, x, U, {{"legend","U - solution"},{"linespec","ob"}});
-    plot(graph, x, u, {{"legend","u - exact"}});
+    // plot(graph, x, U, {{"legend","U - solution"},{"linespec","ob"}});
+    // plot(graph, x, u, {{"legend","u - exact"}});
 
-    wait_for_key();
+    // wait_for_key();
 
     std::cout << "Now we will solve the nonlinear boundary value problem:" << std::endl
               << "\tu' = v" << std::endl << "\tv' = -sin(u)" << std::endl
@@ -79,7 +79,7 @@ int main() {
     };
 
     bvp_opts opts;
-    opts.nlnopts.err = 1e-4; // play around with the nonlinear solver tolerance
+    opts.nlnopts.err = 1e-15; // play around with the nonlinear solver tolerance
     // opts.order = bvp_solvers::SECOND_ORDER; std::cout << "using second order solver..." << std::endl;
     opts.order = bvp_solvers::FOURTH_ORDER; std::cout << "using fourth order solver..." << std::endl;
     // opts.order = bvp_solvers::CHEBYSHEV; std::cout << "using spectral solver" << std::endl;

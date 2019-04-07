@@ -12,7 +12,7 @@ void numerics::sgd(const sp_vector_func& f, arma::vec& x, gd_opts& opts) {
     double r;
     arma::vec p;
     
-    size_t k = 0;
+    uint k = 0;
     do {
         if (k > opts.max_iter) { // too many iterations
             std::cerr << "sgd() error: too many iterations needed for convegence to a root." << std::endl

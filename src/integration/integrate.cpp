@@ -1,32 +1,5 @@
 #include "numerics.hpp"
 
-double Simp(const numerics::dfunc& f, double a, double b, int n) { //simpson's rule for integration
-    double h = (b - a)/n;
-    double s = f(a) + f(b);
-    for (int i(2); i<=n; ++i) {
-        if (i%2 == 0) {
-            s += 4 * f(a + (i - 1)*h);
-        }
-        else {
-            s += 2 * f(a + (i - 1)*h);
-        }
-    }
-    s *= h/3;
-    return s;
-}
-
-double trap(const numerics::dfunc& f, double a, double b, int n) {
-    double h = (b-a)/n;
-    double t = 0;
-    double temp;
-    for (int i(0); i < n; ++i) {
-        temp = f(a + i*h) + f(a + (i+1)*h);
-        temp *= h/2;
-        t += temp;
-    }
-    return t;
-}
-
 /* INTEGRATE : adaptive numerical intergration with user choice of algorithm
  * --- f : function to integrate.
  * --- a,b : interval [a,b] to evaluate integral over
@@ -35,13 +8,9 @@ double trap(const numerics::dfunc& f, double a, double b, int n) {
 double numerics::integrate(const dfunc& f, double a, double b, integrator i, double err) {
     double s = 0;
     if (i == SIMPSON) {
-        s = Sintegrate(f,a,b,err);
-    } else if (i == TRAPEZOID) {
-        s = Tintegrate(f,a,b,err);
-    } else if (i == LOBATTO) {
-        s = Lintegrate(f,a,b,err);
+        s = simpson_integral(f,a,b,err);
     } else {
-        std::cerr << "integrate() error: invalid input selection." << std::endl;
+        s = lobatto_integral(f,a,b,err);
     }
     return s;
 }
@@ -50,37 +19,62 @@ double numerics::integrate(const dfunc& f, double a, double b, integrator i, dou
  * --- f : function to integrate.
  * --- a,b : interval [a,b] to evaluate integral over
  * --- err : error tolerance, i.e. stopping criterion */
-double numerics::Sintegrate(const dfunc& f, double a, double b, double err) {
-    err = std::abs(err);
-    double S1 = Simp(f,a,b,2);
-    double S2 = Simp(f,a,b,4);
-    double s;
-    
-    if (std::abs(S2 - S1) < 15*err) { //results from comparing 1 and 2 intervals of simpson's rule
-        s = S2;
+struct tree {
+    double I;
+    double xL, xM, xR;
+    double h;
+    tree* left;
+    tree* right;
+    void compute_integral(std::map<double,double>& F) {
+        I = ( F[xL] + 4*F[xM] + F[xR] ) * h/3;
     }
+    void build_children(const numerics::dfunc& f, std::map<double,double>& F) {
+        left = new tree;
+        left->xL = xL;
+        left->xM = (xL + xM)/2;
+        left->xR = xM;
+        left->h  = h/2;
+        F[left->xM] = f(left->xM);
+        left->compute_integral(F);
+        
+        right = new tree;
+        right->xL = xM;
+        right->xM = (xM + xR)/2;
+        right->xR = xR;
+        right->h  = h/2;
+        F[right->xM] = f(right->xM);
+        right->compute_integral(F);
+    }
+};
+
+double eval_tree(tree* val, const numerics::dfunc& f, std::map<double,double>& F, double err) {
+    double I1 = val->I;
+    double I2 = val->left->I + val->right->I;
+    if (std::abs(I1 - I2) < 15*err) return I1;
     else {
-        s = Sintegrate(f, a, (a+b)/2, err/2) + Sintegrate(f, (a+b)/2, b, err/2);
+        err /= 2;
+        val->left->build_children(f, F);
+        val->right->build_children(f, F);
+        return eval_tree(val->left, f, F, err) + eval_tree(val->right, f, F, err);
     }
-    
-    return s;
 }
 
-/* TINTEGRATE : adaptive trapezoid's method, good for periodic functions
- * --- f : function to integrate.
- * --- a,b : interval [a,b] to evaluate integral over
- * --- err : error tolerance, i.e. stopping criterion */
-double numerics::Tintegrate(const dfunc& f, double a, double b, double err) {
-    err = std::abs(err);
-    double T1 = trap(f,a,b,2);
-    double T2 = trap(f, a,b,4);
-    double t;
-    if (std::abs(T2 - T1) < 3*err) {
-        t = T2;
-    } else {
-        t = Tintegrate(f, a, (a+b)/2, err/2) + Tintegrate(f, (a+b)/2, b, err/2);
-    }
-    return t;
+double numerics::simpson_integral(const numerics::dfunc& f, double a, double b, double err) {
+    tree* val = new tree;
+    val->xL = a;
+    val->xM = (a+b)/2;
+    val->xR = b;
+    val->h = (val->xR - val->xL)/2;
+
+    std::map<double,double> F;
+    F[val->xL] = f(val->xL);
+    F[val->xM] = f(val->xM);
+    F[val->xR] = f(val->xR);
+
+    val->compute_integral(F);
+    val->build_children(f, F);
+
+    return eval_tree(val, f, F, err);
 }
 
 /* LINTEGRATE : adaptive gauss-Lobato's method,
@@ -88,7 +82,7 @@ double numerics::Tintegrate(const dfunc& f, double a, double b, double err) {
  * --- f : function to integrate.
  * --- a,b : interval [a,b] to evaluate integral over
  * --- err : error tolerance, i.e. stopping criterion */
-double numerics::Lintegrate(const dfunc& f, double a, double b, double err) {
+double numerics::lobatto_integral(const dfunc& f, double a, double b, double err) {
     err = std::abs(err);
     double bma = (b-a)/2;
     double bpa = (b+a)/2;
@@ -104,5 +98,5 @@ double numerics::Lintegrate(const dfunc& f, double a, double b, double err) {
     sum7 *= bma;
 
     if (std::abs(sum4 - sum7) < err) return sum4;
-    else return Lintegrate(f,a,bpa,err/2) + Lintegrate(f,bpa,b,err/2);
+    else return lobatto_integral(f,a,bpa,err/2) + lobatto_integral(f,bpa,b,err/2);
 }

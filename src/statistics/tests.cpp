@@ -185,8 +185,8 @@ statistics::prop_test statistics::p_test(int S, int n, double p0, enum hypothesi
 double statistics::perm_test(arma::vec& x1, arma::vec& x2, enum hypothesis H1, unsigned int num_trials) {
     //--- (0.a) calculate important statistics
     arma::arma_rng::set_seed_random();
-    size_t n1 = x1.size();
-    size_t n2 = x2.size();
+    uint n1 = x1.size();
+    uint n2 = x2.size();
     double m = arma::mean(x1) - arma::mean(x2);
     double v1 = arma::var(x1)/n1;
     double v2 = arma::var(x2)/n2;
@@ -198,7 +198,7 @@ double statistics::perm_test(arma::vec& x1, arma::vec& x2, enum hypothesis H1, u
     arma::vec perm_t_vals(num_trials, arma::fill::zeros);
 
     //--- (1) run permutations
-    for (size_t i(0); i < num_trials; ++i) {
+    for (uint i(0); i < num_trials; ++i) {
         arma::vec shuff_x = arma::shuffle(x);
         arma::vec samp1 = shuff_x(arma::span(0,n1-1));
         arma::vec samp2 = shuff_x(arma::span(n1,n1+n2-1));

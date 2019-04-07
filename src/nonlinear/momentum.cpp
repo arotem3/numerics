@@ -12,7 +12,7 @@ void numerics::mgd(const vector_func& f, arma::vec& x, gd_opts& opts) {
     double alpha = line_min( [&p,&x,&f,r](double a) -> double {arma::vec q = (-1.0/r)*p; return arma::dot(q,f(x + a*q));} );
     x += (-alpha/r)*p;
 
-    size_t k = 1;
+    uint k = 1;
     while (std::abs(alpha*r) > opts.err) {
         if (k >= opts.max_iter) { // too many iterations
             std::cerr << "mgd() error: too many iterations needed for convegence to a root." << std::endl

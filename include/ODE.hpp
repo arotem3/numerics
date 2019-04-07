@@ -127,13 +127,13 @@ namespace ODE {
 
         typedef struct IVP_OPTIONS {
             // inputs
-            size_t max_nonlin_iter;
+            uint max_nonlin_iter;
             double max_nonlin_err;
             double adaptive_step_min;
             double adaptive_step_max;
             double adaptive_max_err;
             double step;
-            size_t stopping_event;
+            uint stopping_event;
             std::vector<event_func> events;
             odeJac* ode_jacobian;
 
@@ -156,15 +156,15 @@ namespace ODE {
             }
 
             // outputs
-            size_t num_FD_approx_needed;
-            size_t num_nonlin_iters_returned;
+            uint num_FD_approx_needed;
+            uint num_nonlin_iters_returned;
         } ivp_options;
 
         double event_handle(ivp_options& opts, double prev_t, const arma::rowvec& prev_U, double t, const arma::rowvec& V, double k);
 
         typedef struct NONLIN_BVP_OPTS {
             // inputs
-            size_t num_points;
+            uint num_points;
             numerics::nonlin_opts nlnopts;
             bvp_solvers order;
             odeJac* jacobian_func;
@@ -176,10 +176,10 @@ namespace ODE {
             }
         } bvp_opts;
     // --- Utility ---------------- //
-        void diffmat4(arma::mat& D, arma::vec& x, double L, double R, size_t m);
-        void diffmat2(arma::mat& D, arma::vec& x, double L, double R, size_t m);
-        void cheb(arma::mat& D, arma::vec& x, double L, double R, size_t m);
-        void cheb(arma::mat& D, arma::vec& x, size_t m);
+        void diffmat4(arma::mat& D, arma::vec& x, double L, double R, uint m);
+        void diffmat2(arma::mat& D, arma::vec& x, double L, double R, uint m);
+        void cheb(arma::mat& D, arma::vec& x, double L, double R, uint m);
+        void cheb(arma::mat& D, arma::vec& x, uint m);
     // --- IVPs ------------------- //
         void rk45(const odefun&, arma::vec&, arma::mat&, ivp_options&);
         ivp_options rk45(const odefun&, arma::vec&, arma::mat&);
@@ -222,9 +222,9 @@ namespace ODE {
             private:
             double xL, xR, alphaL, alphaR, betaL, betaR, gammaL, gammaR;
             std::function<double(double)> a, b, c;
-            void solve2(arma::vec&, arma::mat&, size_t);
-            void solve4(arma::vec&, arma::mat&, size_t);
-            void spectral_solve(arma::vec&, arma::mat&, size_t);
+            void solve2(arma::vec&, arma::mat&, uint);
+            void solve4(arma::vec&, arma::mat&, uint);
+            void spectral_solve(arma::vec&, arma::mat&, uint);
 
             public:
             linear_BVP();
@@ -237,12 +237,12 @@ namespace ODE {
             void set_b(double);
             void set_c(std::function<double(double)>);
             void set_c(double);
-            void solve(arma::vec&, arma::mat&, size_t, bvp_solvers solver = FOURTH_ORDER);
-            dsolnp solve(size_t num_pts = 40);
+            void solve(arma::vec&, arma::mat&, uint, bvp_solvers solver = FOURTH_ORDER);
+            dsolnp solve(uint num_pts = 40);
         };
 
         dsolnp bvp(const odefun&, const bcfun&, const soln_init&, bvp_opts&);
         dsolnp bvp(const odefun&, const bcfun&, const soln_init&);
     // --- PDEs ------------------- //
-        soln_2d poisson2d(const pde2fun&, const bcfun_2d&, size_t num_pts = 48);
+        soln_2d poisson2d(const pde2fun&, const bcfun_2d&, uint num_pts = 48);
 }

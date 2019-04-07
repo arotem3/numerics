@@ -71,7 +71,7 @@ namespace numerics {
             typedef struct NONLIN_OPTS {
                 // inputs
                 double err;
-                size_t max_iter;
+                uint max_iter;
                 bool use_FD_jacobian;
                 double wolfe_c1;
                 double wolfe_c2;
@@ -81,8 +81,8 @@ namespace numerics {
                 vec_mat_func* jacobian_func;
 
                 // outputs
-                size_t num_iters_returned;
-                size_t num_FD_approx_needed;
+                uint num_iters_returned;
+                uint num_FD_approx_needed;
                 arma::mat final_jacobian;
                 NONLIN_OPTS() {
                     err = root_err;
@@ -102,15 +102,15 @@ namespace numerics {
             typedef struct LBFGS_OPTS {
                 // inputs
                 double err;
-                size_t max_iter;
-                size_t num_iters_to_remember;
+                uint max_iter;
+                uint num_iters_to_remember;
                 double wolfe_c1;
                 double wolfe_c2;
                 double wolfe_scaling;
                 arma::vec init_hess_diag_inv;
 
                 // outputs
-                size_t num_iters_returned;
+                uint num_iters_returned;
                 LBFGS_OPTS() {
                     err = root_err;
                     max_iter = bfgs_max_iter;
@@ -125,15 +125,15 @@ namespace numerics {
             typedef struct LEAST_SQR_OPTS {
                 // inputs
                 double err;
-                size_t max_iter;
+                uint max_iter;
                 double damping_param;
                 double damping_scale;
                 bool use_scale_invariance;
                 vec_mat_func* jacobian_func;
 
                 // outputs
-                size_t num_iters_returned;
-                size_t num_FD_approx_made;
+                uint num_iters_returned;
+                uint num_FD_approx_made;
                 arma::mat final_jacobian;
                 LEAST_SQR_OPTS() {
                     err = 1e-6;
@@ -148,13 +148,13 @@ namespace numerics {
             } lsqr_opts;
 
             typedef struct CONJ_GRAD_OPTS {
-                size_t max_iter;
+                uint max_iter;
                 arma::mat preconditioner;
                 vector_func* sp_precond; // returns inv(M)*x for condition matrix M
                 double err;
                 bool is_symmetric;
 
-                size_t num_iters_returned;
+                uint num_iters_returned;
                 CONJ_GRAD_OPTS() {
                     max_iter = 0;
                     err = 1e-6;
@@ -167,13 +167,13 @@ namespace numerics {
             typedef struct GRADIENT_DESCENT_OPTS {
                 // inputs
                 double err;
-                size_t max_iter;
-                size_t grad_nelem;
+                uint max_iter;
+                uint grad_nelem;
                 double damping_param;
-                size_t stochastic_batch_size;
+                uint stochastic_batch_size;
 
                 // outputs
-                size_t num_iters_returned;
+                uint num_iters_returned;
                 GRADIENT_DESCENT_OPTS() {
                     err = 1e-4;
                     max_iter = gd_max_iter;
@@ -202,7 +202,7 @@ namespace numerics {
                 // inputs
                 nonlin_solver solver; // -- general
                 double tolerance; // -- general
-                size_t max_iter; // -- general
+                uint max_iter; // -- general
                 bool use_FD_gradient; // -- general
                 bool use_FD_hessian; // -- bfgs, lmlsqr
                 bool use_scale_invariance; // -- lmlsqr
@@ -211,8 +211,8 @@ namespace numerics {
                 double wolfe_c1; // -- lbfgs, bfgs
                 double wolfe_c2; // -- lbfgs, bfgs
                 double wolfe_scaling; // -- lbfgs, bfgs
-                size_t stochastic_batch_size; // -- sgd
-                size_t num_iters_to_remember; // -- lbfgs
+                uint stochastic_batch_size; // -- sgd
+                uint num_iters_to_remember; // -- lbfgs
                 arma::mat* init_hessian; // -- bfgs, lbfgs, lmlsqr
                 arma::mat* init_hessian_inv; // -- bfgs, lbfgs, lmlsqr
                 vec_mat_func* hessian_func; // -- newton, lmlsqr
@@ -220,7 +220,7 @@ namespace numerics {
                 sp_vector_func* indexed_gradient_func; // -- sgd
 
                 //outputs
-                size_t num_iters_returned;
+                uint num_iters_returned;
 
                 UNCONSTRAINED_OPTIM_OPTS() {
                     solver = LBFGS;
@@ -445,9 +445,9 @@ namespace numerics {
 
             typedef struct GENETIC_OPTS {
                 double err;
-                size_t population_size;
+                uint population_size;
                 double reproduction_rate;
-                size_t diversity_limit;
+                uint diversity_limit;
                 double mutation_rate;
                 double search_radius;
                 GENETIC_OPTS() {
@@ -478,15 +478,15 @@ namespace numerics {
 
         class cyc_queue {
             private:
-            size_t max_elem;
-            size_t size;
-            size_t head;
+            uint max_elem;
+            uint size;
+            uint head;
 
             public:
             arma::mat A;
-            cyc_queue(size_t num_rows, size_t max_size);
+            cyc_queue(uint num_rows, uint max_size);
             void push(const arma::vec& x);
-            arma::vec operator()(size_t i);
+            arma::vec operator()(uint i);
             arma::vec end();
             int length();
             int col_size();
@@ -496,11 +496,13 @@ namespace numerics {
 
         double wolfe_step(const vec_dfunc&, const vector_func&, const arma::vec&, const arma::vec&, double, double, double);
         double line_min(const dfunc&);
+
+        arma::vec sample_from(int, const arma::vec&, const arma::vec& labels = arma::vec());
+        double sample_from(const arma::vec&, const arma::vec& labels = arma::vec());
     // --- integration ------------ //
         double integrate(const dfunc&, double, double, integrator i = LOBATTO, double err = 1e-5);
-        double Sintegrate(const dfunc&, double, double, double err = 1e-5);
-        double Tintegrate(const dfunc&, double, double, double err = 1e-2);
-        double Lintegrate(const dfunc&, double, double, double err = 1e-5);
+        double simpson_integral(const dfunc&, double, double, double err = 1e-5);
+        double lobatto_integral(const dfunc&, double, double, double err = 1e-5);
         
         double mcIntegrate(const vec_dfunc&, const arma::vec&, const arma::vec&, double err = 1e-2, int N = 1e3);
     // --- root finding ----------- //
@@ -585,7 +587,7 @@ namespace numerics {
             CubicInterp(std::istream&);
             CubicInterp(const arma::vec&, const arma::mat&);
             arma::mat operator()(const arma::vec&);
-            arma::mat operator()(size_t);
+            arma::mat operator()(uint);
             void save(std::ostream&);
             void load(std::istream&);
         };
@@ -622,39 +624,35 @@ namespace numerics {
         class kmeans {
             private:
             int k;              // number of clusters
-            unsigned int dim;   // dimension of problem space
+            uint dim;           // dimension of problem space
+            uint num_iters;     // number of iterations needed to converge
             arma::mat C;        // each column is a cluster mean
-            arma::mat* data;    // the data set ~ this is a pointer to the data set, so it will not be deleted when kmeans is deleted!
-            arma::rowvec dataCluster;       // the i^th elem of dataCluster is the cluster number for the i^th data input. 
-            int closestC(const arma::vec&); // find closest cluster to a data pt
+            arma::mat data;     // the data set ~ this is a pointer to the data set, so it will not be deleted when kmeans is deleted!
+            arma::vec dataCluster;       // the i^th elem of dataCluster is the cluster number for the i^th data input. 
+            int closestC(const arma::rowvec&); // find closest cluster to a data pt
+            arma::mat init_clusters();
 
             public:
             kmeans(arma::mat&, int);            // constructor
-            kmeans(kmeans& KM) {
-                k = KM.k;
-                dim = KM.dim;
-                C = KM.C;
-                data = KM.data;
-                dataCluster = KM.dataCluster;
-            }
             kmeans(std::istream&);
             void load(std::istream&);
             void save(std::ostream&);
 
-            arma::rowvec getClusters() const;   // get rowvec dataCluster
+            arma::vec getClusters() const;   // get rowvec dataCluster
             arma::mat getCentroids() const;     // get matrix C
 
             // all of these return the cluster number of a set of data points.
-            arma::rowvec operator()(const arma::mat&);
-            arma::rowvec place_in_cluster(const arma::mat&);
-            int operator()(const arma::vec&);
-            int place_in_cluster(const arma::vec&);
+            arma::vec operator()(const arma::mat&);
+            arma::vec predict(const arma::mat&);
+            int operator()(const arma::rowvec&);
+            int predict(const arma::rowvec&);
 
             // returns a matrix of the given cluster
-            arma::mat operator[](int);
-            arma::mat all_from_cluster(int);
+            arma::mat operator[](uint);
+            arma::mat all_from_cluster(uint);
 
             // prints an overview to output stream
-            std::ostream& summary(std::ostream&);
+            std::ostream& summary(std::ostream& out = std::cout);
+            std::ostream& help(std::ostream& out = std::cout);
         };
 };
