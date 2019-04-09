@@ -18,6 +18,7 @@ add_library(numerics SHARED
         src/interpolation/interp.cpp
         src/interpolation/polyInterp.cpp
         src/interpolation/sincInterp.cpp
+        src/interpolation/splines.cpp
         src/nonlinear/adj_gd.cpp
         src/nonlinear/bfgs.cpp
         src/nonlinear/broyd.cpp

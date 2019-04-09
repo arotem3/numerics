@@ -111,7 +111,7 @@ void scatter(Gnuplot& fig, const T& x, const S& y, std::map<std::string, std::st
 template<class A,class B, class C>
 void plot3d(Gnuplot& p, const A& x, const B& y, const C& z) {
     p << "set palette defined (0  0.0 0.0 0.5, 1  0.0 0.0 1.0, 2  0.0 0.5 1.0, 3  0.0 1.0 1.0, 4  0.5 1.0 0.5, 5  1.0 1.0 0.0, 6  1.0 0.5 0.0, 7  1.0 0.0 0.0,8 0.5 0.0 0.0)";
-    p << "set dgrid3d 30,30 splines";
+    p << "set dgrid3d 30,30";
     p.set_style("pm3d");
     p.plot_xyz(x,y,z);
 }

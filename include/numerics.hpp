@@ -5,6 +5,8 @@
 #include <iostream>
 #include <iomanip>
 #include <algorithm>
+#include <queue>
+#include <set>
 
 #define ARMA_USE_SUPERLU 1
 #include <armadillo>
@@ -604,6 +606,42 @@ namespace numerics {
             void load(std::istream&);
             void save(std::ostream&);
             arma::mat operator()(const arma::vec&);
+        };
+
+        class splines {
+            private:
+            arma::mat c, d;
+            arma::mat X, Y;
+            std::vector<std::vector<int>> monomials;
+            int n, m, dim;
+            double lambda, df, gcv;
+            
+            void gen_monomials();
+            void fit(arma::mat&, arma::mat&, arma::mat&, arma::mat&);
+
+            public:
+            splines();
+            splines(const arma::mat&, const arma::mat&, int m = 1);
+            splines(const arma::mat&, const arma::mat&, double, int m = 1);
+            splines(std::istream&);
+
+            arma::mat predict(const arma::mat&);
+            arma::mat operator()(const arma::mat&);
+
+            arma::mat data_X() const;
+            arma::mat data_Y() const;
+
+            arma::mat rbf(const arma::mat&);
+            arma::mat polyKern(const arma::mat&);
+            arma::vec poly_coef() const;
+            arma::vec rbf_coef() const;
+
+            double gcv_score() const;
+            double eff_df() const;
+            double smoothing_param() const;
+
+            void load(std::istream&);
+            void save(std::ostream&);
         };
         
         arma::mat nearestInterp(const arma::vec&, const arma::mat&, const arma::vec&);
