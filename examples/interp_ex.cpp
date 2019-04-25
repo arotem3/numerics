@@ -1,11 +1,12 @@
 #include "numerics.hpp"
-#include "plot.hpp"
+#include "matplotlibcpp.h"
 
-// g++ -g -Wall -o interp examples/interp_ex.cpp examples/wait.cpp -lnumerics -larmadillo
-
-void wait_for_key(std::string s);
+// g++ -g -Wall -o interp examples/interp_ex.cpp -lnumerics -larmadillo -I/usr/include/python2.7 -lpython2.7
 
 using namespace numerics;
+namespace plt = matplotlibcpp;
+
+typedef std::vector<double> ddvec;
 
 arma::mat f(const arma::vec& x) {
     arma::mat y(x.n_elem, 2);
@@ -28,28 +29,37 @@ int main() {
     arma::vec u = (b-a)*arma::regspace<arma::vec>(0,n)/n + a;
     arma::mat v;
 
-    Gnuplot fig;
-    fig.set_yrange(-1.5,1.5);
+    plt::suptitle("interpolation");
     
     for (int i(0); i < 5; ++i) {
         std::string title;
-        if (i==0) {v = nearestInterp(x,y,u); title = "nearest neighbor interpolation.";}
-        else if (i==1) {v = linearInterp(x,y,u); title = "linear interpolation";}
-        else if (i==2) {v = fSpline(u); title = "cubic spline interpolation";}
-        else if (i==3) {v = lagrangeInterp(x,y,u); title = "lagrange interpolation";}
-        else if (i==4) {v = sincInterp(x,y,u); title = "sinc interpolation";}
+        if (i==0) {v = nearestInterp(x,y,u); title = "nearest neighbor";}
+        else if (i==1) {v = linearInterp(x,y,u); title = "linear";}
+        else if (i==2) {v = fSpline(u); title = "cubic spline";}
+        else if (i==3) {v = lagrangeInterp(x,y,u); title = "lagrange";}
+        else if (i==4) {v = sincInterp(x,y,u); title = "sinc";}
 
         std::cout << std::endl << title << std::endl;
         std::cout << "max error : " << arma::norm(v - f(u), "inf") << std::endl;
 
-        plot(fig, x, (arma::mat)y.col(0), {{"legend","original x,y"},{"linespec","or"}});
-        plot(fig, x, (arma::mat)y.col(1), {{"legend","original x,y"},{"linespec","ob"}});
+        ddvec xx = arma::conv_to<ddvec>::from(x);
+        ddvec y1 = arma::conv_to<ddvec>::from(y.col(0));
+        ddvec y2 = arma::conv_to<ddvec>::from(y.col(1));
+        ddvec uu = arma::conv_to<ddvec>::from(u);
+        ddvec v1 = arma::conv_to<ddvec>::from(v.col(0));
+        ddvec v2 = arma::conv_to<ddvec>::from(v.col(1));
 
-        plot(fig, u, (arma::mat)v.col(0), {{"legend",title},{"linespec","-r"}});
-        plot(fig, u, (arma::mat)v.col(1), {{"legend",title},{"linespec","-b"}});
-
-        wait_for_key("Press ENTER for next example...");
-        fig.reset_plot();
+        plt::subplot(3,2,i+1);
+        plt::title(title);
+        plt::plot(xx, y1, "or");
+        plt::plot(xx, y2, "ob");
+        
+        plt::plot(uu, v1, "-r");
+        plt::plot(uu, v2, "-b");
+        plt::ylim(-1.5,1.5);
     }
+    plt::tight_layout();
+    plt::show();
+
     return 0;
 }

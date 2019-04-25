@@ -2,5 +2,3 @@
 /usr/local/include/numerics.hpp
 /usr/local/include/ODE.hpp
 /usr/local/include/statistics.hpp
-/usr/local/include/gnuplot_i.hpp
-/usr/local/include/plot.hpp

@@ -1,11 +1,11 @@
 #include "numerics.hpp"
-#include "plot.hpp"
+#include "matplotlibcpp.h"
 
-// g++ -Wall -g -o kmeans examples/kmeans_ex.cpp examples/wait.cpp -lnumerics -larmadillo
+// g++ -Wall -g -o kmeans examples/kmeans_ex.cpp -lnumerics -larmadillo -I/usr/include/python2.7 -lpython2.7
 
 using namespace numerics;
 
-void wait_for_key();
+typedef std::vector<double> ddvec;
 
 int main() {
     arma::arma_rng::set_seed_random();
@@ -13,21 +13,23 @@ int main() {
     arma::mat a2 = arma::randn(100,2);
     arma::mat A = arma::join_cols(a1,a2);
     kmeans kmu(A,2);
+    
+    kmu.help();
 
-    arma::vec x = kmu.getClusters();
-    // arma::mat c0 = A.cols( arma::find(x == 0) ); // find all data in A that is in cluster 0
-    // arma::mat c1 = A.cols( arma::find(x == 1) ); // find all data in A that is in cluster 1
     arma::mat c0 = kmu[0]; // same as above also same as kmu.all_from_cluster(0);
     arma::mat c1 = kmu[1];
 
-    Gnuplot fig;
-
-    plot(fig, (arma::mat)c0.col(0), (arma::mat)c0.col(1), {{"legend","cluster 0"},{"linespec","o"}});
-    plot(fig, (arma::mat)c1.col(0), (arma::mat)c1.col(1), {{"legend","cluster 1"},{"linespec","o"}});
-
     kmu.summary(std::cout);
 
-    wait_for_key();
+    ddvec c0x = arma::conv_to<ddvec>::from(c0.col(0));
+    ddvec c0y = arma::conv_to<ddvec>::from(c0.col(1));
+    ddvec c1x = arma::conv_to<ddvec>::from(c1.col(0));
+    ddvec c1y = arma::conv_to<ddvec>::from(c1.col(1));
+
+    matplotlibcpp::named_plot("cluster 0", c0x, c0y,"o");
+    matplotlibcpp::named_plot("cluster 1", c1x, c1y,"o");
+    matplotlibcpp::legend();
+    matplotlibcpp::show();
 
     return 0;
 }

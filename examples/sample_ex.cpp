@@ -1,11 +1,10 @@
 #include "numerics.hpp"
-#include "plot.hpp"
+#include "matplotlibcpp.h"
 
-// g++ -Wall -g -o sample_from examples/sample_ex.cpp examples/wait.cpp -lnumerics -larmadillo
+// g++ -Wall -g -o sample_from examples/sample_ex.cpp -lnumerics -larmadillo -I/usr/include/python2.7 -lpython2.7
 
 using namespace numerics;
-
-void wait_for_key();
+typedef std::vector<double> ddvec;
 
 const int n = 10;
 const double p = 0.3;
@@ -33,15 +32,17 @@ int main() {
     for (int i=0; i <= n; ++i) pdf(i) = binom_pdf(i);
 
     arma::vec sample = sample_from(1000, pdf);
-    arma::vec hist = arma::zeros(n+1);
-    for (int i=0; i <= n; ++i) hist(i) = arma::sum(sample==i);
-    hist /= arma::sum(hist);
 
-    Gnuplot fig;
-    plot(fig, x, hist, {{"linespec","-or"},{"legend","sample"}});
-    plot(fig, x, pdf, {{"linespec","-sb"},{"legend","pdf"}});
+    ddvec xx = arma::conv_to<ddvec>::from(arma::linspace(0,n));
+    ddvec hist = arma::conv_to<ddvec>::from(sample);
+    ddvec pdf0 = arma::conv_to<ddvec>::from(
+        CubicInterp(x,1000*pdf)(arma::linspace(0,n))
+        );
 
-    wait_for_key();
+    matplotlibcpp::named_hist("sample", hist, 30);
+    matplotlibcpp::named_plot("pdf",xx, pdf0, "-r");
+    matplotlibcpp::legend();
+    matplotlibcpp::show();
 
     return 0;
 }

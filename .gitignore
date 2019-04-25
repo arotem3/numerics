@@ -2,6 +2,7 @@
 /build
 /CMakeFiles
 /.vscode
+/archived-functions
 Makefile
 makefile
 *.cmake

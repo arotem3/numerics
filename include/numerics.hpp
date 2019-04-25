@@ -48,7 +48,6 @@ namespace numerics {
         // --- enumerators
             typedef enum INTEGRATOR {
                 SIMPSON,
-                TRAPEZOID,
                 LOBATTO
             } integrator;
 
@@ -63,6 +62,13 @@ namespace numerics {
                 SGD,
                 ADJGD
             } nonlin_solver;
+
+            typedef enum KERNELS {
+                RBF,
+                square,
+                triangle,
+                parabolic
+            } kernels;
         // --- input objects
             typedef std::function<arma::vec(const arma::vec&)> vector_func;
             typedef std::function<arma::mat(const arma::vec&)> vec_mat_func;
@@ -607,42 +613,6 @@ namespace numerics {
             void save(std::ostream&);
             arma::mat operator()(const arma::vec&);
         };
-
-        class splines {
-            private:
-            arma::mat c, d;
-            arma::mat X, Y;
-            std::vector<std::vector<int>> monomials;
-            int n, m, dim;
-            double lambda, df, gcv;
-            
-            void gen_monomials();
-            void fit(arma::mat&, arma::mat&, arma::mat&, arma::mat&);
-
-            public:
-            splines();
-            splines(const arma::mat&, const arma::mat&, int m = 1);
-            splines(const arma::mat&, const arma::mat&, double, int m = 1);
-            splines(std::istream&);
-
-            arma::mat predict(const arma::mat&);
-            arma::mat operator()(const arma::mat&);
-
-            arma::mat data_X() const;
-            arma::mat data_Y() const;
-
-            arma::mat rbf(const arma::mat&);
-            arma::mat polyKern(const arma::mat&);
-            arma::vec poly_coef() const;
-            arma::vec rbf_coef() const;
-
-            double gcv_score() const;
-            double eff_df() const;
-            double smoothing_param() const;
-
-            void load(std::istream&);
-            void save(std::ostream&);
-        };
         
         arma::mat nearestInterp(const arma::vec&, const arma::mat&, const arma::vec&);
         arma::mat linearInterp(const arma::vec&, const arma::mat&, const arma::vec&);
@@ -692,5 +662,67 @@ namespace numerics {
             // prints an overview to output stream
             std::ostream& summary(std::ostream& out = std::cout);
             std::ostream& help(std::ostream& out = std::cout);
+        };
+
+        class splines {
+            private:
+            arma::mat c, d;
+            arma::mat X, Y;
+            std::vector<std::vector<int>> monomials;
+            int n, m, dim;
+            double lambda, df, gcv;
+            
+            void gen_monomials();
+            void fit(arma::mat&, arma::mat&, arma::mat&, arma::mat&);
+
+            public:
+            splines();
+            splines(const arma::mat&, const arma::mat&, int m = 1);
+            splines(const arma::mat&, const arma::mat&, double, int m = 1);
+            splines(std::istream&);
+
+            arma::mat predict(const arma::mat&);
+            arma::mat operator()(const arma::mat&);
+
+            arma::mat data_X() const;
+            arma::mat data_Y() const;
+
+            arma::mat rbf(const arma::mat&);
+            arma::mat polyKern(const arma::mat&);
+            arma::vec poly_coef() const;
+            arma::vec rbf_coef() const;
+
+            double gcv_score() const;
+            double eff_df() const;
+            double smoothing_param() const;
+
+            void load(std::istream&);
+            void save(std::ostream&);
+        };
+
+        class kernel_smooth {
+            private:
+            arma::vec x, y;
+            int n;
+            double bdw, cv;
+            kernels kern;
+            arma::vec predict(const arma::vec&, const arma::vec&, const arma::vec&, double h);
+
+            public:
+            kernel_smooth(const arma::vec&, const arma::vec&, double bdw=0, kernels k=RBF);
+            kernel_smooth(double bdw=0, kernels k=RBF);
+
+            void fit(const arma::vec&, const arma::vec&);
+            
+            double predict(double);
+            arma::vec predict(const arma::vec&);
+            double operator()(double);
+            arma::vec operator()(const arma::vec&);
+            
+            arma::vec data_X();
+            arma::vec data_Y();
+
+            double bandwidth();
+            double CV_score() const;
         };
 };

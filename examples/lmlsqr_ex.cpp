@@ -1,11 +1,10 @@
 #include "numerics.hpp"
-#include "plot.hpp"
+#include "matplotlibcpp.h"
 
-// g++ -g -Wall -o lmlsqr examples/lmlsqr_ex.cpp examples/wait.cpp -lnumerics -larmadillo
+// g++ -g -Wall -o lmlsqr examples/lmlsqr_ex.cpp -lnumerics -larmadillo -I/usr/include/python2.7 -lpython2.7
 
 using namespace numerics;
-
-void wait_for_key();
+typedef std::vector<double> ddvec;
 
 arma::vec f_true(const arma::vec& t) {
     return arma::exp(-t%t);
@@ -61,13 +60,17 @@ int main() {
 
     arma::vec y_hat = b_hat(0) + b_hat(1) / (b_hat(2) + b_hat(3)*t%t);
     
-    Gnuplot fig;
+    ddvec xx = arma::conv_to<ddvec>::from(x);
+    ddvec yy = arma::conv_to<ddvec>::from(y);
+    ddvec tt = arma::conv_to<ddvec>::from(t);
+    ddvec yyt = arma::conv_to<ddvec>::from(y_true);
+    ddvec yyh = arma::conv_to<ddvec>::from(y_hat);
 
-    scatter(fig, x, y, {{"legend","data"},{"linespec","g"}});
-    lines(fig, t, y_true,{{"legend","exact model"},{"linespec","k"},{"linewidth","3"}});
-    lines(fig, t, y_hat,{{"legend","least squares model"},{"linespec","r"},{"linewidth","3"}});
-    
-    wait_for_key();
+    matplotlibcpp::named_plot("data",xx,yy,"og");
+    matplotlibcpp::named_plot("exact model", tt, yyt, "--k");
+    matplotlibcpp::named_plot("least squares model", tt, yyh, "-r");
+    matplotlibcpp::legend();
+    matplotlibcpp::show();
 
     return 0;
 }

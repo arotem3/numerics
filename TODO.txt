@@ -1,4 +1,0 @@
-* finish bvp & broyd reimplementation
-* verify sample_from [DONE]
-* verify init_clusters and kmeans reimplementation [DONE]
-* update kmeans_ex [DONE]

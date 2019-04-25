@@ -11,8 +11,8 @@ Armadillo:
         A User-Friendly Hybrid Sparse Matrix Class in C++.
         Lecture Notes in Computer Science (LNCS), Vol. 10931, pp. 422-430, 2018.
 
-GNU plot:
-[3] Gnu plot and Gnu plot interface with c++. https://code.google.com/archive/p/gnuplot-cpp/
+matplotlibcpp:
+[3] https://github.com/lava/matplotlib-cpp
 
 algorithms:
 [4] Many of the methods here were adapted from algorithms taught at various classes I took (or am currently taking)

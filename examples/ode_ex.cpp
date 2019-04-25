@@ -1,12 +1,11 @@
 #include "ODE.hpp"
-#include "plot.hpp"
+#include "matplotlibcpp.h"
 
-// g++ -g -Wall -o diffeq examples/ode_ex.cpp examples/wait.cpp -lnumerics -larmadillo
+// g++ -g -Wall -o diffeq examples/ode_ex.cpp -lnumerics -larmadillo -I/usr/include/python2.7 -lpython2.7
 
 using namespace numerics;
 using namespace ODE;
-
-void wait_for_key();
+typedef std::vector<double> ddvec;
 
 const double t0 = 0;
 const double tf = 20;
@@ -54,10 +53,11 @@ int main() {
     // opts.events.push_back(evnt); // enable events
     rk45(f,t,U,opts); // we will use our rk45() approximation as the exact solution
 
-    Gnuplot fig;
-
-    lines(fig, t, (arma::mat)U.col(0), {{"legend","U1 - exact"}});
-    lines(fig, t, (arma::mat)U.col(1), {{"legend","U2 - exact"}});
+    ddvec tt = arma::conv_to<ddvec>::from(t);
+    ddvec uu0 = arma::conv_to<ddvec>::from(U.col(0));
+    ddvec uu1 = arma::conv_to<ddvec>::from(U.col(1));
+    matplotlibcpp::named_plot("U1 - exact", tt, uu0, "-r");
+    matplotlibcpp::named_plot("U2 - exact", tt, uu1, "-b");
 
     t = {t0, tf};
     U = {U0_1, U0_2};
@@ -75,10 +75,13 @@ int main() {
         t = arma::linspace(t0,t(t.n_elem-1),1000);
         U = soln(t); */
 
-    plot(fig, t, (arma::mat)U.col(0), {{"legend","U1 - test"},{"linespec","or"},{"markersize","1.5"}});
-    plot(fig, t, (arma::mat)U.col(1), {{"legend","U2 - test"},{"linespec","ob"},{"markersize","1.5"}});
-
-    wait_for_key();
+    tt = arma::conv_to<ddvec>::from(t);
+    uu0 = arma::conv_to<ddvec>::from(U.col(0));
+    uu1 = arma::conv_to<ddvec>::from(U.col(1));
+    matplotlibcpp::named_plot("U1 - test", tt, uu0, "or");
+    matplotlibcpp::named_plot("U2 - test", tt, uu1, "ob");
+    matplotlibcpp::legend();
+    matplotlibcpp::show();
 
     return 0;
 }

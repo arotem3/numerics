@@ -1,19 +1,18 @@
 #include "ODE.hpp"
-#include "plot.hpp"
+#include "matplotlibcpp.h"
 
-// g++ -Wall -g -o pois examples/poisson_ex.cpp examples/wait.cpp -lnumerics -larmadillo
+// g++ -Wall -g -o pois examples/poisson_ex.cpp -lnumerics -larmadillo -I/usr/include/python2.7 -lpython2.7
 
 using namespace ODE;
 using namespace numerics;
+typedef std::vector<std::vector<double>> ddvec;
 
 arma::vec potential(const arma::vec& x, const arma::vec& y) {
     return 20*arma::sinc( 4*arma::pow(x-1, 2) + 4*arma::pow(y-2, 2)  );
 }
 
-void wait_for_key();
-
 int main() {
-    int num_pts = 24;
+    int num_pts = 36;
 
     bcfun_2d bc;
     bc.lower_x = -1;
@@ -34,14 +33,18 @@ int main() {
     soln.save(data);
     data.close(); */
 
-    Gnuplot fig;
-    fig.set_title("2d poisson");
+    ddvec X(num_pts), Y(num_pts), Z(num_pts);
+    for (int i=0; i < num_pts; ++i) {
+        for (int j=0; j < num_pts; ++j) {
+            X.at(i).push_back(soln.X(i,j));
+            Y.at(i).push_back(soln.Y(i,j));
+            Z.at(i).push_back(soln.U(i,j));
+        }
+    }
 
-    plot3d(fig, soln.X, soln.Y, soln.U);
-
-    wait_for_key();
-
-    std::remove("data.csv");
+    matplotlibcpp::plot_surface(X,Y,Z);
+    matplotlibcpp::title("2D Poisson");
+    matplotlibcpp::show();
 
     return 0;
 }

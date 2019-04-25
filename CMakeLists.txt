@@ -6,19 +6,18 @@ set(CMAKE_CXX_STANDARD 14)
 include_directories(include)
 
 add_library(numerics SHARED
-        include/gnuplot_i.hpp
         include/numerics.hpp
         include/ODE.hpp
-        include/plot.hpp
         include/statistics.hpp
-        include/vector_operators.hpp
         src/integration/integrate.cpp
         src/integration/mcIntegrate.cpp
         src/interpolation/cinterp.cpp
         src/interpolation/interp.cpp
         src/interpolation/polyInterp.cpp
         src/interpolation/sincInterp.cpp
-        src/interpolation/splines.cpp
+        src/data_sci/kmeans.cpp
+        src/data_sci/splines.cpp
+        src/data_sci/kernel_smooth.cpp
         src/nonlinear/adj_gd.cpp
         src/nonlinear/bfgs.cpp
         src/nonlinear/broyd.cpp
@@ -57,8 +56,7 @@ add_library(numerics SHARED
         src/utility/meshgrid.cpp
         src/utility/sample_from.cpp
         src/finite_dif.cpp
-        src/kmeans.cpp
         )
 
 install(TARGETS numerics DESTINATION lib)
-install(FILES include/numerics.hpp include/ODE.hpp include/statistics.hpp include/gnuplot_i.hpp include/plot.hpp DESTINATION include)
+install(FILES include/numerics.hpp include/ODE.hpp include/statistics.hpp DESTINATION include)

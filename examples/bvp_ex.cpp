@@ -1,44 +1,13 @@
 #include "ODE.hpp"
-#include "plot.hpp"
+#include "matplotlibcpp.h"
 
-// g++ -g -Wall -o bvp examples/bvp_ex.cpp examples/wait.cpp  -lnumerics -larmadillo
-
-double afunc(double x) {
-    return std::sin(x);
-}
-
-void wait_for_key();
+// g++ -g -Wall -o bvp examples/bvp_ex.cpp examples/wait.cpp -lnumerics -larmadillo -I/usr/include/python2.7 -lpython2.7
 
 using namespace ODE;
+namespace plt = matplotlibcpp;
+typedef std::vector<double> ddvec;
 
 int main() {
-    /* std::cout << "We will solve the linear boundary value problem:" << std::endl
-                << "\tu''(x) = sin(x) + u(x)\t0 < x < 2*pi" << std::endl
-                << "\tu(0) = 1\tu(2*pi) + u'(2*pi) = 0" << std::endl;
-        linear_BVP problem;
-        problem.set_boundaries(0,2*M_PI); // 0 < x < 2*pi
-        problem.set_LBC(1,0,1); // u(0) = 1
-        problem.set_RBC(1,1,0); // u(2pi) + u'(2pi) = 0
-        // u''(x) = sin(x) + u(x)
-        problem.set_a( afunc );
-        problem.set_b(1.0);
-        
-        arma::vec x;
-        arma::mat U;
-
-        problem.solve(x,U,40); std::cout << "using fourth order solver..." << std::endl;
-        // problem.solve(x,U,40, SECOND_ORDER); std::cout << "using second order solver..." << std::endl;
-        // problem.solve(x,U,20, CHEBYSHEV); std::cout << "using spectral solver..." << std::endl;
-        // dsolnp y = problem.solve(20); x = arma::linspace(0,2*M_PI); U = y.soln(x); std::cout << "using spectral solver..." << std::endl;
-
-        arma::mat u = 0.25 * (arma::exp(-2*M_PI - x) % (-1 + 4*std::exp(2*M_PI)+arma::exp(2*x)) - 2*arma::sin(x)); */
-
-    Gnuplot graph;
-    // plot(graph, x, U, {{"legend","U - solution"},{"linespec","ob"}});
-    // plot(graph, x, u, {{"legend","u - exact"}});
-
-    // wait_for_key();
-
     std::cout << "Now we will solve the nonlinear boundary value problem:" << std::endl
               << "\tu' = v" << std::endl << "\tv' = -sin(u)" << std::endl
               << "\t0 < x < 2*pi" << std::endl
@@ -81,16 +50,19 @@ int main() {
     bvp_opts opts;
     opts.nlnopts.err = 1e-15; // play around with the nonlinear solver tolerance
     // opts.order = bvp_solvers::SECOND_ORDER; std::cout << "using second order solver..." << std::endl;
-    opts.order = bvp_solvers::FOURTH_ORDER; std::cout << "using fourth order solver..." << std::endl;
-    // opts.order = bvp_solvers::CHEBYSHEV; std::cout << "using spectral solver" << std::endl;
+    // opts.order = bvp_solvers::FOURTH_ORDER; std::cout << "using fourth order solver..." << std::endl;
+    opts.order = bvp_solvers::CHEBYSHEV; std::cout << "using spectral solver" << std::endl;
     opts.num_points = 50;
     opts.jacobian_func = &J; // providing a jacobian function improves runtime significantly
 
     dsolnp soln = bvp(f, bc, guess, opts);
 
-    graph.reset_plot();
-    plot(graph, soln.independent_var_values, arma::mat(soln.solution_values.col(0)), {{"legend","u(x) -- guess of cos(x)"},{"linespec","-ob"}});
-    plot(graph, soln.independent_var_values, arma::mat(soln.solution_values.col(1)), {{"legend","v(x) -- guess of sin(x)"},{"linespec","-or"}});
+    ddvec x = arma::conv_to<ddvec>::from(soln.independent_var_values);
+    ddvec u1 = arma::conv_to<ddvec>::from(soln.solution_values.col(0));
+    ddvec v1 = arma::conv_to<ddvec>::from(soln.solution_values.col(1));
+    
+    plt::plot(x,u1,"-ob");
+    plt::plot(x,v1,"-or");
 
     std::cout << "Number of nonlinear iterations needed by solver: " << opts.nlnopts.num_iters_returned << std::endl;
 
@@ -102,13 +74,14 @@ int main() {
     };
 
     soln = bvp(f, bc, guess, opts);
-
-    plot(graph, soln.independent_var_values, arma::mat(soln.solution_values.col(0)), {{"legend","u(x) -- guess of 1"},{"linespec","-sp"}});
-    plot(graph, soln.independent_var_values, arma::mat(soln.solution_values.col(1)), {{"legend","v(x) -- guess of 0"},{"linespec","-sk"}});
-
     std::cout << "Number of nonlinear iterations needed by solver: " << opts.nlnopts.num_iters_returned << std::endl;
 
-    wait_for_key();
+    x = arma::conv_to<ddvec>::from(soln.independent_var_values);
+    ddvec u2 = arma::conv_to<ddvec>::from(soln.solution_values.col(0));
+    ddvec v2 = arma::conv_to<ddvec>::from(soln.solution_values.col(1));
+    plt::plot(x,u2,"--sm");
+    plt::plot(x,v2,"--sk");
+    plt::show();
 
     return 0;
 }

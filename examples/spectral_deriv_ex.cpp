@@ -1,11 +1,10 @@
 #include "numerics.hpp"
-#include "plot.hpp"
+#include "matplotlibcpp.h"
 
-// g++ -g -Wall -o spectralD examples/spectral_deriv_ex.cpp examples/wait.cpp -lnumerics -larmadillo
-
-void wait_for_key(std::string s);
+// g++ -g -Wall -o spectralD examples/spectral_deriv_ex.cpp -lnumerics -larmadillo -I/usr/include/python2.7 -lpython2.7
 
 using namespace numerics;
+typedef std::vector<double> ddvec;
 
 double f(double x) {
     return std::exp(-x*x);
@@ -24,14 +23,18 @@ int main() {
     arma::vec u = {a,b};
     arma::vec v = specral_deriv(f,u,m);
 
-    Gnuplot fig;
-    fig.set_title("spectral derivative");
-    lines(fig, x, y, {{"legend","actual x,y"}});
-    scatter(fig, u, v, {{"legend","spectral approx"},{"linespec","r"}});
-
     std::cout << "max error : " << arma::norm(v - df(u), "inf") << std::endl;
 
-    wait_for_key("Press ENTER to close...");
+    ddvec xx = arma::conv_to<ddvec>::from(x);
+    ddvec yy = arma::conv_to<ddvec>::from(y);
+    ddvec uu = arma::conv_to<ddvec>::from(u);
+    ddvec vv = arma::conv_to<ddvec>::from(v);
+
+    matplotlibcpp::title("spectral derivative");
+    matplotlibcpp::named_plot("actural derivative", xx, yy, "--k");
+    matplotlibcpp::named_plot("spectral approximation", uu, vv, "-r");
+    matplotlibcpp::legend();
+    matplotlibcpp::show();
 
     return 0;
 }

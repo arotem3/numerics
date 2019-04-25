@@ -1,16 +1,16 @@
 Author: Amit Rotem
-Last modified: 02/05/2019
+Last modified: 04/23/2019
 
 These headers take advantage of the armadillo linear algebra library and require it to compile and function.
 All the functions can be found in the header file.
 
 ### basic installation instructions:
 I have only a simple CMakeLists.txt, so any modifications will have to be provided by you, the user. (sorry...)
-0. install [Armadillo +v9.2](http://arma.sourceforge.net/) and [gnuplot](http://www.gnuplot.info/).
+1. install [Armadillo +v9.2](http://arma.sourceforge.net/) and [matplotlibcpp](https://github.com/lava/matplotlib-cpp) (optional).
 1. `cd /numeric-lib/`
-2. `cmake .`
-3. `make`
-4. `sudo make install`
+1. `cmake .`
+1. `make`
+1. `sudo make install`
 
 ## numerics.hpp is a numeric library hosting:
 * integration (2nd, 4th, 7-pt lobatto order).
@@ -21,6 +21,8 @@ I have only a simple CMakeLists.txt, so any modifications will have to be provid
 * optimization methods (unconstrained and box constraints. Function, Gradient, and Hessian based methods).
 
 * interpolation schemes (linear, lagrange, cubic, and fourier interpolation).
+
+* data smoothing using thin plate splines.
 
 * simple finite difference methods (for approximating derivatives).
 * uniform spectral (fourier) derivatives over an interval.
@@ -45,19 +47,9 @@ I have only a simple CMakeLists.txt, so any modifications will have to be provid
 * chi squared tests.
 * simple resampling/permutation test for means.
 
-## vector_operators.hpp is a template library with basic elementwise functions:
-* +, -, *, / operators (and their += counterparts)
-* &&, || operators
-* ==, !=, <, <=, >, >= operators
-* `any()` `all()` functions
-* most cmath functions (the ones I find useful)
-* `sum()` and `norm()` functions
-* honestly, not that practical
-
-## plot.hpp is a template wrapper for gnuplot using gnuplot_i.hpp (looks like matlab/R).
-
 There are example codes for every function and class.
 
-Disclaimer: I do not take credit for inventing any algorithm, I just implemented them in C++ for fun...
-This library is by no means exceptionally robust or efficient; it does what it can.
+Note, many of the examples rely on ["matplotlibcpp.h"](https://github.com/lava/matplotlib-cpp) which is used for visualising results of many of the algorithms. To use this feature install "matplotlib.h" and make sure you have a developer version of python 2.7.
+
+Disclaimer: This library is by no means exceptionally robust or efficient; it does what it can. I implemented many of these programs for fun!
 Documentation is now in progress...
