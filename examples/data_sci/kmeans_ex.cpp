@@ -1,7 +1,7 @@
 #include "numerics.hpp"
 #include "matplotlibcpp.h"
 
-// g++ -Wall -g -o kmeans examples/kmeans_ex.cpp -lnumerics -larmadillo -I/usr/include/python2.7 -lpython2.7
+// g++ -Wall -g -o kmeans kmeans_ex.cpp -lnumerics -larmadillo -I/usr/include/python2.7 -lpython2.7
 
 using namespace numerics;
 

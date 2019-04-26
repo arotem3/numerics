@@ -1,6 +1,6 @@
 #include "numerics.hpp"
 
-// g++ -g -Wall -o mcIntegrate examples/mcIntegrate_ex.cpp -lnumerics -larmadillo
+// g++ -g -Wall -o mcIntegrate mcIntegrate_ex.cpp -lnumerics -larmadillo
 
 using namespace numerics;
 

@@ -1,9 +1,23 @@
 #include "numerics.hpp"
 
-numerics::splines::splines() {
-    // DO NOTHING
+/* SPLINES : initialize splines object.
+ * --- m : supplement fit by (m-1) degree polynomial, this parameter should be taken so m is small and (2*m - dimension of x) >= 1 */
+numerics::splines::splines(int m) {
+    this->m = m;
 }
 
+/* SPLINES : initialize splines object.
+ * --- lambda : smoothing parameter.
+ * --- m : supplement fit by (m-1) degree polynomial, this parameter should be taken so m is small and (2*m - dimension of x) >= 1 */
+numerics::splines::splines(double lambda, int m) {
+    this->m = m;
+    this->lambda = lambda;
+}
+
+/* SPLINES : initialize and fit splines object.
+ * --- X : array of indpendent variable data, where each row is data point.
+ * --- Y : array of dependent variable data, where each row is a data point.
+ * --- m : supplement fit by (m-1) degree polynomial, this parameter should be taken so m is small and (2*m - dimension of x) >= 1 */
 numerics::splines::splines(const arma::mat& X, const arma::mat& Y, int m) {
     dim = X.n_cols;
     n = X.n_rows;
@@ -42,6 +56,11 @@ numerics::splines::splines(const arma::mat& X, const arma::mat& Y, int m) {
     fit(K, P, Q, Pinv);
 }
 
+/* SPLINES : initialize and fit splines object.
+ * --- X : array of indpendent variable data, where each row is data point.
+ * --- Y : array of dependent variable data, where each row is a data point.
+ * --- lambda : smoothing parameter.
+ * --- m : supplement fit by (m-1) degree polynomial, this parameter should be taken so m is small and (2*m - dimension of x) >= 1 */
 numerics::splines::splines(const arma::mat& X, const arma::mat& Y, double lambda, int m) {
     dim = X.n_cols;
     n = X.n_rows;
@@ -68,10 +87,12 @@ numerics::splines::splines(const arma::mat& X, const arma::mat& Y, double lambda
     fit(K,P,Q,Pinv);
 }
 
+/* SPLINES : initialize spline object by loading object from a stream. */
 numerics::splines::splines(std::istream& in) {
     load(in);
 }
 
+/* FIT : private member function. */
 void numerics::splines::fit(arma::mat& K, arma::mat& P, arma::mat& Q, arma::mat& Pinv) {
     arma::mat HatMat;
     if (std::isinf(lambda)) {
@@ -96,6 +117,22 @@ void numerics::splines::fit(arma::mat& K, arma::mat& P, arma::mat& Q, arma::mat&
     gcv *= gcv;
 }
 
+/* FIT : fit splines object.
+ * --- X : array of indpendent variable data, where each row is data point.
+ * --- Y : array of dependent variable data, where each row is a data point. */
+numerics::splines& numerics::splines::fit(const arma::mat& X, const arma::mat& Y) {
+    if (lambda < 0) splines(X, Y, m);
+    else splines(X, Y, lambda, m);
+    return *this;
+}
+
+/* FIT_PREDICT : fit splines object and predict on same data. same as this.fit(X,Y).predict(X) */
+arma::mat numerics::splines::fit_predict(const arma::mat& X, const arma::mat& Y) {
+    return fit(X,Y).predict(X);
+}
+
+/* RBF : build radial basis kernel matrix from fitted data evaluated at a new set of points.
+ * --- xgrid : set of points to evaluate RBFs on. */
 arma::mat numerics::splines::rbf(const arma::mat& xgrid) {
     int n = X.n_rows;
     int ngrid = xgrid.n_rows;
@@ -111,6 +148,8 @@ arma::mat numerics::splines::rbf(const arma::mat& xgrid) {
     return K;
 }
 
+/* POLYKERN : build polynomial basis matrix evaluated at a set of points.
+ * --- xgrid : set of points to evaluate polynomial basis on. */
 arma::mat numerics::splines::polyKern(const arma::mat& xgrid) {
     int n = xgrid.n_rows;
     int num_mons = monomials.size() + 1;
@@ -123,14 +162,17 @@ arma::mat numerics::splines::polyKern(const arma::mat& xgrid) {
     return P;
 }
 
+/* POLY_COEF : returns coefficients for polynomial basis matrix from fit. */
 arma::vec numerics::splines::poly_coef() const {
     return d;
 }
 
+/* RBF_COEF : returns coefficients for RBF kernel matrix from fit. */
 arma::vec numerics::splines::rbf_coef() const {
     return c;
 }
 
+/* GEN_MONOMIALS : private member function. constructs list of all monomials of requested order and dimension. */
 void numerics::splines::gen_monomials() {
     std::queue<std::vector<int>> Q;
     std::set<std::vector<int>> S;
@@ -162,36 +204,50 @@ void numerics::splines::gen_monomials() {
     for (const std::vector<int>& str : S) monomials.push_back(str);
 }
 
+/* PREDICT : evaluate spline fit on a set of new points.
+ * --- xgrid : set of points to evaluate spline fit on. */
 arma::mat numerics::splines::predict(const arma::mat& xgrid) {
+    if (xgrid.n_cols != dim) {
+        std::cerr << "splines::predict() error: dimension of new data do not match fitted data dimenstion." << std::endl
+                  << "dim(fitted data) = " << dim << " =/= " << xgrid.n_cols << " = dim(new data)" << std::endl;
+        return arma::mat();
+    }
     arma::mat K = rbf(xgrid);
     arma::mat P = polyKern(xgrid);
     return K*c + P*d;
 }
 
+/* OPERATOR() : same as predict(const arma::mat&). */
 arma::mat numerics::splines::operator()(const arma::mat& xgrid) {
     return predict(xgrid);
 }
 
-arma::mat numerics::splines::data_X() const {
+/* DATA_X : return independent variable data matrix. */
+arma::mat numerics::splines::data_X() {
     return X;
 }
 
-arma::mat numerics::splines::data_Y() const {
+/* DATA_Y : return dependent variable data matrix. */
+arma::mat numerics::splines::data_Y() {
     return Y;
 }
 
+/* GCV_SCORE : return generalized MSE estimate from leave one out cross validation. */
 double numerics::splines::gcv_score() const {
     return gcv;
 }
 
+/* EFF_DF : return effective degrees of freedom of spline fit. */
 double numerics::splines::eff_df() const {
     return df;
 }
 
+/* SMOOTHING_PARAM : returns smoothing parameter, either from initialization or from cross validation. */
 double numerics::splines::smoothing_param() const {
     return lambda;
 }
 
+/* LOAD : load in object from file. */
 void numerics::splines::load(std::istream& in) {
     int c_rows, c_cols, d_rows, d_cols, nm;
     in >> n >> dim >> m >> lambda >> df >> gcv;
@@ -226,6 +282,7 @@ void numerics::splines::load(std::istream& in) {
     }
 }
 
+/* SAVE : save object to file. */
 void numerics::splines::save(std::ostream& out) {
     out << std::setprecision(10);
     // parameters in order : n, dim, m, lambda, df, gcv

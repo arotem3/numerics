@@ -1,10 +1,18 @@
 #include "numerics.hpp"
 
+/* KERNEL_SMOOTH : initialize kernel smoothing object
+ * --- bdw : kernel bandwidth. default bdw=0.0; when fitting the default value tells the object to choose a bandwidth by k-fold cross validation.
+ * --- k : choice of kernel. options include : RBF, square, triangle, parabolic */
 numerics::kernel_smooth::kernel_smooth(double bdw, kernels k) {
     kern = k;
     this->bdw = bdw;
 }
 
+/* KERNEL_SMOOTH : initialize and fit kernel smoothing object.
+ * --- X : data vector of independent variable
+ * --- Y : data vector of dependent variable
+ * --- bdw : kernel bandwidth. default bdw=0.0; when fitting the default value tells the object to choose a bandwidth by k-fold cross validation.
+ * --- k : choice of kernel. options include : RBF, square, triangle, parabolic */
 numerics::kernel_smooth::kernel_smooth(const arma::vec& X, const arma::vec& Y, double bdw, kernels k) {
     if (X.n_elem != Y.n_elem) {
         std::cerr << "kernel_smooth() error: input vectors must have the same length." << std::endl
@@ -13,10 +21,16 @@ numerics::kernel_smooth::kernel_smooth(const arma::vec& X, const arma::vec& Y, d
     }
     
     kern = k;
-    int num_folds = 10;
     x = X;
     y = Y;
     n = x.n_elem;
+    int num_folds = 10;
+    if (n/num_folds < 10) { // choose ideal num_folds.
+        num_folds = 5;
+        if (n/num_folds < 10) {
+            num_folds = 3;
+        }
+    }
     arma::uvec ind = arma::regspace<arma::uvec>(0,n-1);
     arma::umat I = arma::shuffle(ind);
     I = arma::reshape(I, num_folds, n/num_folds);
@@ -57,6 +71,33 @@ numerics::kernel_smooth::kernel_smooth(const arma::vec& X, const arma::vec& Y, d
     }
 }
 
+/* KERNEL_SMOOTH : initialize kernel smoothing object from saved instance in file */
+numerics::kernel_smooth::kernel_smooth(std::istream& in) {
+    load(in);
+}
+
+/* SAVE : save kernel smoothing object to output stream. */
+void numerics::kernel_smooth::save(std::ostream& out) {
+    out << n << " " << (int)kern << " " << bdw << " " << cv << std::endl;
+    x.t().raw_print(out);
+    y.t().raw_print(out);
+}
+
+/* LOAD : load kernel smoothing object from input stream. */
+void numerics::kernel_smooth::load(std::istream& in) {
+    int k;
+    in >> n >> k >> bdw >> cv;
+    if (k==0) kern = RBF;
+    else if (k==1) kern = square;
+    else if (k==2) kern = triangle;
+    else kern = parabolic;
+    x = arma::zeros(n);
+    y = arma::zeros(n);
+    for (uint i=0; i < n; ++i) in >> x(i);
+    for (uint i=0; i < n; ++i) in >> y(i);
+}
+
+/* PREDICT : private function, predicts according to input bandwidth. */
 arma::vec numerics::kernel_smooth::predict(const arma::vec& X, const arma::vec& Y, const arma::vec& t, double h) {
     arma::vec yhat = arma::zeros(arma::size(t));
     for (int i=0; i < yhat.n_elem; ++i) {
@@ -79,6 +120,8 @@ arma::vec numerics::kernel_smooth::predict(const arma::vec& X, const arma::vec& 
     return yhat;
 }
 
+/* PREDICT : predict a single value of the function
+ * --- t : input to predict response of. */
 double numerics::kernel_smooth::predict(double t) {
     if (bdw == 0) {
         std::cerr << "kernel_smooth::predict() error: bandwidth must be strictly greater than 0" << std::endl;
@@ -101,6 +144,8 @@ double numerics::kernel_smooth::predict(double t) {
     return arma::dot(K,y)/arma::sum(K);
 }
 
+/* PREDICT : predict values of the function
+ * --- t : input to predict response of. */
 arma::vec numerics::kernel_smooth::predict(const arma::vec& t) {
     arma::vec yhat = arma::zeros(arma::size(t));
     for (uint i=0; i < t.n_elem; ++i) {
@@ -109,30 +154,49 @@ arma::vec numerics::kernel_smooth::predict(const arma::vec& t) {
     return yhat;
 }
 
-void numerics::kernel_smooth::fit(const arma::vec& X, const arma::vec& Y) {
+/* FIT : supply x and y values to fit object to.
+ * --- X : data vector of independent variable
+ * --- Y : data vector of dependent variable
+ * returns reference to 'this', so function object can be continuously called. */
+numerics::kernel_smooth& numerics::kernel_smooth::fit(const arma::vec& X, const arma::vec& Y) {
     kernel_smooth(X,Y);
+    return *this;
 }
 
-double numerics::kernel_smooth::CV_score() const {
+/* FIT_PREDICT : fit object to data and predict on the same data.
+ * --- X : data vector of independent variable
+ * --- Y : data vector of dependent variable
+ * note: this is equivalent to calling this.fit(X,Y).predict(X) */
+arma::vec numerics::kernel_smooth::fit_predict(const arma::vec& X, const arma::vec& Y) {
+    return fit(X,Y).predict(X);
+}
+
+/* MSE : return MSE of fit produced from cross validation on data set. */
+double numerics::kernel_smooth::MSE() const {
     return cv;
 }
 
+/* OPERATOR() :  same as predict(double t) */
 double numerics::kernel_smooth::operator()(double t) {
     return predict(t);
 }
 
+/* OPERATOR() : same as predict(const arma::vec& t) */
 arma::vec numerics::kernel_smooth::operator()(const arma::vec& t) {
     return predict(t);
 }
 
+/* DATA_X : returns the independent variable data provided durring call to fit or initialization. */
 arma::vec numerics::kernel_smooth::data_X() {
     return x;
 }
 
+/* DATA_Y : returns the dependent variable data provided durring call to fit or initialization. */
 arma::vec numerics::kernel_smooth::data_Y() {
     return y;
 }
 
-double numerics::kernel_smooth::bandwidth() {
+/* BANDWIDTH : returns either the bandwith provided durring initialization or the bandwidth computed from cross validation. */
+double numerics::kernel_smooth::bandwidth() const {
     return bdw;
-}
+}   

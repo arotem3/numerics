@@ -1,6 +1,6 @@
 #include "numerics.hpp"
 
-// g++ -Wall -g -o newton examples/newton_ex.cpp -lnumerics -larmadillo
+// g++ -Wall -g -o newton newton_ex.cpp -lnumerics -larmadillo
 
 using namespace numerics;
 

@@ -1,6 +1,6 @@
 #include "numerics.hpp"
 
-// g++ -g -Wall -o cgd examples/cgd_ex.cpp -lnumerics -larmadillo -lsuperlu
+// g++ -g -Wall -o cgd cgd_ex.cpp -lnumerics -larmadillo -lsuperlu
 
 using namespace numerics;
 

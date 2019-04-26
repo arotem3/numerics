@@ -1,6 +1,6 @@
 #include "numerics.hpp"
 
-// g++ -Wall -g -o finite_dif examples/finite_dif_ex.cpp -lnumerics -larmadillo
+// g++ -Wall -g -o finite_dif finite_dif_ex.cpp -lnumerics -larmadillo
 
 using namespace numerics;
 

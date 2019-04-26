@@ -1,6 +1,6 @@
 #include "numerics.hpp"
 
-// g++ -g -Wall -o fzero examples/fzero_ex.cpp -lnumerics -larmadillo
+// g++ -g -Wall -o fzero fzero_ex.cpp -lnumerics -larmadillo
 
 using namespace numerics;
 using std::exp;

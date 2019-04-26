@@ -18,6 +18,7 @@ add_library(numerics SHARED
         src/data_sci/kmeans.cpp
         src/data_sci/splines.cpp
         src/data_sci/kernel_smooth.cpp
+        src/data_sci/k_fold.cpp
         src/nonlinear/adj_gd.cpp
         src/nonlinear/bfgs.cpp
         src/nonlinear/broyd.cpp

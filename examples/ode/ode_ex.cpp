@@ -1,7 +1,7 @@
 #include "ODE.hpp"
 #include "matplotlibcpp.h"
 
-// g++ -g -Wall -o diffeq examples/ode_ex.cpp -lnumerics -larmadillo -I/usr/include/python2.7 -lpython2.7
+// g++ -g -Wall -o diffeq ode_ex.cpp -lnumerics -larmadillo -I/usr/include/python2.7 -lpython2.7
 
 using namespace numerics;
 using namespace ODE;

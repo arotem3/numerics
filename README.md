@@ -13,7 +13,7 @@ I have only a simple CMakeLists.txt, so any modifications will have to be provid
 1. `sudo make install`
 
 ## numerics.hpp is a numeric library hosting:
-* integration (2nd, 4th, 7-pt lobatto order).
+* integration (4th order and 7-pt lobatto).
 
 * root finding methods (derivative, derivative free, and mixed methods).
 * error control, and approximation options for root finding passed to solver via options struct.
@@ -22,7 +22,7 @@ I have only a simple CMakeLists.txt, so any modifications will have to be provid
 
 * interpolation schemes (linear, lagrange, cubic, and fourier interpolation).
 
-* data smoothing using thin plate splines.
+* data smoothing using thin plate splines and kernel methods.
 
 * simple finite difference methods (for approximating derivatives).
 * uniform spectral (fourier) derivatives over an interval.
@@ -30,6 +30,7 @@ I have only a simple CMakeLists.txt, so any modifications will have to be provid
 * machine learning tools (kmeans).
 
 ## ODE.hpp is a numerics library for solving ordinary differential equations
+* Discrete differentiation matrices
 * explicit grid and adaptive IVP solvers (4th order)
 * implicit grid and adaptive IVP solvers (1st, 2nd, 5th order)
 * implicit solvers use quasi-Newton methods making them more efficient and accurate that fixed point iteration

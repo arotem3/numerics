@@ -1,7 +1,7 @@
 #include "ODE.hpp"
 #include "matplotlibcpp.h"
 
-// g++ -Wall -g -o pois examples/poisson_ex.cpp -lnumerics -larmadillo -I/usr/include/python2.7 -lpython2.7
+// g++ -Wall -g -o pois poisson_ex.cpp -lnumerics -larmadillo -I/usr/include/python2.7 -lpython2.7
 
 using namespace ODE;
 using namespace numerics;

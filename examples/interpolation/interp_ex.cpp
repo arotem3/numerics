@@ -1,7 +1,7 @@
 #include "numerics.hpp"
 #include "matplotlibcpp.h"
 
-// g++ -g -Wall -o interp examples/interp_ex.cpp -lnumerics -larmadillo -I/usr/include/python2.7 -lpython2.7
+// g++ -g -Wall -o interp interp_ex.cpp -lnumerics -larmadillo -I/usr/include/python2.7 -lpython2.7
 
 using namespace numerics;
 namespace plt = matplotlibcpp;

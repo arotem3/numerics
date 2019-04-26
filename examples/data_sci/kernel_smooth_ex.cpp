@@ -1,7 +1,7 @@
 #include "numerics.hpp"
 #include "matplotlibcpp.h"
 
-// g++ -g -Wall -o kernel_smooth examples/kernel_smooth_ex.cpp -lnumerics -larmadillo -I/usr/include/python2.7 -lpython2.7
+// g++ -g -Wall -o kernel_smooth kernel_smooth_ex.cpp -lnumerics -larmadillo -I/usr/include/python2.7 -lpython2.7
 
 using namespace numerics;
 typedef std::vector<double> ddvec;
@@ -24,7 +24,7 @@ int main() {
     arma::vec yhat = model.predict(t);
 
     std::cout << "bandwidth : " << model.bandwidth() << std::endl
-              << "cv score : " << model.CV_score() << std::endl;
+              << "MSE from cv : " << model.MSE() << std::endl;
 
     ddvec xx = arma::conv_to<ddvec>::from(x);
     ddvec yy = arma::conv_to<ddvec>::from(y);

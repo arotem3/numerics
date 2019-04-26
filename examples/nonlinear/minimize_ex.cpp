@@ -2,7 +2,7 @@
 
 using namespace numerics;
 
-// g++ -g -Wall -o minimize examples/minimize_ex.cpp -lnumerics -larmadillo
+// g++ -g -Wall -o minimize minimize_ex.cpp -lnumerics -larmadillo
 
 typedef std::vector<double> vvd;
 

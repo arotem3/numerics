@@ -75,6 +75,9 @@ namespace numerics {
             typedef std::function<double(const arma::vec&,int)> sp_vector_func;
             typedef std::function<double(double)> dfunc;
             typedef std::function<double(const arma::vec&)> vec_dfunc;
+        // --- output objects
+            struct data_pair {arma::mat X, Y; arma::umat indices, exclude_indices;};
+            typedef std::vector<data_pair> folds;
         // --- option structs
             typedef struct NONLIN_OPTS {
                 // inputs
@@ -629,6 +632,8 @@ namespace numerics {
 
         arma::vec specral_deriv(const dfunc&, arma::vec&, int sample_points = 100);
     // --- data analysis ---------- //
+        folds k_fold(const arma::mat&, const arma::mat&, uint k=2, uint dim=0);
+
         class kmeans {
             private:
             int k;              // number of clusters
@@ -676,16 +681,20 @@ namespace numerics {
             void fit(arma::mat&, arma::mat&, arma::mat&, arma::mat&);
 
             public:
-            splines();
+            splines(int m);
+            splines(double lambda = -1, int m = 1);
             splines(const arma::mat&, const arma::mat&, int m = 1);
             splines(const arma::mat&, const arma::mat&, double, int m = 1);
             splines(std::istream&);
 
+            splines& fit(const arma::mat&, const arma::mat&);
+            arma::mat fit_predict(const arma::mat&, const arma::mat&);
+
             arma::mat predict(const arma::mat&);
             arma::mat operator()(const arma::mat&);
 
-            arma::mat data_X() const;
-            arma::mat data_Y() const;
+            arma::mat data_X();
+            arma::mat data_Y();
 
             arma::mat rbf(const arma::mat&);
             arma::mat polyKern(const arma::mat&);
@@ -711,8 +720,13 @@ namespace numerics {
             public:
             kernel_smooth(const arma::vec&, const arma::vec&, double bdw=0, kernels k=RBF);
             kernel_smooth(double bdw=0, kernels k=RBF);
+            kernel_smooth(std::istream&);
 
-            void fit(const arma::vec&, const arma::vec&);
+            void save(std::ostream&);
+            void load(std::istream&);
+
+            kernel_smooth& fit(const arma::vec&, const arma::vec&);
+            arma::vec fit_predict(const arma::vec&, const arma::vec&);
             
             double predict(double);
             arma::vec predict(const arma::vec&);
@@ -722,7 +736,7 @@ namespace numerics {
             arma::vec data_X();
             arma::vec data_Y();
 
-            double bandwidth();
-            double CV_score() const;
+            double bandwidth() const;
+            double MSE() const;
         };
 };
