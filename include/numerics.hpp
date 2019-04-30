@@ -646,25 +646,22 @@ namespace numerics {
             arma::mat init_clusters();
 
             public:
-            kmeans(arma::mat&, int);            // constructor
+            kmeans(arma::mat&, int);
             kmeans(std::istream&);
             void load(std::istream&);
             void save(std::ostream&);
 
-            arma::vec getClusters() const;   // get rowvec dataCluster
-            arma::mat getCentroids() const;     // get matrix C
+            arma::vec getClusters() const;
+            arma::mat getCentroids() const;
 
-            // all of these return the cluster number of a set of data points.
             arma::vec operator()(const arma::mat&);
             arma::vec predict(const arma::mat&);
             int operator()(const arma::rowvec&);
             int predict(const arma::rowvec&);
 
-            // returns a matrix of the given cluster
             arma::mat operator[](uint);
             arma::mat all_from_cluster(uint);
 
-            // prints an overview to output stream
             std::ostream& summary(std::ostream& out = std::cout);
             std::ostream& help(std::ostream& out = std::cout);
         };
@@ -738,5 +735,39 @@ namespace numerics {
 
             double bandwidth() const;
             double MSE() const;
+        };
+
+        class regularizer {
+            private:
+            arma::mat X, Y, y_hat, coefs, regular_mat;
+            double lambda, cv, df;
+            int n_obs, x_dim, y_dim;
+            void cross_validate();
+            void fit_no_replace(const arma::mat&, const arma::mat&);
+
+            public:
+            regularizer(double lambda = arma::datum::nan);
+            regularizer(const arma::mat&);
+            regularizer(const arma::mat&, const arma::mat&, double lambda = arma::datum::nan);
+            regularizer(const arma::mat&, const arma::mat&, const arma::mat&);
+            regularizer(std::istream&);
+
+            regularizer& fit(const arma::mat&, const arma::mat&);
+            arma::mat fit_predict(const arma::mat&, const arma::mat&);
+
+            arma::mat predict(const arma::mat&);
+            arma::mat operator()(const arma::mat&);
+
+            arma::mat data_X();
+            arma::mat data_Y();
+            arma::mat regularizing_matrix();
+            arma::mat coef();
+
+            double MSE() const;
+            double eff_df() const;
+            double regularizing_param() const;
+
+            void save(std::ostream&);
+            void load(std::istream&);
         };
 };
