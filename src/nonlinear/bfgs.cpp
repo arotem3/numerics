@@ -14,11 +14,15 @@ void numerics::bfgs(const vec_dfunc& obj_func, const vector_func& f, arma::vec& 
     arma::mat H(n,n,arma::fill::eye);
     if (opts.init_jacobian_inv != nullptr) H = *opts.init_jacobian_inv;
     else if (opts.init_jacobian != nullptr) {
-        H = *opts.init_jacobian;
-        H = arma::pinv(H);
+        arma::mat jac = *opts.init_jacobian;
+        bool chol_success = arma::inv_sympd(H,jac);
+        if (!chol_success) H = arma::pinv(jac);
     } else if (opts.use_FD_jacobian) {
-        approx_jacobian(f,H,x);
-        H = arma::pinv(H);
+        arma::mat jac;
+        approx_jacobian(f,jac,x);
+        jac = arma::symmatu(jac);
+        bool chol_success = arma::inv_sympd(H,jac);
+        if (chol_success) H = arma::pinv(jac);
         opts.num_FD_approx_needed++;
     } // else keep it as identity
 
@@ -54,6 +58,7 @@ void numerics::bfgs(const vec_dfunc& obj_func, const vector_func& f, arma::vec& 
         // update H based on conditions
         if ( opts.use_FD_jacobian && (arma::norm(f(x)) > arma::norm(f(x-s))) ) { // H has become inaccurate, FD approx needed
             approx_jacobian(f,H,x);
+            H = arma::symmatu(H);
             H = arma::pinv(H);
             opts.num_FD_approx_needed++;
         } else { // BFGS update is suitable.

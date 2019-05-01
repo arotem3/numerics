@@ -17,17 +17,19 @@ arma::mat f(arma::mat& X) {
 }
 
 arma::mat gen_basis(arma::mat& X, arma::vec& centers) {
-    arma::mat basis = arma::zeros(X.n_elem, centers.n_elem);
+    arma::mat basis = arma::ones(X.n_elem, centers.n_elem+2);
+    basis.col(1) = X;
     for (uint i=0; i < centers.n_elem; ++i) {
-        basis.col(i) = arma::exp(-arma::square(X-centers(i)));
+        basis.col(i+2) = arma::exp(-arma::square(X-centers(i)));
     }
     return basis;
 }
 
 arma::mat roughness_matrix(arma::mat& X, arma::vec& centers) {
-    arma::mat C = arma::zeros(X.n_elem, centers.n_elem);
+    arma::mat C = arma::zeros(X.n_elem, centers.n_elem+2);
+    C.col(1) += 1;
     for (uint i=0; i < centers.n_elem; ++i) {
-        C.col(i) = X - centers(i);
+        C.col(i+2) = X - centers(i);
     }
     C %= gen_basis(X, centers);
     return 0.01 * C.t() * C;
@@ -40,7 +42,7 @@ int main() {
     arma::mat Y = f(X) + 0.05*arma::randn(n_obs,1);
 
     int N = 30;
-    arma::vec centers = arma::linspace(-2.5, 2.5, N);
+    arma::vec centers = arma::linspace(-2.5, 2.5, N-2);
     arma::mat basis = gen_basis(X, centers);
 
     arma::mat c_overfit = arma::solve(basis, Y);

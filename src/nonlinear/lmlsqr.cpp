@@ -7,7 +7,7 @@
 void numerics::lmlsqr(const vector_func& f, arma::vec& x, lsqr_opts& opts) {
     double tau = opts.damping_param;
     double nu = opts.damping_scale;
-    arma::vec delta;
+    arma::vec delta = 0.01*arma::ones(arma::size(x));
     
     arma::mat J;
     if (opts.jacobian_func == nullptr) {
@@ -40,7 +40,8 @@ void numerics::lmlsqr(const vector_func& f, arma::vec& x, lsqr_opts& opts) {
             if (opts.use_scale_invariance) LHS = LSQR_MAT + lam*arma::diagmat(LSQR_MAT); // J'J + lam*diag(J'J)
             else LHS = LSQR_MAT + lam*arma::eye(arma::size(LSQR_MAT)); // J'J + lam*I
             
-            delta = arma::solve(LHS, RHS);
+            if (opts.use_cgd) cgd(LHS, RHS, delta);
+            else delta = arma::solve(LHS, RHS);
             arma::vec F1 = f(x + delta);
             
             rho = (arma::norm(F) - arma::norm(F1));

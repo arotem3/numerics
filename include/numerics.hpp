@@ -139,7 +139,7 @@ namespace numerics {
                 uint max_iter;
                 double damping_param;
                 double damping_scale;
-                bool use_scale_invariance;
+                bool use_scale_invariance, use_cgd;
                 vec_mat_func* jacobian_func;
 
                 // outputs
@@ -152,6 +152,7 @@ namespace numerics {
                     damping_param = 1e-2;
                     damping_scale = 2;
                     use_scale_invariance = true;
+                    use_cgd = true;
                     jacobian_func = nullptr;
                     num_iters_returned = 0;
                     num_FD_approx_made = 0;
@@ -161,7 +162,7 @@ namespace numerics {
             typedef struct CONJ_GRAD_OPTS {
                 uint max_iter;
                 arma::mat preconditioner;
-                vector_func* sp_precond; // returns inv(M)*x for condition matrix M
+                arma::sp_mat sp_precond;
                 double err;
                 bool is_symmetric;
 
@@ -170,7 +171,6 @@ namespace numerics {
                     max_iter = 0;
                     err = 1e-6;
                     is_symmetric = true;
-                    sp_precond = nullptr;
                     num_iters_returned = 0;
                 }
             } cg_opts;
@@ -510,6 +510,9 @@ namespace numerics {
 
         arma::vec sample_from(int, const arma::vec&, const arma::vec& labels = arma::vec());
         double sample_from(const arma::vec&, const arma::vec& labels = arma::vec());
+
+        void ichol(const arma::mat&, arma::mat&);
+        void ichol(const arma::sp_mat&, arma::sp_mat&);
     // --- integration ------------ //
         double integrate(const dfunc&, double, double, integrator i = LOBATTO, double err = 1e-5);
         double simpson_integral(const dfunc&, double, double, double err = 1e-5);
@@ -518,11 +521,11 @@ namespace numerics {
         double mcIntegrate(const vec_dfunc&, const arma::vec&, const arma::vec&, double err = 1e-2, int N = 1e3);
     // --- root finding ----------- //
         //--- linear ---//
-        void cgd(arma::mat&, arma::vec&, arma::vec&, cg_opts&);
-        cg_opts cgd(arma::mat&, arma::vec&, arma::vec&);
+        void cgd(arma::mat&, arma::mat&, arma::mat&, cg_opts&);
+        cg_opts cgd(arma::mat&, arma::mat&, arma::mat&);
 
-        void sp_cgd(const arma::sp_mat&, const arma::vec&, arma::vec&, cg_opts&);
-        cg_opts sp_cgd(const arma::sp_mat&, const arma::vec&, arma::vec&);
+        void sp_cgd(const arma::sp_mat&, const arma::mat&, arma::mat&, cg_opts&);
+        cg_opts sp_cgd(const arma::sp_mat&, const arma::mat&, arma::mat&);
 
         //--- nonlinear ---//
 
