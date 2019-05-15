@@ -19,8 +19,9 @@ arma::mat f(arma::mat& X) {
 arma::mat gen_basis(arma::mat& X, arma::vec& centers) {
     arma::mat basis = arma::ones(X.n_elem, centers.n_elem+2);
     basis.col(1) = X;
+    double h = arma::range(centers) / centers.n_elem;
     for (uint i=0; i < centers.n_elem; ++i) {
-        basis.col(i+2) = arma::exp(-arma::square(X-centers(i)));
+        basis.col(i+2) = arma::exp(-arma::square(X-centers(i)/h));
     }
     return basis;
 }
@@ -29,10 +30,10 @@ arma::mat roughness_matrix(arma::mat& X, arma::vec& centers) {
     arma::mat C = arma::zeros(X.n_elem, centers.n_elem+2);
     C.col(1) += 1;
     for (uint i=0; i < centers.n_elem; ++i) {
-        C.col(i+2) = X - centers(i);
+        C.col(i+2) = 4*arma::square(X - centers(i)) - 2;
     }
     C %= gen_basis(X, centers);
-    return 0.01 * C.t() * C;
+    return C.t() * C;
 }
 
 int main() {
@@ -50,16 +51,12 @@ int main() {
     arma::mat basis_grid = gen_basis(xgrid, centers);
     arma::vec yhat_overfit = basis_grid * c_overfit;
 
-    std::cout << "the regularizer class has three options for model selection" << std::endl
-              << "\t(1) Provide a regularization matrix which is used if you have additional information about your model such as smoothness" << std::endl
-              << "\t(2) Provide a lambda parameter for L2 regularization where the cost is given by (y - X*c)^2 + lambda * c^2" << std::endl
-              << "\t(3) Let the model select a lambda for L2 regularization by cross validation." << std::endl << std::endl; 
-
     // regularizer lm(roughness_matrix(X, centers)); std::cout << "...regularizing by regularization matrix, where we choose to use matrix measuring roughness." << std::endl << std::endl;
     // regularizer lm(0.01); std::cout << "...regularizing by explicit choice of lambda = 0.01 for L2 regularization." << std::endl << std::endl;
     regularizer lm; std::cout << "...regularizing by cross validation of lambdas for L2 regularization" << std::endl << std::endl;
     
-    arma::vec yhat = lm.fit(basis, Y).predict(basis_grid);
+    bool use_conj_gradient = false;
+    arma::vec yhat = lm.fit(basis, Y, use_conj_gradient).predict(basis_grid);
 
     std::cout << "regularizing param: " << lm.regularizing_param() << std::endl
               << "MSE: " << lm.MSE() << std::endl

@@ -7,6 +7,12 @@ include_directories(include)
 
 add_library(numerics SHARED
         include/numerics.hpp
+        include/numerics_util.hpp
+        include/numerics_integration.hpp
+        include/numerics_optimization.hpp
+        include/numerics_interp.hpp
+        include/numerics_fd.hpp
+        include/numerics_data_sci.hpp
         include/ODE.hpp
         include/statistics.hpp
         src/integration/integrate.cpp
@@ -62,4 +68,14 @@ add_library(numerics SHARED
         )
 
 install(TARGETS numerics DESTINATION lib)
-install(FILES include/numerics.hpp include/ODE.hpp include/statistics.hpp DESTINATION include)
+install(FILES
+        include/numerics.hpp
+        include/numerics_util.hpp
+        include/numerics_integration.hpp
+        include/numerics_optimization.hpp
+        include/numerics_interp.hpp
+        include/numerics_fd.hpp
+        include/numerics_data_sci.hpp
+        include/ODE.hpp
+        include/statistics.hpp
+DESTINATION include)
