@@ -20,7 +20,7 @@ numerics::polyInterp::polyInterp(const arma::vec& X, const arma::mat& Y) {
     
     for (int i(0); i < n; ++i) { // error with invalid x input
         for (int j(i+1); j < n+1; ++j) {
-            if ( std::abs(X(i) - X(j)) < eps(X(i)) ) {
+            if ( std::abs(X(i) - X(j)) < arma::eps(X(i)) ) {
                 std::cerr << "polyInterp() error: one or more x values are repeting, therefore no polynomial interpolation exists for this data." << std::endl;
                 x = {0};
                 p = {0};
@@ -30,6 +30,7 @@ numerics::polyInterp::polyInterp(const arma::vec& X, const arma::mat& Y) {
     }
 
     x = X;
+    y = Y;
     p = arma::zeros(n+1,Y.n_cols);
     for (int i(0); i < Y.n_cols; ++i) {
         p.col(i) = arma::polyfit(X,Y.col(i),n);
@@ -48,9 +49,15 @@ void numerics::polyInterp::load(std::istream& in) {
     int n, m;
     in >> n >> m;
     x = arma::zeros(n);
+    y = arma::zeros(n,m);
     p = arma::zeros(n,m);
     for (int i(0); i < n; ++i) {
         in >> x(i);
+    }
+    for (int i(0); i < m; ++i) {
+        for (int j(0); j < n; ++j) {
+            in >> y(j,i);
+        }
     }
     for (int i(0); i < m; ++i) {
         for (int j(0); j < n; ++j) {
@@ -64,23 +71,30 @@ void numerics::polyInterp::load(std::istream& in) {
 void numerics::polyInterp::save(std::ostream& out) {
     out << p.n_rows << " " << p.n_cols << std::endl;
     out.precision(12);
-    arma::mat temp = x.t();
-    temp.raw_print(out);
-    temp = p.t();
-    temp.raw_print(out);
+    x.t().raw_print(out);
+    y.t().raw_print(out);
+    p.t().raw_print(out);
 }
 
-/* POLYINTERP({x1,x2,...}) : evaluate interpolator like a function at specific values.
- * --- t : points to evaluate interpolation on. */
+/* OPERATOR() : same as predict(t) */
 arma::mat numerics::polyInterp::operator()(const arma::vec& u) {
-    int n = x.n_elem - 1;
-    if ( !arma::all(u - x(0) >= -0.01) || !arma::all(u - x(n) <= 0.01) ) { // input error
-        std::cerr << "polyInterp::operator() failed: one or more input value is outside the domain of the interpolation. No possible evaluation exists." << std::endl;
-        return {NAN};
-    }
+    return predict(u);
+}
+
+/* PREDICT : evaluate interpolator like a function at specific values.
+ * --- t : points to evaluate interpolation on. */
+arma::mat numerics::polyInterp::predict(const arma::vec& u) {
     arma::mat v(u.n_elem,p.n_cols, arma::fill::zeros);
     for (int i(0); i < p.n_cols; ++i) {
         v.col(i) = arma::polyval(p.col(i),u);
     }
     return v;
+}
+
+arma::vec numerics::polyInterp::data_X() {
+    return x;
+}
+
+arma::mat numerics::polyInterp::data_Y() {
+    return y;
 }

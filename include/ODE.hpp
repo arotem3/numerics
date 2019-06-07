@@ -214,33 +214,6 @@ namespace ODE {
         dsolnc ivp(const odefun&, arma::vec&, arma::mat&, ivp_options&, ode_solver solver = RK45);
         dsolnc ivp(const odefun&, arma::vec&, arma::mat&, ode_solver solver = RK45);
     // --- BVPs ------------------- //
-        class linear_BVP {
-            //--- u''(x) = a(x) + b(x)*u(x) + c(x)*u'(x) ---//
-            //----- L <= x <= R ----------------------------//
-            //----- aL*u(L) + bL*u'(L) == gL ---------------//
-            //----- aR*u(R) + bR*u'(R) == gR ---------------//
-            private:
-            double xL, xR, alphaL, alphaR, betaL, betaR, gammaL, gammaR;
-            std::function<double(double)> a, b, c;
-            void solve2(arma::vec&, arma::mat&, uint);
-            void solve4(arma::vec&, arma::mat&, uint);
-            void spectral_solve(arma::vec&, arma::mat&, uint);
-
-            public:
-            linear_BVP();
-            void set_boundaries(double, double);
-            void set_RBC(double,double,double);
-            void set_LBC(double,double,double);
-            void set_a(std::function<double(double)>);
-            void set_a(double);
-            void set_b(std::function<double(double)>);
-            void set_b(double);
-            void set_c(std::function<double(double)>);
-            void set_c(double);
-            void solve(arma::vec&, arma::mat&, uint, bvp_solvers solver = FOURTH_ORDER);
-            dsolnp solve(uint num_pts = 40);
-        };
-
         dsolnp bvp(const odefun&, const bcfun&, const soln_init&, bvp_opts&);
         dsolnp bvp(const odefun&, const bcfun&, const soln_init&);
     // --- PDEs ------------------- //

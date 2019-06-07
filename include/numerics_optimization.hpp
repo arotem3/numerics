@@ -64,4 +64,4 @@
     double genOptim(const vec_dfunc&, arma::vec&);
 
     //--- integer boolean ---//
-    double boolOptim(std::function<double(const arma::uvec&)>, arma::uvec&, int);
+    double boolOptim(std::function<double(const arma::uvec&)>, arma::uvec&, uint);

@@ -14,11 +14,11 @@ ODE::soln_2d ODE::poisson2d(const pde2fun& f, const bcfun_2d& bc, uint num_pts) 
     //--- (1) set up Chebyshev differentiation matrix
     arma::mat D;
     arma::vec x;
-    cheb(D,x,m);
+    cheb(D,x,num_pts);
     D = D*D; // D^2
 
     //--- (2) set up x,y mesh points
-    arma::mat xx = numerics::meshgrid(x);
+    arma::mat xx; numerics::meshgrid(xx, x);
     arma::mat yy = xx.t();
     xx = arma::vectorise(xx);
     yy = arma::vectorise(yy);

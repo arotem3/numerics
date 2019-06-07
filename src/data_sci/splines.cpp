@@ -163,12 +163,12 @@ arma::mat numerics::splines::polyKern(const arma::mat& xgrid) {
 }
 
 /* POLY_COEF : returns coefficients for polynomial basis matrix from fit. */
-arma::vec numerics::splines::poly_coef() const {
+arma::mat numerics::splines::poly_coef() const {
     return d;
 }
 
 /* RBF_COEF : returns coefficients for RBF kernel matrix from fit. */
-arma::vec numerics::splines::rbf_coef() const {
+arma::mat numerics::splines::rbf_coef() const {
     return c;
 }
 

@@ -49,7 +49,6 @@ add_library(numerics SHARED
         src/ODEs/diffmat.cpp
         src/ODEs/ivp_events.cpp
         src/ODEs/IVP_solve.cpp
-        src/ODEs/linear_bvp.cpp
         src/ODEs/bvp.cpp
         src/ODEs/poisson.cpp
         src/ODEs/rk4.cpp

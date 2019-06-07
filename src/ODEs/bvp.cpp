@@ -13,9 +13,10 @@ ODE::dsolnp ODE::bvp(const odefun& f, const bcfun& bc, const soln_init& guess, b
     int n = guess({bc.xL}).n_elem; // system dimension
     arma::mat D;
     arma::vec x;
-    if (opts.order == bvp_solvers::CHEBYSHEV) cheb(D, x, bc.xL, bc.xR, m-1);
-    else if (opts.order == bvp_solvers::SECOND_ORDER) diffmat2(D, x, bc.xL, bc.xR, m-1);
-    else diffmat4(D, x, bc.xL, bc.xR, m-1);
+    if (opts.order == bvp_solvers::CHEBYSHEV) {
+        cheb(D, x, bc.xL, bc.xR, m);
+    } else if (opts.order == bvp_solvers::SECOND_ORDER) diffmat2(D, x, bc.xL, bc.xR, m);
+    else diffmat4(D, x, bc.xL, bc.xR, m);
     
     numerics::vector_func ff = [&](const arma::vec& u) -> arma::vec {
         arma::mat U = arma::reshape(u,m,n);

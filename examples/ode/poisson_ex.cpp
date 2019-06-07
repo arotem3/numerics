@@ -12,7 +12,7 @@ arma::vec potential(const arma::vec& x, const arma::vec& y) {
 }
 
 int main() {
-    int num_pts = 36;
+    int num_pts = 48;
 
     bcfun_2d bc;
     bc.lower_x = -1;

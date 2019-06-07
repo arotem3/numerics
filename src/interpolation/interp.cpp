@@ -14,7 +14,7 @@ arma::mat numerics::nearestInterp(const arma::vec& x, const arma::mat& y, const 
 
     for (int i(0); i < nx - 1; ++i) { // repeated x error
         for (int j(i+1); j < nx; ++j) {
-            if (std::abs(x(i) - x(j)) < eps()) {
+            if (std::abs(x(i) - x(j)) < arma::datum::eps) {
                 std::cerr << "linearInterp() error: one or more x values are repeating." << std::endl;
                 return {NAN};
             }
@@ -56,7 +56,7 @@ arma::mat numerics::linearInterp(const arma::vec& x, const arma::mat& y, const a
 
     for (int i(0); i < nx - 1; ++i) { // repeated x error
         for (int j(i+1); j < nx; ++j) {
-            if (std::abs(x(i) - x(j)) < eps()) {
+            if (std::abs(x(i) - x(j)) < arma::datum::eps) {
                 std::cerr << "linearInterp() error: one or more x values are repeating." << std::endl;
                 return {NAN};
             }
@@ -93,7 +93,7 @@ arma::mat numerics::lagrangeInterp(const arma::vec& x, const arma::mat& y, const
 
     for (int i(0); i < nx - 1; ++i) { // repeated x error
         for (int j(i+1); j < nx; ++j) {
-            if (std::abs(x(i) - x(j)) < eps()) {
+            if (std::abs(x(i) - x(j)) < arma::datum::eps) {
                 std::cerr << "lagrangeInterp() error: one or more x values are repeating." << std::endl;
                 return {NAN};
             }

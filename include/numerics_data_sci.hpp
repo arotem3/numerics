@@ -48,7 +48,7 @@
         splines(int m);
         splines(double lambda = -1, int m = 1);
         splines(const arma::mat&, const arma::mat&, int m = 1);
-        splines(const arma::mat&, const arma::mat&, double, int m = 1);
+        splines(const arma::mat&, const arma::mat&, double, int m);
         splines(std::istream&);
 
         splines& fit(const arma::mat&, const arma::mat&);
@@ -62,8 +62,8 @@
 
         arma::mat rbf(const arma::mat&);
         arma::mat polyKern(const arma::mat&);
-        arma::vec poly_coef() const;
-        arma::vec rbf_coef() const;
+        arma::mat poly_coef() const;
+        arma::mat rbf_coef() const;
 
         double gcv_score() const;
         double eff_df() const;
@@ -106,11 +106,10 @@
 
     class regularizer {
         private:
-        arma::mat X, Y, y_hat, coefs, regular_mat;
+        arma::mat coefs, regular_mat;
         double lambda, cv, df;
-        int n_obs, x_dim, y_dim;
         bool use_cgd, use_L2;
-        void cross_validate();
+        void cross_validate(const arma::mat&, const arma::mat&);
         void fit_no_replace(const arma::mat&, const arma::mat&, double);
 
         public:
@@ -118,25 +117,13 @@
         regularizer(const arma::mat&, double lambda = arma::datum::nan);
         regularizer(const arma::mat&, const arma::mat&, double lambda = arma::datum::nan, bool use_conj_grad = true);
         regularizer(const arma::mat&, const arma::mat&, const arma::mat&, double lambda = arma::datum::nan, bool use_conj_grad = true);
-        regularizer(std::istream&);
 
-        regularizer& fit(const arma::mat&, const arma::mat&, bool use_conj_grad = true);
-        arma::mat fit_predict(const arma::mat&, const arma::mat&, bool use_conj_grad = true);
+        arma::mat fit(const arma::mat&, const arma::mat&, bool use_conj_grad = true);
 
-        arma::mat predict(const arma::mat&);
-        arma::mat predict();
-        arma::mat operator()(const arma::mat&);
-        arma::mat operator()();
-
-        arma::mat data_X();
-        arma::mat data_Y();
-        arma::mat regularizing_matrix();
+        arma::mat regularizing_mat() const;
         arma::mat coef();
 
         double MSE() const;
         double eff_df() const;
         double regularizing_param() const;
-
-        void save(std::ostream&);
-        void load(std::istream&);
     };

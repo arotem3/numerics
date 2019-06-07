@@ -443,22 +443,15 @@
                 search_radius = 1;
             }
         } gen_opts;
-// --- misc ------------------- //
-    inline double eps(double x = 1.0) {
-        double e = x;
-        while( x + e != x) {
-            e /= 2;
-        }
-        return e;
-    }
-    
+// --- misc ------------------- //    
     inline int mod(int a, int b) {
         return (a%b + b)%b;
     }
     
     arma::vec eval(const vec_dfunc&, arma::mat&);
 
-    arma::mat meshgrid(const arma::vec&);
+    void meshgrid(arma::mat&, arma::mat&, const arma::vec&, const arma::vec&);
+    void meshgrid(arma::mat&, const arma::vec&);
 
     class cyc_queue {
         private:

@@ -7,4 +7,4 @@
     
     double deriv(const dfunc&, double, double err = 1e-5, bool catch_zero = true);
 
-    arma::vec specral_deriv(const dfunc&, arma::vec&, int sample_points = 100);
+    polyInterp specral_deriv(const dfunc&, double a, double b, uint sample_points = 50);

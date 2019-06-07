@@ -24,7 +24,7 @@ numerics::CubicInterp::CubicInterp(const arma::vec& X, const arma::mat& Y) {
     
     for (int i(0); i < n; ++i) { // error with invalid x input
         for (int j(i+1); j < n+1; ++j) {
-            if ( std::abs(X(i) - X(j)) < eps(X(i)) ) {
+            if ( std::abs(X(i) - X(j)) < arma::eps(X(i)) ) {
                 std::cerr << "CubicInterp() error: one or more x values are repeting, therefore no cubic interpolation exists for this data." << std::endl;
                 n = -1;
                 b = {NAN};
@@ -136,12 +136,27 @@ void numerics::CubicInterp::load(std::istream& in) {
     }  
 }
 
-/* CUBICINTERP({x1,x2,...}) : evaluate interpolator like a function at specific values.
- * --- t : points to evaluate interpolation on. */
+/* DATA_X : return independent data vector. */
+arma::vec numerics::CubicInterp::data_X() {
+    return x;
+}
+
+/* DATA_Y : return dependent data matrix. */
+arma::mat numerics::CubicInterp::data_Y() {
+    return y;
+}
+
+/* OPERATOR() : same as predict(t) */
 arma::mat numerics::CubicInterp::operator()(const arma::vec& t) {
-    if ( !arma::all(t - x(0) >= -0.01) || !arma::all(t - x(n) <= 0.01) ) { // input error
-        std::cerr << "CubicInterp::operator() failed: one or more input value is outside the domain of the interpolation. No possible evaluation exists." << std::endl;
-        return {NAN};
+    return predict(t);
+}
+
+/* PREDICT : evaluate interpolator like a function at specific values.
+ * --- t : points to evaluate interpolation on. */
+arma::mat numerics::CubicInterp::predict(const arma::vec& t) {
+    if ( (t.min() < x.min() - 0.01) || (x.max() + 0.01 < t.max()) ) { // input error
+        std::cerr << "CubicInterp::predict() failed: one or more input value is outside the domain of the interpolation. No possible evaluation exists." << std::endl;
+        return arma::mat();
     }
 
     int t_length = arma::size(t)(0);
@@ -156,11 +171,4 @@ arma::mat numerics::CubicInterp::operator()(const arma::vec& t) {
     }
 
     return s;
-}
-
-/* CUBICINTERP(n) : evaluate interpolator like a function at uniformly spaced values.
- * --- n : number of points to evaluate interpolation on. */
-arma::mat numerics::CubicInterp::operator()(uint num_pts) {
-    arma::vec t = arma::linspace(x(0),x(n),num_pts);
-    return operator()(t);
 }

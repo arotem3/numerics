@@ -27,7 +27,7 @@ I have only a simple CMakeLists.txt, so any modifications will have to be provid
 * simple finite difference methods (for approximating derivatives).
 * uniform spectral (fourier) derivatives over an interval.
 
-* machine learning tools (kmeans).
+* machine learning tools (kmeans, regularized linear regression).
 
 ## ODE.hpp is a numerics library for solving ordinary differential equations
 * Discrete differentiation matrices

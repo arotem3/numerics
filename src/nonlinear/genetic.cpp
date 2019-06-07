@@ -161,7 +161,7 @@ double numerics::genOptim(const vec_dfunc& f, arma::vec& x0, gen_opts& opts) {
     };
 
     arma::mat A(dim, n, arma::fill::randn); // initialized population
-    arma::mat tempA = 2*arma::randu(dim,n) - 1;
+    arma::mat tempA = arma::randn(dim,n);
     A += opts.search_radius * tempA;
 
     double pc = opts.reproduction_rate; // probability of reproduction for best member of population (value is arbitrary)
@@ -229,7 +229,7 @@ double numerics::genOptim(const vec_dfunc& f, arma::vec& x0) {
  * --- f  : double = f(x) function to maximize.
  * --- x  : initial guess and solution.
  * --- solution_dimension : dimension of solution. */
-double numerics::boolOptim(std::function<double(const arma::uvec&)> f, arma::uvec& x, int solution_dimension) {
+double numerics::boolOptim(std::function<double(const arma::uvec&)> f, arma::uvec& x, uint solution_dimension) {
     arma::arma_rng::set_seed_random();
     int n = gen_pop;
 

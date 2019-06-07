@@ -49,8 +49,12 @@ void numerics::lmlsqr(const vector_func& f, arma::vec& x, lsqr_opts& opts) {
             if (rho > 0) {
                 x += delta;
                 if (opts.jacobian_func == nullptr) { //update jacobian
-                    approx_jacobian(f,J,x);
-                    opts.num_FD_approx_made++;
+                    if (arma::norm(F1) < arma::norm(F)) {
+                        J += ((F1-F) - J*delta)*delta.t() / arma::as_scalar(delta.t()*delta);
+                    } else {
+                        approx_jacobian(f,J,x);
+                        opts.num_FD_approx_made++;
+                    }
                 } else {
                     J = opts.jacobian_func->operator()(x);
                 }

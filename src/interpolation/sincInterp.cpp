@@ -14,7 +14,7 @@ arma::mat numerics::sincInterp(const arma::vec& x, const arma::mat& y, const arm
 
     for (int i(0); i < n - 1; ++i) { // repeated x error
         for (int j(i+1); j < n; ++j) {
-            if (std::abs(x(i) - x(j)) < eps()) {
+            if (std::abs(x(i) - x(j)) < arma::datum::eps) {
                 std::cerr << "sincInterp() error: one or more x values are repeating." << std::endl;
                 return {NAN};
             }
@@ -39,22 +39,28 @@ arma::mat numerics::sincInterp(const arma::vec& x, const arma::mat& y, const arm
 
 /* SPECTRAL_DERIV : compute spectrally accurate derivative of function over an interval
  * --- f : f(x) function to compute derivative of
- * --- x : points to evaluate derivative at
- * --- sample_points: number of points to sample (more->more accurate) */
-arma::vec numerics::specral_deriv(const dfunc& f, arma::vec& x, int sample_points) {
-    double a = x(0);
-    int m = x.n_elem;
-    double b = x(m-1);
-    double h = (b - a)/sample_points;
-    x = h * arma::regspace(1,sample_points) + a;
-    arma::vec up = x;
-    up.for_each(  [f](arma::vec::elem_type& u){u = f(u);}  );
-    arma::cx_colvec up_hat = arma::fft(up);
-    arma::vec k = arma::join_cols(
-            arma::join_cols(arma::regspace(0,sample_points/2-1),arma::vec({0})),
-            arma::regspace(-sample_points/2+1,-1)
-    );
-    up_hat %= arma::cx_double(0,1) * k / h;
-    up = arma::real(arma::ifft(up_hat)) * (2*M_PI / sample_points);
-    return up;
+ * --- [a,b] : interval over which to evaluate derivative over
+ * --- sample_points: number of points to sample (more->more accurate) {default = 50} */
+numerics::polyInterp numerics::specral_deriv(const dfunc& f, double a, double b, uint sample_points) {
+    arma::cx_double i(0,1); // i^2 = -1
+    int N = sample_points - 1;
+
+    arma::vec y = arma::cos( arma::regspace(0,N)*M_PI/N );
+    arma::vec v = y;
+    v.for_each([&f,&b,&a](arma::vec::elem_type& u){u = f(0.5*(u+1)*(b-a)+a);});
+    
+    arma::uvec ii = arma::regspace<arma::uvec>(0,N-1);
+    v = arma::join_cols(v, arma::reverse(v.rows(1,N-1)));
+    v = arma::real(arma::fft(v));
+    arma::cx_vec u = i*arma::join_cols(arma::join_cols(arma::regspace(0,N-1), arma::vec({0})), arma::regspace(1-N, -1));
+    arma::vec W = arma::real(arma::ifft(u%v));
+    W.rows(1,N-1) = -W.rows(1,N-1) / arma::sqrt(1 - arma::square(y.rows(1,N-1)));
+    W(0) = 0.5*N*v(N) + arma::accu(arma::square(ii) % v.rows(ii+1)) / N;
+    arma::vec j = arma::ones(N); j.rows(arma::regspace<arma::uvec>(1,2,N-1)) *= 2;
+    W(N) = 0.5*std::pow(-1,N+1)*N*v(N) + arma::accu(j % arma::square(ii) % v.rows(ii+1)) / N;
+    W = W.rows(0,N);
+    W /= (b-a)/2;
+
+    polyInterp p(0.5*(y+1)*(b-a) + a, W);
+    return p;
 }

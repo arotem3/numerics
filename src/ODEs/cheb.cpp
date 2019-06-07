@@ -6,6 +6,7 @@
  * --- L,R : limits on x.
  * --- m : number of points. */
 void ODE::cheb(arma::mat& D, arma::vec& x, double L, double R, uint m) {
+    m = m-1;
     x = arma::regspace(0,m);
     x = -1*arma::cos(M_PI * x / m); // standard cheb nodes on [-1,1]
     x = (R - L) * x/2 + (L + R)/2; // transformation from [-1,1] -> [L,R]

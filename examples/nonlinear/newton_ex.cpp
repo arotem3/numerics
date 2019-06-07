@@ -33,14 +33,14 @@ int main() {
               << "\t[0,0,0]\n\t[-0.707,-1.414,-0.707]\n\t[-0.707,1.414,-0.707]\n\t[0.707,-1.414,0.707]\n\t[0.707,1.414,0.707]" << std::endl;
     arma::vec x0 = 4*arma::randu(3) - 2;
 
-    nonlin_opts opts;
-    opts.use_FD_jacobian = true;
-    opts.use_cgd = true;
-    opts.jacobian_func = &J;
-
-    // lsqr_opts opts;
-    // opts.jacobian_func = &J;
+    // nonlin_opts opts;
+    // opts.use_FD_jacobian = true;
     // opts.use_cgd = true;
+    // opts.jacobian_func = &J;
+
+    lsqr_opts opts;
+    // opts.jacobian_func = &J;
+    opts.use_cgd = true;
 
     // fpi_opts opts;
     // vector_func g = [&](const arma::vec& x) -> arma::vec {
@@ -49,8 +49,8 @@ int main() {
 
     clock_t t = clock();
     // newton(f,J,x0,opts); std::cout << "using Newton's method..." << std::endl;
-    broyd(f,x0,opts); std::cout << std::endl << "using Broyden's method..." << std::endl;
-    // lmlsqr(f,x0,opts); std::cout << "using Levenberg-Marquardt least squares..." << std::endl;
+    // broyd(f,x0,opts); std::cout << std::endl << "using Broyden's method..." << std::endl;
+    lmlsqr(f,x0,opts); std::cout << "using Levenberg-Marquardt least squares..." << std::endl;
     // mix_fpi(g,x0,opts); std::cout << "using fixed point iteration ..." << std::endl;
     t = clock() - t;
 
