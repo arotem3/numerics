@@ -20,7 +20,7 @@ int main() {
     arma::vec x = arma::linspace(a,b);
     arma::vec y = df(x);
 
-    polyInterp dy = specral_deriv(f,a,b,m);
+    polyInterp dy = spectral_deriv(f,a,b,m);
     arma::vec v = dy(x);
 
     std::cout << "max error : " << arma::norm(v - y, "inf") << std::endl;

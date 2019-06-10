@@ -41,7 +41,7 @@ arma::mat numerics::sincInterp(const arma::vec& x, const arma::mat& y, const arm
  * --- f : f(x) function to compute derivative of
  * --- [a,b] : interval over which to evaluate derivative over
  * --- sample_points: number of points to sample (more->more accurate) {default = 50} */
-numerics::polyInterp numerics::specral_deriv(const dfunc& f, double a, double b, uint sample_points) {
+numerics::polyInterp numerics::spectral_deriv(const dfunc& f, double a, double b, uint sample_points) {
     arma::cx_double i(0,1); // i^2 = -1
     int N = sample_points - 1;
 

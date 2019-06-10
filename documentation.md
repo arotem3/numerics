@@ -196,7 +196,7 @@ approx_jacobian(F,Jac,x);
 ### Spectral Derivatives
 Given function defined over an interval, we can approximate the derivative of the function with spectral accuracy using the `FFT`. The function `spectral_deriv()` does this:
 ```cpp
-polyInterp specral_deriv(const function<double(double)>& f,
+polyInterp spectral_deriv(const function<double(double)>& f,
                         double a, double b,
                         unsigned int sample_points = 50);
 ```
