@@ -16,6 +16,7 @@ add_library(numerics SHARED
         include/ODE.hpp
         include/statistics.hpp
         src/integration/integrate.cpp
+        src/integration/chebyshev_int.cpp
         src/integration/mcIntegrate.cpp
         src/interpolation/cinterp.cpp
         src/interpolation/interp.cpp
@@ -62,7 +63,7 @@ add_library(numerics SHARED
         src/utility/eval.cpp
         src/utility/meshgrid.cpp
         src/utility/sample_from.cpp
-        src/utility/ichol.cpp
+        src/utility/polynomials.cpp
         src/finite_dif.cpp
         )
 

@@ -12,6 +12,13 @@ I have only a simple CMakeLists.txt, so any modifications will have to be provid
 1. `make`
 1. `sudo make install`
 
+### basic compiling instructions:
+This assumes you have both armadillo and numerics installed in the default locations that your compiler can find (e.g. `/usr/local/lib/`).
+```
+g++ main.cpp -lnumerics -larmadillo
+```
+The order is important because `libnumerics` also has to link against `libarmadillo`.
+
 ## numerics.hpp is a numeric library hosting:
 * integration (4th order and 7-pt lobatto).
 

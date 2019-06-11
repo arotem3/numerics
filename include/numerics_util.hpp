@@ -477,5 +477,5 @@
     arma::vec sample_from(int, const arma::vec&, const arma::vec& labels = arma::vec());
     double sample_from(const arma::vec&, const arma::vec& labels = arma::vec());
 
-    void ichol(const arma::mat&, arma::mat&);
-    void ichol(const arma::sp_mat&, arma::sp_mat&);
+    arma::vec polyder(const arma::vec& p, uint k = 1);
+    arma::vec polyint(const arma::vec& p, double c = 0);

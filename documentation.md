@@ -4,6 +4,7 @@
 * [utitlity functions](#utility-methods)
     * [true modulus](#modulus-operation)
     * [meshgrid](#meshgrid)
+    * [Polynomial Derivatives and Integrals](#Polynomial-Derivatives-and-Integrals)
 * [integration](#integration)
 * [derivatives](#discrete-derivatives)
     * [finite difference methods](#finite-differences)
@@ -81,6 +82,19 @@ vec y = -cos(regspace(-M_PI, M_PI, 20))
 mat XX, YY;
 meshgrid(XX, YY, x, y);
 ```
+
+### Polynomial Derivatives and Integrals
+Given a polynomial coefficient vector (produced from `arma::polyfit`), we can produce derivatives of the polynomial with the following function:
+```cpp
+arma::vec polyder(const arma::vec& p, unsigned int k = 1);
+```
+where `p` is the coefficient vector, and `k` is order of the derivative. By default, `k = 1` which corresponds to the first derivative (and `k = 2` is the second derivative, and so on). The output is also a polynomial coefficient vector.
+
+We can integrate the polynomial:
+```cpp
+arma::vec polyint(const arma::vec& p, double c = 0);
+```
+where `p` is the coefficient vector, and `c` is the constant of integration; by default `c = 0`. The output is also a polynomial coefficient vector. 
 
 ## Quadrature and Finite Differences
 

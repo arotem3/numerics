@@ -30,6 +30,7 @@
         polyInterp();
         polyInterp(const arma::vec&, const arma::mat&);
         polyInterp(std::istream&);
+        polyInterp& fit(const arma::vec&, const arma::mat&);
         void load(std::istream&);
         void save(std::ostream&);
         arma::mat operator()(const arma::vec&);

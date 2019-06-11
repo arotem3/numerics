@@ -43,6 +43,12 @@ numerics::polyInterp::polyInterp(std::istream& in) {
     load(in);
 }
 
+/* FIT : fit the object, same as initialization */
+numerics::polyInterp& numerics::polyInterp::fit(const arma::vec& X, const arma::mat& Y) {
+    polyInterp(X,Y);
+    return *this;
+}
+
 /* LOAD : load data structure from file
  * --- in : file/input stream pointing to top of cubic interpolator object */
 void numerics::polyInterp::load(std::istream& in) {
