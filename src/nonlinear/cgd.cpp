@@ -89,14 +89,14 @@ numerics::cg_opts numerics::cgd(arma::mat& A, arma::mat& b, arma::mat& x) {
     return opts;
 }
 
-/* SP_CGD : solves the sparse system Ax = b (or A'A*x = A'b) using conjugate gradient descent
+/* CGD : solves the sparse system Ax = b (or A'A*x = A'b) using conjugate gradient descent
  * --- A : sparse system i.e. LHS (MAY BE OVERWITTEN)
  * --- b : RHS (MAY BE OVERWRITTEN)
  * --- x : initial guess and solution stored here
  * --- opts : options struct */
-void numerics::sp_cgd(const arma::sp_mat& A, const arma::mat& b, arma::mat& x, cg_opts& opts) {
+void numerics::cgd(const arma::sp_mat& A, const arma::mat& b, arma::mat& x, cg_opts& opts) {
     uint n = opts.max_iter;
-    if (n==0) n = 1.1*b.n_cols;
+    if (n==0) n = 1.1*b.n_rows;
 
     if (!opts.is_symmetric || !A.is_symmetric()) {
         std::cerr << "sp_cgd() error: sp_cgd() cannot handle nonsymmetric matrices." << std::endl;
@@ -151,13 +151,13 @@ void numerics::sp_cgd(const arma::sp_mat& A, const arma::mat& b, arma::mat& x, c
     opts.num_iters_returned = k;
 }
 
-/* SP_CGD : solves the sparse system Ax = b (or A'A*x = A'b) using conjugate gradient descent
+/* CGD : solves the sparse system Ax = b (or A'A*x = A'b) using conjugate gradient descent
  * --- A : sparse system i.e. LHS (MAY BE OVERWITTEN)
  * --- b : RHS (MAY BE OVERWRITTEN)
  * --- x : initial guess and solution stored here */
-numerics::cg_opts numerics::sp_cgd(const arma::sp_mat& A, const arma::mat& b, arma::mat& x) {
+numerics::cg_opts numerics::cgd(const arma::sp_mat& A, const arma::mat& b, arma::mat& x) {
     cg_opts opts;
     opts.is_symmetric = A.is_symmetric();
-    sp_cgd(A,b,x,opts);
+    cgd(A,b,x,opts);
     return opts;
 }

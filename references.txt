@@ -1,5 +1,5 @@
 Author: Amit Rotem
-Last modified: 12/15/2018
+Last modified: 6/11/2019
 
 I used the following sources:
 Armadillo:
@@ -22,4 +22,4 @@ algorithms:
 
 [6] Lloyd N. Trefethen "Spectral Methods in MATLAB"
 
-[7] a lot of Wikipedia...
+[7] a lot of Google/Wikipedia...

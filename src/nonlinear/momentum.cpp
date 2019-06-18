@@ -6,10 +6,12 @@
  * --- opts: parameter options. */
 void numerics::mgd(const vector_func& f, arma::vec& x, gd_opts& opts) {
     double beta = opts.damping_param;
+    bool minimize_line = (opts.step_size == 0);
 
     arma::vec p = f(x);
     double r = arma::norm(p,"inf");
-    double alpha = line_min( [&p,&x,&f,r](double a) -> double {arma::vec q = (-1.0/r)*p; return arma::dot(q,f(x + a*q));} );
+    double alpha = opts.step_size;
+    if (minimize_line) alpha = line_min( [&p,&x,&f,r](double a) -> double {arma::vec q = (-1.0/r)*p; return arma::dot(q,f(x + a*q));} );
     x += (-alpha/r)*p;
 
     uint k = 1;
@@ -24,7 +26,7 @@ void numerics::mgd(const vector_func& f, arma::vec& x, gd_opts& opts) {
         }
         p = beta*p + f(x);
         r = arma::norm(p,"inf");
-        alpha = line_min( [&p,&x,&f,r](double a) -> double {arma::vec q = (-1.0/r)*p; return arma::dot(q,f(x + a*q));} );
+        if (minimize_line) alpha = line_min( [&p,&x,&f,r](double a) -> double {arma::vec q = (-1.0/r)*p; return arma::dot(q,f(x + a*q));} );
         x += (-alpha/r)*p;
         k++;
     }

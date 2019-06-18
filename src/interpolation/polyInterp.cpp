@@ -104,3 +104,7 @@ arma::vec numerics::polyInterp::data_X() {
 arma::mat numerics::polyInterp::data_Y() {
     return y;
 }
+
+arma::mat numerics::polyInterp::coefficients() const {
+    return p;
+}

@@ -35,11 +35,12 @@
         void save(std::ostream&);
         arma::mat operator()(const arma::vec&);
         arma::mat predict(const arma::vec&);
+        arma::mat coefficients() const;
         arma::vec data_X();
         arma::mat data_Y();
     };
     
     arma::mat nearestInterp(const arma::vec&, const arma::mat&, const arma::vec&);
     arma::mat linearInterp(const arma::vec&, const arma::mat&, const arma::vec&);
-    arma::mat lagrangeInterp(const arma::vec&, const arma::mat&, const arma::vec&);
+    arma::mat lagrangeInterp(const arma::vec&, const arma::mat&, const arma::vec&, bool normalize = false);
     arma::mat sincInterp(const arma::vec&, const arma::mat&, const arma::vec&);

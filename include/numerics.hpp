@@ -8,7 +8,7 @@
 #include <queue>
 #include <set>
 
-#define ARMA_USE_SUPERLU 1
+#define ARMA_USE_SUPERLU 1 // optional, but really should be used when handling sparse matrices
 #include <armadillo>
 
 /* Copyright 2019 Amit Rotem

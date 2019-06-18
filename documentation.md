@@ -106,7 +106,6 @@ double integrate(const function<double(double)>& f,
 ```
 We have multiple options for integrating a function $f:\mathbb{R} \rightarrow \mathbb{R}$ over a finite range. Primarily, we use `integrate()`. If $f$ is smooth, then the default integrator is ideal, otherwise, we should opt to use Simpson's method.
 ```cpp
-
 double f(double x) return exp(-x*x); // e^(-x^2)
 double lower_bound = 0;
 double upper_bound = 3.14;
@@ -114,8 +113,17 @@ double upper_bound = 3.14;
 double I = integrate(f, lower_bound, upper_bound);
 
 double I_simp = integrate(f, lower_bound, upper_bound,
-                            integrator::SIMPSON, 1e-10);
+                            integrator::SIMPSON, 1e-6);
 ```
+Given a very smooth function (analytic), we can approximate its integral with few points using polynomial interpolation. Traditionally, polynomial interpolation takes $\mathcal O(n^3)$ time, but since we can choose the set of points to interpolate over, we can use Chebyshev nodes and integrate the function in $\mathcal O(n\log n)$ time using the fast fourier transform. The resulting approximation improves spectrally with $n$.
+```cpp
+double chebyshev_integral(const function<double(double)>& f,
+                          double a, double b,
+                          unsigned int num_f_evals = 25);
+```
+Where `num_f_evals` is the number of unique function evaluations to use, which is 25 by default. Increasing `num_f_evals` improves the accuracy, but very few are actually needed to achieve machine precision.
+
+_**note:**_ If the function is not (atleast) continuous, the approximation may quickly become ill conditioned.
 
 If we want to integrate an $n^{th}$ dimensional function within a box, then we can attempt Monte Carlo integration:
 ```cpp
@@ -184,8 +192,11 @@ void approx_jacobian(const function<arma::vec(const arma::vec&)> f,
                      arma::mat& J,
                      const arma::vec& x,
                      double err = 1e-2, bool catch_zero = true);
+
+arma::vec jacobian_diag(const function<arma::vec(const arma::vec&)> f,
+                        const arma::vec& x);
 ```
-These functions are wrappers for the `deriv()` function. So the functionality is similar.
+These functions are wrappers for the `deriv()` function. So the functionality is similar. The function `jacobian_diag` computes only the diagonal of the jacobian matrix.
 
 **note:** `approx_jacobian()` has no output and requires a matrix input, this matrix is overwritten with the jacobian matrix and serves as the output.
 
@@ -250,6 +261,9 @@ struct cg_opts {
 **note:** when solving for `x` in `A*x = b`, if `A` is not square or symmetric, the solver will set `b=A.t()*b` and  `A = A.t()*A`, so the matrix and vector will both be modified outside the scope of the function. The resulting system is has worse conditioning, so using a preconditioner may be improve performance.
 
 **note:** in the sparse case, if $A$ is not symmetric positive definite, the solver will quit.
+
+### Adjusted Gradient Descent
+
 
 ### Convex Constraint Linear Maximization
 
@@ -527,13 +541,18 @@ arma::mat polyInterp::predict(const arma::vec&);
 arma::mat polyInterp::operator()(const arma::vec&);
 ```
 
-If there is only a need to fit and interpolate a data set once, we may find it more efficient (and numerically stable) to interpolate using Lagrange interpolation:
+If there is only a need to fit and interpolate a data set once, we may find it more efficient ($\mathcal O(n^3)\rightarrow\mathcal O(n^2)$) and numerically stable to interpolate using Lagrange interpolation:
 ```cpp
 arma::mat lagrangeInterp(const arma::vec& x,
                          const arma::mat& Y,
-                         const arma::vec& xgrid);
+                         const arma::vec& xgrid,
+                         bool normalize = false);
 ```
 where `xgrid` is the set of values to interpolate over.
+
+For high order polynomial interpolation, there is a likely hazard of exteme fluctuations in the values of polynomial (Runge's Phenomenon). wE can address this problem in `lagrangeInterp` by setting `normalize=true`. If the $i^{th}$ Lagrange interpolating polynomial is $L_i(x) = \prod_{j\neq i}\frac{x - x_j}{x_i - x_j}$, then the interpolant is of the form: $f(x) = \sum_i y_i L_i(x)$. When `normalize=true`, the interpolant is instead: $\hat f(x)=\sum_i y_iL_i(x)e^{-(x-x_i)^2/\nu}$, where $\nu = \text{range}(x)/n$. This normalization helps whenever $x$ is approximately uniform.
+
+_**note:**_ When using `normalize=true`, remember that the resulting function is not a polynomial. 
 
 ### Nearest Neighbor Interpolation
 We can do basic interpolation (on sorted data) using a single nearest neighbor. The result is a piecewise constant function:

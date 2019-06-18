@@ -55,9 +55,8 @@ The order is important because `libnumerics` also has to link against `libarmadi
 * chi squared tests.
 * simple resampling/permutation test for means.
 
-There are example codes for every function and class.
+For an in depth overview, refer to the `documentation.md` file. There are also example files for most of the functions found in `/examples/` directory.
 
 Note, many of the examples rely on ["matplotlibcpp.h"](https://github.com/lava/matplotlib-cpp) which is used for visualising results of many of the algorithms. To use this feature install "matplotlib.h" and make sure you have a developer version of python 2.7.
 
 Disclaimer: This library is by no means exceptionally robust or efficient; it does what it can. I implemented many of these programs for fun!
-Documentation is now in progress...

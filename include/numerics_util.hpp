@@ -155,6 +155,7 @@
             uint grad_nelem;
             double damping_param;
             uint stochastic_batch_size;
+            double step_size;
 
             // outputs
             uint num_iters_returned;
@@ -165,6 +166,7 @@
                 damping_param = 0.99;
                 num_iters_returned = 0;
                 stochastic_batch_size = 10;
+                step_size = 0;
             }
         } gd_opts;
 
@@ -195,6 +197,7 @@
             double wolfe_c1; // -- lbfgs, bfgs
             double wolfe_c2; // -- lbfgs, bfgs
             double wolfe_scaling; // -- lbfgs, bfgs
+            double step_size;
             uint stochastic_batch_size; // -- sgd
             uint num_iters_to_remember; // -- lbfgs
             arma::mat* init_hessian; // -- bfgs, lbfgs, lmlsqr
@@ -217,6 +220,7 @@
                 wolfe_c1 = 1e-4;
                 wolfe_c2 = 0.9;
                 wolfe_scaling = 0.5;
+                step_size = 0;
                 init_hessian = nullptr;
                 init_hessian_inv = nullptr;
                 hessian_func = nullptr;

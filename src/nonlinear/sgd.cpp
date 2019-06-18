@@ -7,8 +7,9 @@
 void numerics::sgd(const sp_vector_func& f, arma::vec& x, gd_opts& opts) {
     int n = x.n_elem;
     int bs = opts.stochastic_batch_size;
+    bool minimize_line = (opts.step_size == 0);
 
-    double alpha;
+    double alpha = opts.step_size;
     double r;
     arma::vec p;
     
@@ -29,7 +30,7 @@ void numerics::sgd(const sp_vector_func& f, arma::vec& x, gd_opts& opts) {
             p( ind(i) ) = f( x, ind(i) );
         }
         r = arma::norm(p,"inf");
-        alpha = line_min(
+        if (minimize_line) alpha = line_min(
             [&f,&ind,&p,&x,n,bs,r](double a) -> double {
                 arma::vec z = arma::zeros(n);
                 arma::vec q = (-1.0/r)*p;

@@ -7,9 +7,9 @@ using namespace numerics;
 int main() {
     int n = 1000;
     arma::arma_rng::set_seed_random();
-    arma::sp_mat A = arma::sprandn(n,n,0.02); // the sparser the system the greater the difference in performance b/w cgd() and spsolve()
-    A = (A + A.t())*0.5;
-    A.diag() = n*arma::ones(n); // so we are guaranteed a symmetric positive definite matrix
+    arma::sp_mat A = arma::sprandn(5*n,n,0.001); // the sparser the system the greater the difference in performance b/w cgd() and spsolve()
+    A = A.t() * A;
+    std::cout << "nonzeros / n = " << (double)A.n_nonzero / A.n_elem << std::endl;
 
     arma::mat b = arma::randn(n,2); // we can solve multiple equations at once
 
@@ -20,12 +20,23 @@ int main() {
     std::cout << "For the matrix of order " << n << ", the direct solver took " << (float)t/CLOCKS_PER_SEC << " seconds" << std::endl << std::endl;
 
     arma::mat y = arma::zeros(n,2);
+    numerics::cg_opts opts;
     t = clock();
-    sp_cgd(A, b, y);
+    cgd(A, b, y, opts);
     t = clock() - t;
 
-    std::cout << "Conjugate gradient method took " << (float)t/CLOCKS_PER_SEC << " seconds" << std::endl;
-    std::cout << "the maximum error was: " << arma::norm(y-x,"inf") << std::endl;
+    std::cout << "Conjugate gradient method took " << (float)t/CLOCKS_PER_SEC << " seconds" << std::endl
+              << "with " << opts.num_iters_returned << " total iterations." << std::endl
+              << "the maximum cgd() error was: " << arma::norm(y-x,"inf") << std::endl << std::endl;
+
+    arma::mat z;
+    t = clock();
+    linear_adj_gd(A,b,z,opts);
+    t = clock() - t;
+
+    std::cout << "adjusted gradient descent took " << (float)t/CLOCKS_PER_SEC << " seconds" << std::endl
+              << "with " << opts.num_iters_returned << " total iterations." << std::endl
+              << "the maximum linear_adj_gd() error was: " << arma::norm(z-x,"inf") << std::endl << std::endl;
 
     return 0;
 }

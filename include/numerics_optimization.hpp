@@ -3,8 +3,14 @@
     void cgd(arma::mat&, arma::mat&, arma::mat&, cg_opts&);
     cg_opts cgd(arma::mat&, arma::mat&, arma::mat&);
 
-    void sp_cgd(const arma::sp_mat&, const arma::mat&, arma::mat&, cg_opts&);
-    cg_opts sp_cgd(const arma::sp_mat&, const arma::mat&, arma::mat&);
+    void cgd(const arma::sp_mat&, const arma::mat&, arma::mat&, cg_opts&);
+    cg_opts cgd(const arma::sp_mat&, const arma::mat&, arma::mat&);
+
+    void linear_adj_gd(arma::mat&, arma::mat&, arma::mat&, cg_opts&);
+    cg_opts linear_adj_gd(arma::mat&, arma::mat&, arma::mat&);
+
+    void linear_adj_gd(const arma::sp_mat&, const arma::mat&, arma::mat&, cg_opts&);
+    cg_opts linear_adj_gd(const arma::sp_mat&, const arma::mat&, arma::mat&);
 
     //--- nonlinear ---//
 

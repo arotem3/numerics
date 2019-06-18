@@ -38,6 +38,7 @@ double numerics::minimize_unc(const vec_dfunc& f, arma::vec& x, optim_opts& opts
         options.err = opts.tolerance;
         options.max_iter = opts.max_iter;
         options.damping_param = opts.damping_param;
+        options.step_size = opts.step_size;
         if (opts.gradient_func == nullptr) { // no gradient provided
             std::cerr << "minimize_unc() warning: using FD gradients may be very slow!" << std::endl;
             options.max_iter = no_grad_max_iter;
@@ -155,6 +156,7 @@ double numerics::minimize_unc(const vec_dfunc& f, arma::vec& x, optim_opts& opts
         options.err = opts.tolerance;
         options.max_iter = opts.max_iter;
         options.stochastic_batch_size = opts.stochastic_batch_size;
+        options.step_size = opts.step_size;
         if (opts.indexed_gradient_func == nullptr) { // no gradient provided
             std::cerr << "minimize_unc() warning: using FD gradients may be very slow!" << std::endl;
             auto df = [f,opts](const arma::vec& u, int ind) -> double {
