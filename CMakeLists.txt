@@ -7,75 +7,66 @@ include_directories(include)
 
 add_library(numerics SHARED
         include/numerics.hpp
-        include/numerics_util.hpp
-        include/numerics_integration.hpp
-        include/numerics_optimization.hpp
-        include/numerics_interp.hpp
-        include/numerics_fd.hpp
-        include/numerics_data_sci.hpp
-        include/ODE.hpp
-        include/statistics.hpp
-        src/integration/integrate.cpp
-        src/integration/chebyshev_int.cpp
-        src/integration/mcIntegrate.cpp
-        src/interpolation/cinterp.cpp
-        src/interpolation/interp.cpp
-        src/interpolation/polyInterp.cpp
-        src/interpolation/sincInterp.cpp
-        src/data_sci/kmeans.cpp
-        src/data_sci/splines.cpp
-        src/data_sci/kernel_smooth.cpp
-        src/data_sci/k_fold.cpp
-        src/data_sci/regularizer.cpp
-        src/nonlinear/adj_gd.cpp
-        src/nonlinear/bfgs.cpp
-        src/nonlinear/broyd.cpp
-        src/nonlinear/cgd.cpp
-        src/nonlinear/fpi.cpp
-        src/nonlinear/fzero.cpp
-        src/nonlinear/genetic.cpp
-        src/nonlinear/line_min.cpp
-        src/nonlinear/lmlsqr.cpp
-        src/nonlinear/minimize_unc.cpp
-        src/nonlinear/momentum.cpp
-        src/nonlinear/newton.cpp
-        src/nonlinear/nlcgd.cpp
-        src/nonlinear/sgd.cpp
-        src/nonlinear/simplex.cpp
-        src/nonlinear/wolfe_step.cpp
-        src/ODEs/am1.cpp
-        src/ODEs/am2.cpp
-        src/ODEs/bdf23.cpp
-        src/ODEs/cheb.cpp
-        src/ODEs/diffmat.cpp
-        src/ODEs/ivp_events.cpp
-        src/ODEs/IVP_solve.cpp
-        src/ODEs/bvp.cpp
-        src/ODEs/poisson.cpp
-        src/ODEs/rk4.cpp
-        src/ODEs/rk45.cpp
-        src/ODEs/rk5i.cpp
-        src/statistics/chi_sq.cpp
-        src/statistics/distributions.cpp
-        src/statistics/functions.cpp
-        src/statistics/tests.cpp
+        include/numerics/data_science.hpp
+        include/numerics/derivatives.hpp
+        include/numerics/integrals.hpp
+        include/numerics/interpolation.hpp
+        include/numerics/ode.hpp
+        include/numerics/optimization.hpp
+        include/numerics/utility.hpp
+
+        src/data_science/k_fold.cpp
+        src/data_science/kernel_smooth.cpp
+        src/data_science/kmeans.cpp
+        src/data_science/regularizer.cpp
+        src/data_science/splines.cpp
+
+        src/derivatives/approx_jacobian.cpp
+        src/derivatives/deriv.cpp
+        src/derivatives/grad.cpp
+        src/derivatives/spectral_deriv.cpp
+
+        src/integrals/chebyshev_integral.cpp
+        src/integrals/lobatto_integral.cpp
+        src/integrals/simpson_integral.cpp
+
+        src/interpolation/cubic_interp.cpp
+        src/interpolation/lagrange_interp.cpp
+        src/interpolation/poly_interp.cpp
+        src/interpolation/sinc_interp.cpp
+        src/interpolation/polynomials.cpp
+
+        src/ode/am1.cpp
+        src/ode/am2.cpp
+        src/ode/bdf23.cpp
+        src/ode/bvp.cpp
+        src/ode/cheb.cpp
+        src/ode/diffmat.cpp
+        src/ode/ivp_events.cpp
+        src/ode/rk4.cpp
+        src/ode/rk5i.cpp
+        src/ode/rk45.cpp
+
+        src/optimization/adj_gd.cpp
+        src/optimization/bfgs.cpp
+        src/optimization/broyd.cpp
+        src/optimization/cgd.cpp
+        src/optimization/fzero.cpp
+        src/optimization/gen_optim.cpp
+        src/optimization/lbfgs.cpp
+        src/optimization/line_min.cpp
+        src/optimization/lmlsqr.cpp
+        src/optimization/mgd.cpp
+        src/optimization/mix_fpi.cpp
+        src/optimization/newton.cpp
+        src/optimization/simplex.cpp
+        src/optimization/wolfe_step.cpp
+        
         src/utility/cyc_queue.cpp
-        src/utility/eval.cpp
         src/utility/meshgrid.cpp
         src/utility/sample_from.cpp
-        src/utility/polynomials.cpp
-        src/finite_dif.cpp
-        )
+)
 
 install(TARGETS numerics DESTINATION lib)
-install(FILES
-        include/numerics.hpp
-        include/numerics_util.hpp
-        include/numerics_integration.hpp
-        include/numerics_optimization.hpp
-        include/numerics_interp.hpp
-        include/numerics_fd.hpp
-        include/numerics_data_sci.hpp
-        include/ODE.hpp
-        include/statistics.hpp
-DESTINATION include)
+install(FILES include/numerics.hpp DESTINATION include)
+install(DIRECTORY include/numerics DESTINATION include)

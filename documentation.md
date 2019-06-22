@@ -543,14 +543,14 @@ arma::mat polyInterp::operator()(const arma::vec&);
 
 If there is only a need to fit and interpolate a data set once, we may find it more efficient ($\mathcal O(n^3)\rightarrow\mathcal O(n^2)$) and numerically stable to interpolate using Lagrange interpolation:
 ```cpp
-arma::mat lagrangeInterp(const arma::vec& x,
+arma::mat lagrange_interp(const arma::vec& x,
                          const arma::mat& Y,
                          const arma::vec& xgrid,
                          bool normalize = false);
 ```
 where `xgrid` is the set of values to interpolate over.
 
-For high order polynomial interpolation, there is a likely hazard of exteme fluctuations in the values of polynomial (Runge's Phenomenon). wE can address this problem in `lagrangeInterp` by setting `normalize=true`. If the $i^{th}$ Lagrange interpolating polynomial is $L_i(x) = \prod_{j\neq i}\frac{x - x_j}{x_i - x_j}$, then the interpolant is of the form: $f(x) = \sum_i y_i L_i(x)$. When `normalize=true`, the interpolant is instead: $\hat f(x)=\sum_i y_iL_i(x)e^{-(x-x_i)^2/\nu}$, where $\nu = \text{range}(x)/n$. This normalization helps whenever $x$ is approximately uniform.
+For high order polynomial interpolation, there is a likely hazard of exteme fluctuations in the values of polynomial (Runge's Phenomenon). wE can address this problem in `lagrange_interp` by setting `normalize=true`. If the $i^{th}$ Lagrange interpolating polynomial is $L_i(x) = \prod_{j\neq i}\frac{x - x_j}{x_i - x_j}$, then the interpolant is of the form: $f(x) = \sum_i y_i L_i(x)$. When `normalize=true`, the interpolant is instead: $\hat f(x)=\sum_i y_iL_i(x)e^{-(x-x_i)^2/\nu}$, where $\nu = \text{range}(x)/n$. This normalization helps whenever $x$ is approximately uniform.
 
 _**note:**_ When using `normalize=true`, remember that the resulting function is not a polynomial. 
 
@@ -573,7 +573,7 @@ arma::mat linearInterp(const arma::vec& x,
 ### Sinc interpolation
 Given sorted _**uniformly spaced**_ points on an interval, we can interpolate the data using a linear combination of sinc functions $\text{sinc}(x) = \frac{\sin(\pi x)}{\pi x}$:
 ```cpp
-arma::mat sincInterp(const arma::vec& x,
+arma::mat sinc_interp(const arma::vec& x,
                      const arma::mat& Y,
                      const arma::vec& xgrid);
 ```
@@ -613,14 +613,14 @@ kmeans::load(istream& in);
 kmeans::kmeans(istream& in); // can be loaded in on construction
 ```
 
-Once our `kmeans` object is constructed we can get information about which data went to which cluster with `getClusters()` and we can get the cluster means themselves using `getCentroids()`:
+Once our `kmeans` object is constructed we can get information about which data went to which cluster with `get_clusters()` and we can get the cluster means themselves using `get_centroids()`:
 ```cpp
-arma::vec kmeans::getClusters() const; 
+arma::vec kmeans::get_clusters() const; 
 /*
 the i^th elem corresponds to the i^th data point. The i^th element contains the cluster number which is an int ranging on [0,k-1]
 */
 
-arma::mat kmeans::getCentroids() const;
+arma::mat kmeans::get_centroids() const;
 /*
 the i^th row is the i^th cluster where i is ranging on [0, k-1]
 /*

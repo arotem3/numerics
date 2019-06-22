@@ -26,10 +26,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 namespace numerics {
-    #include "numerics_util.hpp"
-    #include "numerics_integration.hpp"
-    #include "numerics_optimization.hpp"
-    #include "numerics_interp.hpp"
-    #include "numerics_fd.hpp"
-    #include "numerics_data_sci.hpp"
+    #include "numerics/utility.hpp"
+    #include "numerics/integrals.hpp"
+    #include "numerics/optimization.hpp"
+    #include "numerics/interpolation.hpp"
+    #include "numerics/derivatives.hpp"
+    #include "numerics/data_science.hpp"
+    #include "numerics/ode.hpp"
 };

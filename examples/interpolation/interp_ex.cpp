@@ -36,8 +36,8 @@ int main() {
         if (i==0) {v = nearestInterp(x,y,u); title = "nearest neighbor";}
         else if (i==1) {v = linearInterp(x,y,u); title = "linear";}
         else if (i==2) {v = fSpline(u); title = "cubic spline";}
-        else if (i==3) {v = lagrangeInterp(x,y,u, normalize_lagrange_interp); title = "lagrange";}
-        else if (i==4) {v = sincInterp(x,y,u); title = "sinc";}
+        else if (i==3) {v = lagrange_interp(x,y,u, normalize_lagrange_interp); title = "lagrange";}
+        else if (i==4) {v = sinc_interp(x,y,u); title = "sinc";}
 
         std::cout << std::endl << title << std::endl;
         std::cout << "max error : " << arma::norm(v - f(u), "inf") << std::endl;
