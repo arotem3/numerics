@@ -1,6 +1,6 @@
 #include "numerics.hpp"
 
-// g++ -g -Wall -o simplex simplex_ex.cpp -lnumerics -larmadillo
+// g++ -g -Wall -o simplex simplex_ex.cpp -O3 -lnumerics -larmadillo
 
 using namespace numerics;
 

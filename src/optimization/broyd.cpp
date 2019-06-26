@@ -4,7 +4,7 @@
  * --- f : f(x) = 0 function for finding roots of.
  * --- x : guess for root, also where root will be stored.
  * --- max_iter : maximum number of iterations after which method will stop regardless of convergence */
-void numerics::broyd::fsolve(std::function<arma::vec(const arma::vec&)> f,
+void numerics::broyd::fsolve(const std::function<arma::vec(const arma::vec&)>& f,
                             arma::vec& x,
                             int max_iter) {
     if (max_iter <= 0) {
@@ -20,7 +20,7 @@ void numerics::broyd::fsolve(std::function<arma::vec(const arma::vec&)> f,
     uint k = 0;
 
     do {
-        if (k > max_iterations) {
+        if (k >= max_iterations) {
             exit_flag = 1;
             num_iter += k;
             return;
@@ -46,7 +46,7 @@ void numerics::broyd::fsolve(std::function<arma::vec(const arma::vec&)> f,
             Jinv = arma::pinv(Jinv);
         }
         k++;
-    } while (arma::norm(F1,"inf") > tol);
+    } while (arma::norm(F,"inf") > tol);
     num_iter += k;
     exit_flag = 0;
 }
@@ -56,8 +56,8 @@ void numerics::broyd::fsolve(std::function<arma::vec(const arma::vec&)> f,
  * --- jacobian : J(x) jacobian of f(x).
  * --- x : guess for root, also where root will be stored.
  * --- max_iter : maximum number of iterations after which method will stop regardless of convergence */
-void numerics::broyd::fsolve(std::function<arma::vec(const arma::vec&)> f,
-                            std::function<arma::mat(const arma::vec&)> jacobian,
+void numerics::broyd::fsolve(const std::function<arma::vec(const arma::vec&)>& f,
+                            const std::function<arma::mat(const arma::vec&)>& jacobian,
                             arma::vec& x, int max_iter) {
     if (max_iter <= 0) {
         if (max_iterations <= 0) max_iterations = 100;
@@ -73,7 +73,7 @@ void numerics::broyd::fsolve(std::function<arma::vec(const arma::vec&)> f,
     uint k = 0;
 
     do {
-        if (k > max_iterations) {
+        if (k >= max_iterations) {
             exit_flag = 1;
             num_iter += k;
             return;
@@ -99,7 +99,7 @@ void numerics::broyd::fsolve(std::function<arma::vec(const arma::vec&)> f,
             Jinv = arma::pinv(Jinv);
         }
         k++;
-    } while (arma::norm(F1,"inf") > tol);
+    } while (arma::norm(F,"inf") > tol);
     num_iter += k;
     exit_flag = 0;
 }

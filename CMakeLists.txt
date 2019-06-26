@@ -20,6 +20,7 @@ add_library(numerics SHARED
         src/data_science/kmeans.cpp
         src/data_science/regularizer.cpp
         src/data_science/splines.cpp
+        src/data_science/logistic_regression.cpp
 
         src/derivatives/approx_jacobian.cpp
         src/derivatives/deriv.cpp
@@ -38,7 +39,6 @@ add_library(numerics SHARED
 
         src/ode/am1.cpp
         src/ode/am2.cpp
-        src/ode/bdf23.cpp
         src/ode/bvp.cpp
         src/ode/cheb.cpp
         src/ode/diffmat.cpp
@@ -46,6 +46,7 @@ add_library(numerics SHARED
         src/ode/rk4.cpp
         src/ode/rk5i.cpp
         src/ode/rk45.cpp
+        src/ode/poisson2d.cpp
 
         src/optimization/adj_gd.cpp
         src/optimization/bfgs.cpp
@@ -58,6 +59,7 @@ add_library(numerics SHARED
         src/optimization/lmlsqr.cpp
         src/optimization/mgd.cpp
         src/optimization/mix_fpi.cpp
+        src/optimization/nelder_mead.cpp
         src/optimization/newton.cpp
         src/optimization/simplex.cpp
         src/optimization/wolfe_step.cpp

@@ -24,24 +24,23 @@
     * [Newton's Method](#Newton's-Method-for-minimization)
     * [BFGS](#Broyden–Fletcher–Goldfarb–Shanno-algorithm)
     * [LBFGS](#Limited-Memory-BFGS)
-    * [momentum Gradient Descent](#Momentum-Gradient-Descent)
-    * [Stochastic Gradient Descent](#stochastic-gradient-descent)
+    * [momentum gradient descent](#Momentum-Gradient-Descent)
     * [nonlinear conjugate gradient](#Nonlinear-Conjugate-Gradient-Descent)
-    * [adjusted Gradient Descent](#adjusted-gradient-descent)
+    * [adjusted gradient descent](#adjusted-gradient-descent)
+    * [Nelder-Mead method](#Nelder-Mead-Gradient-Free-Minimization)
     * [genetic Algorithms](#Genetic-Maximization-Algorithm)
 * [interpolation](#interpolation)
     * [cubic spline](#cubic-interpolation)
     * [polynomial](#polynomial-interpolation)
-    * [nearest neighbor](#nearest-neighbor-interpolation)
-    * [linear spline](#linear-interpolation)
     * [sinc spline](#sinc-interpolation)
 * [Data Science](#data-science)
     * [k-fold train test split](#k-fold-train-test-split)
     * [k-means clustering](#k-means-clustering)
     * [splines](#splines)
+    * [logistic regression](#logistic-regression)
     * [kernel smoothing](#kernel-smoothing)
     * [Regularized Linear Least Squares Regression](#Regularized-Linear-Least-Squares-Regression)
-* [`ODE.hpp`](#`ODE.hpp`-Documentation)
+* [`ODE.hpp`](#`numerics::ode`-Documentation)
 
 all definitions are members of namespace `numerics`, all examples assume:
 ```cpp
@@ -100,9 +99,12 @@ where `p` is the coefficient vector, and `c` is the constant of integration; by 
 
 ### Integration
 ```cpp
+enum integrator {SIMPSON,LOBATTO};
+
 double integrate(const function<double(double)>& f,
                  double a, double b,
-                 integrator i = LOBATTO, err = 1e-5);
+                 double err = 1e-5,
+                 integrator i = LOBATTO);
 ```
 We have multiple options for integrating a function $f:\mathbb{R} \rightarrow \mathbb{R}$ over a finite range. Primarily, we use `integrate()`. If $f$ is smooth, then the default integrator is ideal, otherwise, we should opt to use Simpson's method.
 ```cpp
@@ -112,57 +114,25 @@ double upper_bound = 3.14;
 
 double I = integrate(f, lower_bound, upper_bound);
 
-double I_simp = integrate(f, lower_bound, upper_bound,
-                            integrator::SIMPSON, 1e-6);
+double I_simp = integrate(f, lower_bound, upper_bound, 1e-6,integrator::SIMPSON);
 ```
-Given a very smooth function (analytic), we can approximate its integral with few points using polynomial interpolation. Traditionally, polynomial interpolation takes $\mathcal O(n^3)$ time, but since we can choose the set of points to interpolate over, we can use Chebyshev nodes and integrate the function in $\mathcal O(n\log n)$ time using the fast fourier transform. The resulting approximation improves spectrally with $n$.
+Given a very smooth function (analytic), we can approximate its integral with few points using polynomial interpolation. Traditionally, polynomial interpolation takes $\mathcal O(n^3)$ time, but since we can choose the set of points to interpolate over, we can use Chebyshev nodes and integrate the function in $\mathcal O(n\log n)$ time using the fast fourier transform (caveat, this implementation is not optimal, it is $\mathcal O(n^2)$ for now--still an improvement). The resulting error improves spectrally with $n$.
 ```cpp
 double chebyshev_integral(const function<double(double)>& f,
                           double a, double b,
-                          unsigned int num_f_evals = 25);
+                          unsigned int num_f_evals = 32);
 ```
-Where `num_f_evals` is the number of unique function evaluations to use, which is 25 by default. Increasing `num_f_evals` improves the accuracy, but very few are actually needed to achieve machine precision.
+Where `num_f_evals` is the number of unique function evaluations to use, which is 32 by default. Increasing `num_f_evals` improves the accuracy, but very few function evaluations are actually needed to achieve machine precision.
 
 _**note:**_ If the function is not (atleast) continuous, the approximation may quickly become ill conditioned.
-
-If we want to integrate an $n^{th}$ dimensional function within a box, then we can attempt Monte Carlo integration:
-```cpp
-double mcIntegrate(const function<double(const arma::vec& x)>& f,
-                   const arma::vec& lower_bound,
-                   const arma::vec& upper_bound,
-                   double err = 1e-2,
-                   int N = 1e3);
-```
-This method adaptively sample points from the function, in regions of high variance and uses inference techniques to approximate a bound on the the error.
-
-**note:** to get high precision estimates, the method requires large N, which can be slow, maybe slower than grid style integration.
-
-**note:** In retrospect this method is not especially well designed, I might come back to it.
-
-Example:
-
-```cpp
-double circle(const vec& x) {
-    if (norm(x) <= 1) return 1;
-    else return 0;
-}
-vec lower_bound = {-1,-1}; // -1 <= x,y <= 1
-vec upper_bound = {1,1};
-
-double area = mcIntegrate(circle, lower_bound, upperbound);
-
-double err = 1e-4;
-int sample_points = 1e4;
-double better_estimate = mcIntegrate(circle, lower_bound, upper_bound, err, sample_points);
-```
 
 ## Discrete Derivatives
 ### Finite Differences
 ```cpp
 double deriv(const function<double(double)>& f, double x,
-            double err = 1e-5, bool catch_zero = true);
+            double h = 1e-2, bool catch_zero = true);
 ```
-This function uses 4th order finite differences and adaptively determines the derivative at a point `x` within an error bound (1e-5 by default). We can also ask the derivative function to catch zeros, i.e. round to zero whenever `|x| < err`; this option can make the approximation more efficient.
+This function uses 4th order finite differences with step size `h` to approximate the derivative at a point `x`. We can also ask the derivative function to catch zeros, i.e. round to zero whenever `f'(x) < h`; this option can improve the numerical stability of methods relying on results from `deriv()`, e.g. approximating sparse Hessians or Jacobians.
 
 **note:** `deriv()` may never actually evaluate the function at the point of interest, which is ideal if the function is not well behaved there.
 
@@ -172,33 +142,31 @@ double f(double x) return sin(x);
 
 double x = 0;
 
-double df = deriv(f,x); // should return 1.0
+double df = deriv(f,x); // should return ~1.0
 
 double g(double x) return cos(x);
 
-double dg = deriv(g,x,1e-5,false); // should return 0.0 
+double dg = deriv(g,x,1e-2,false); // should return ~0.0 
 /*
-in this case we are better off if catch_zero = true because we would require only 4 function evals rather than 8 which would be required to verify the derivative truly equals 0.
+in this case we are better off if catch_zero = true because d(cos x)/dx = 0 for x = 0.
 */
 ```
 We can also approximate gradients and Jacobian matrices:
 ```cpp
 arma::vec grad(const function<double(const arma::vec&)> f,
                const arma::vec& x,
-               double err = 1e-5,
+               double h = 1e-2,
                bool catch_zeros = true);
 
-void approx_jacobian(const function<arma::vec(const arma::vec&)> f,
-                     arma::mat& J,
+arma::mat approx_jacobian(const function<arma::vec(const arma::vec&)> f,
                      const arma::vec& x,
-                     double err = 1e-2, bool catch_zero = true);
+                     double h = 1e-2, bool catch_zero = true);
 
 arma::vec jacobian_diag(const function<arma::vec(const arma::vec&)> f,
-                        const arma::vec& x);
+                        const arma::vec& x,
+                        double h = 1e-2);
 ```
-These functions are wrappers for the `deriv()` function. So the functionality is similar. The function `jacobian_diag` computes only the diagonal of the jacobian matrix.
-
-**note:** `approx_jacobian()` has no output and requires a matrix input, this matrix is overwritten with the jacobian matrix and serves as the output.
+These functions are wrappers for the `deriv()` function. So the functionality is similar. The function `jacobian_diag()` computes only the diagonal of the jacobian matrix, which may only make sense when the jacobian is $n\times n$.
 
 Example:
 ```cpp
@@ -206,12 +174,11 @@ double f(const vec& x) return dot(x,x); // return x^2 + y^2 + ...
 
 vec F(const vec& x) return x%(x+1); // returns x.*(x+1)
 
-arma::vec x = {0,1,2};
+vec x = {0,1,2};
 
 vec gradient = grad(f,x); // should return [2*0, 2*1, 2*2] = [0,2,4]
 
-mat Jac;
-approx_jacobian(F,Jac,x);
+mat Jac = approx_jacobian(F,x);
 /* Jac = [1.0   0.0   0.0
           0.0   3.0   0.0
           0.0   0.0   4.0];
@@ -221,7 +188,7 @@ approx_jacobian(F,Jac,x);
 ### Spectral Derivatives
 Given function defined over an interval, we can approximate the derivative of the function with spectral accuracy using the `FFT`. The function `spectral_deriv()` does this:
 ```cpp
-polyInterp spectral_deriv(const function<double(double)>& f,
+poly_interp spectral_deriv(const function<double(double)>& f,
                         double a, double b,
                         unsigned int sample_points = 50);
 ```
@@ -239,28 +206,15 @@ vec derivative = df(x);
 
 ## Linear Root Finding and Optimization
 ### Conjugate Gradient Method
-Armadillo features a very robust `solve()` and `spsolve()` direct solvers for linear systems, but in the case of very large systems (especially sparse systems) iterative solvers may be more efficient. The functions `cgd()` and `sp_cgd()` solve the general systems of linear equations $A \mathbf{x}=\mathbf{b}$ when $A$ is symmetric positive definite or in the least squares sense ($A^TA\mathbf{x}=A^T\mathbf{b}$) otherwise by conjugate gradient method.
+Armadillo features a very robust `solve()` and `spsolve()` direct solvers for linear systems, but in the case where less precise solutions of very large systems (especially sparse systems) iterative solvers may be more efficient. The functions `cgd()` solve systems of linear equations $A \mathbf{x}=\mathbf{b}$ when $A$ is symmetric positive definite (sparse or dense), or in the least squares sense $A^TA\mathbf{x}=A^T\mathbf{b}$ (dense only) by conjugate gradient method.
 ```cpp
-void cgd(arma::mat& A, arma::mat& b, arma::mat& x, cg_opts&);
-cg_opts cgd(arma::mat& A, arma::mat& b, arma::mat& x);
-
-void sp_cgd(const arma::sp_mat& A, const arma::mat& b, arma::mat& x, cg_opts&);
-cg_opts sp_cgd(const arma::sp_mat& A, const arma::mat& b, arma::mat& x);
+void cgd(arma::mat& A, arma::mat& b, arma::mat& x, double tol = 1e-3, unsigned int max_iter = 0);
 ```
-where `cg_opts` is a `struct` used to pass parameters to the solver:
-```cpp
-struct cg_opts {
-    unsigned int max_iter; // maximum number of iterations the solver is allowed to perform
-    arma::mat preconditioner;// an invertible preconditioner matrix
-    function<arma::vec(const arma::vec&)> sp_precond; // for some preconditioner M, returns M.i() * x
-    double err; // error tolerance initialized to 1e-6
-    bool is_symmetric; // tell the solver not to check for symmetry. is true by default
-    int num_iters_returned; // the number of iterations the solver actually needed.
-}
-```
-**note:** when solving for `x` in `A*x = b`, if `A` is not square or symmetric, the solver will set `b=A.t()*b` and  `A = A.t()*A`, so the matrix and vector will both be modified outside the scope of the function. The resulting system is has worse conditioning, so using a preconditioner may be improve performance.
+if `max_iter <= 0`, then `max_iter = b.n_rows`.
 
-**note:** in the sparse case, if $A$ is not symmetric positive definite, the solver will quit.
+**note:** when solving for `x` in `A*x = b`, if `A` is dense but not square or symmetric, the solver will set `b=A.t()*b` and  `A = A.t()*A`, so `A` and `b` __will be modified outside the scope of the function__. The resulting system has worse conditioning.
+
+**note:** in the sparse case, if $A$ is not symmetric positive definite, the solver will quit and print an error message to `std::cerr`.
 
 ### Adjusted Gradient Descent
 
@@ -280,268 +234,348 @@ In the case that the user knows how to define the simplex matrix, we have the fi
 Otherwise, the user can specify the linear function to __*maximize*__ `f(x)`, say, by providing a row vector `F` such that `f(x)=F*x`. The constraints take the form: `RHS*x <=LHS`. The function returns the __*maximum*__ value of `f(x)` that satisfies the constraints, and the location of the max is stored in `x`.
 
 ## Nonlinear Root Finding
-unless otherwise specified, all of the following functions take the form:
+All of the nonlinear solver inherit from the `nlsolver` class:
 ```cpp
-void solver(const function<arma::vec(const arma::vec&)>& f,
-            arma::vec& x,
-            options& opts);
-
-options solver(const function<arma::vec(const arma::vec&)>& f,
-            arma::vec& x);
+class nlsolver {
+    public:
+    unsigned int max_iterations;
+    double tol;
+    int num_iterations();
+    int get_exit_flag();
+    int get_exit_flag(std::string& flag);
+};
 ```
-### Option Stucts
-All nonlinear solvers have option structs which all have the following variables:
-```cpp
-double err; // stopping tolerance
-unsigned int max_iter; // max interations allowed
-unsigned int num_iters_returned; // actual number of iterations needed, modified during function call
-unsigned int num_FD_approx_needed; // number FD approximations computed, modified during function call
-```
-Jacobian/Hessian based solvers also ask for:
-```cpp
-bool use_FD_jacobian; // approximate jacobian by 4th order finite differences
+Where `max_iterations` lets you specify the maximum iterations allowed, the default is 100. The parameter `tol` is to specify a stopping criteria, the default is 1e-3. For most solvers the stopping criteria is $||x_{k+1} - x_k||_\infty < \text{tol}$.
 
-arma::mat* init_jacobian; // provide an initial jacobian
+The member function `num_iterations()` returns the number of iterations actually needed by the solver.
 
-arma::mat* init_jacobian_inv; // provide initial jacobian inverse
+The member function `get_exit_flag()` returns a 0, 1, or 2:
+* 0 : the solver successfully converged.
+* 1 : the maximum number of iterations was reached.
+* 2 : a NaN or Infinite value was encountered during a function evaluation.
 
-function<arma::mat(const arma::vec&)> jacobian_func; // provide jacobian function
-
-arma::mat final_jacobian; // stores the last computed jacobian
-```
+If a string is provided, the function will overwrite the string with a description.
 
 ### Newton's method
-This is an implementation of Newton's method for systems of nonlinear equations. A jacobian function of the form above is required. As well as a good initial guess:
+This is an implementation of Newton's method for systems of nonlinear equations. A jacobian function of the system of equations is required. As well as a good initial guess:
 ```cpp
-void newton(const function<arma::vec(const arma::vec&)>& f,
+class newton : public nlsolver {
+    public:
+    bool use_cgd;
+    newton(double tolerance = 1e-3);
+    void fsolve(const function<arma::vec(const arma::vec&)>& f,
             const function<arma::mat(const arma::vec&)>& J,
             arma::vec& x,
-            nonlin_opts& opts);
+            int max_iter = -1);
+};
 ```
-the initial guess should be stored in `x` and `newton()` will asign the solution it finds to `x`.
+The class is initialized with the optional parameter to specify the tolerance for the stopping criteria.
+
+The function `fsolve` solves the system $f(x) = 0$. The initial guess should be stored in `x` and this value will be updated with the solution found by Newton's method. The parameter `use_cgd` allows the user to specify where conjugate gradient method should be used to determine the update direction (or perform a direct solve), the default value is `true`. Specifying `max_iter` here will set the value `max_iterations` which has public scope. If `max_iter <= 0`, then `max_iterations` will not be changed.
 
 There is also a single variable version:
 ```cpp
-double newton(const function<double(double)>& f,
+double newton_1d(const function<double(double)>& f,
               const function<double(double)>& df,
               double x,
-              double err = 1e-10);
+              double err = 1e-5);
 ```
 
 ### Broyden's Method
-This solver is similar to Newton's method, but does not require knowledge of a Jacobian; instead, the solver takes rank 1 updates of the estimated Jacobian using the secant equations [(wikipedia)](https://en.wikipedia.org/wiki/Broyden%27s_method). Providing an initial jacobian or jacobian function does improve the process, but this solver requires far fewer Jacobian evaluations than Newton's method.
+This solver is similar to Newton's method, but does not require the jacobian matrix to be evaluated at every step; instead, the solver takes rank 1 updates of the inverse of the estimated Jacobian using the secant equations [(wikipedia)](https://en.wikipedia.org/wiki/Broyden%27s_method). Providing a jacobian function does improve the process, but this solver requires far fewer Jacobian evaluations than Newton's method. If none is provided the initial jacobian is computed using finite differencing (as opposed to being initialized to the identity) as this drastically improves the convergence.
 ```cpp
-void broyd(const function& f, vec& x, nonlin_opts& opts);
+class broyd : public nlsolver {
+    public:
+    broyd(double tolerance = 1e-3);
+    void fsolve(std::function<arma::vec(const arma::vec&)> f,
+                arma::vec& x,
+                int max_iter = -1);
+    void fsolve(std::function<arma::vec(const arma::vec&)> f,
+                std::function<arma::mat(const arma::vec&)> jacobian,
+                arma::vec& x,
+                int max_iter = -1);
+};
 ```
 
 ### Levenberg-Marquardt Trust Region/Damped Least Squares
-This solver performs Newton like iterations, replacing the Jacobian with a damped least squares version [(wikipedia)](https://en.wikipedia.org/wiki/Levenberg%E2%80%93Marquardt_algorithm). It is recommended that a jacobian function be provided to the solver, otherwise the jacobian will be approximated via finite differences.
+This solver performs Newton like iterations, replacing the Jacobian with a damped least squares version [(wikipedia)](https://en.wikipedia.org/wiki/Levenberg%E2%80%93Marquardt_algorithm). The jacobian is updated with Broyden's rank 1 updates of the Jacobian itself (rather than the inverse), consequently it is recommended that a jacobian function be provided to the solver, otherwise the jacobian will be approximated via finite differences.
 ```cpp
-void lmlsqr(const function& f, vec& x, lsqr_opts& opts);
+class lmlsqr : public nlsolver {
+    public:
+    double damping_param;
+    double damping_scale;
+    bool use_cgd;
+    lmlsqr(double tolerance = 1e-3);
+    void fsolve(std::function<arma::vec(const arma::vec& x)> f,
+                arma::vec& x,
+                int max_iter = -1);
+    void fsolve(std::function<arma::vec(const arma::vec& x)> f,
+                std::function<arma::mat(const arma::vec& x)> jacobian,
+                arma::vec& x,
+                int max_iter = -1);
+};
 ```
-in `lsqr_opts` you can choose the damping parameter via `damping_param`, and the damping scale with `damping_scale`. There is also the option to activate `use_scale_invariance` which weighs the damping paramter according to each equation in the system, but this can lead to errors (with singular systems) if used innapropriately.
+The parameter `use_cgd` allows the user to specify where conjugate gradient method should be used to determine the update direction (or perform a direct solve), the default value is `true`.
 
+The parameters `damping_param` and `damping_scale` directly affect how the algorithm determines the trust region.
 ### Fixed Point Iteration with Anderson Mixing
 Solves problems of the form $x = g(x)$. It is possible to solve a subclass of these problems using fixed point iteration i.e. $x_{n+1} = g(x_n)$, but more generally we can solve these systems using Anderson Mixing: $x_{n+1} = \sum_{i=p}^n c_i g(x_i)$, where $1 \leq p \leq n$ and $\sum c_i = 0$.
 ```cpp
-void mix_fpi(const function<arma::vec(const arma::vec&)> g,
-             arma::vec& x,
-             fpi_opts& opts);
+class mix_fpi : public nlsolver {
+    public:
+    unsigned int steps_to_remember;
+    mix_fpi(double tolerance = 1e-3, uint num_steps = 5);
+    void find_fixed_point(const std::function<arma::vec(const arma::vec&)>& g,
+                            arma::vec& x,
+                            int max_iter = -1);
+};
 ```
-We can specify to the solver how many previous iterations we want to remember i.e. we can specify $(n-p)$ using the `steps_to_remember` parameter in `fpi_opts`.
+We can specify to the solver how many previous iterations we want to remember i.e. we can specify $(n-p)$ using the `steps_to_remember` parameter.
 
 ### fzero
-Adaptively selects between secant method, and inverse interpolation to find a *simple* root of a single variable function over the interval `[a,b]`.
+Adaptively selects between secant method, and inverse interpolation to find a *simple* root of a single variable function in the interval `[a,b]`.
 ```cpp
-double fzero(const function<double(double)>& f, double a, double b);
+double fzero(const function<double(double)>& f, double a, double b, double tol = 1e-5);
 ```
 
 ### Secant
 Uses the secant as the approximation for the derivative used in Newton's method. Attempts to bracket solution for faster convergence, so providing an interval rather than two initial guesses is best.
 ```cpp
-double secant(const function<double(double)>& f, double a, double b);
+double secant(const function<double(double)>& f, double a, double b, double tol = 1e-5);
 ```
 
 ### Bisection method
 Uses the bisection method to find the solution to a nonlinear equation within an interval.
 ```cpp
 double bisect(const function<double(double)>& f,
-              double a, double b, double err = 1e-8);
+              double a, double b, double tol = 1e-2);
 ```
 
 ## Nonlinear Optimization
-
-For nonlinear **_minimization_** we have a wrapper function that accepts a lot of information from the user
+All of the nonlinear optimizers inherit from the class `optimizer`:
 ```cpp
-double minimize_unc(const function<double(const arma::vec&)> &f,
-                    arma::vec& x,
-                    optim_opts& opts);
+class optimizer {
+    public:
+    uint max_iterations;
+    double tol;
+    int num_iterations();
+    int get_exit_flag();
+    int get_exit_flag(std::string& flag);
+};
 ```
+Where `max_iterations` lets you specify the maximum iterations allowed, the default is 100. The parameter `tol` is to specify a stopping criteria, the default is 1e-3. For most solvers the stopping criteria is $||x_{k+1} - x_k||_\infty < \text{tol}$.
 
-To `opts` we can specify anything you might specify to a nonlinear solvers, or an unconstrained minimizer. You can specify a choice of solver from which `LBFGS` is the default. The default arguments to `minimize_unc()` do not include gradient or hessian information, but it is recommended that at least a gradient function be provided via the options struct for improved efficiency. 
+The member function `num_iterations()` returns the number of iterations actually needed by the solver.
 
-Alternatively, users can use certain solvers directly...
+The member function `get_exit_flag()` returns a 0, 1, or 2:
+* 0 : the solver successfully converged.
+* 1 : the maximum number of iterations was reached.
+* 2 : a NaN or Infinite value was encountered during a function evaluation.
 
-### Newton's Method for minimization
-```cpp
-void newton(const function<double(const arma::vec&)>& f,
-            const function<arma::vec(const arma::vec&)>& df,
-            const function<arma::mat(const arma::vec&)>& H,
-            arma::vec& x,
-            nonlin_opts& opts);
-```
-This time around `f` is the objective function, `df` is the gradient, and `H` is the Hessian. The parameter `x` should be initialized to a good guess of the optimum location; the location of the optimum will be stored in `x` when it is found. This method differs from Newton's method because it uses the strong Wolfe conditions at each step. Wolfe condition parameters `wolfe_c1`, `wolfe_c2` can be passed by the options struct. The parameter `wolfe_scale` is used in searching for the line min at each step.
+If a string is provided, the function will overwrite the string with a description.
 
 ### Broyden–Fletcher–Goldfarb–Shanno algorithm
-Uses the BFGS algorithm for minimization using the strong Wolfe conditions. This method uses symmetric rank 1 updates using the secant equation with the further constraint that the Hessian remain symmetric positive definite.
+Uses the BFGS algorithm for minimization using the strong Wolfe conditions. This method uses symmetric rank 1 updates to the inverse of the hessian using the secant equation with the further constraint that the hessian remain symmetric positive definite.
 ```cpp
-void bfgs(const function<double(const arma::vec&)>& f,
-          const function<arma::vec(const arma::vec&)>& df,
-          arma::vec& x,
-          nonlin_opts& opts);
+class bfgs : public optimizer {
+    public:
+    double wolfe_c1;
+    double wolfe_c2;
+    double wolfe_scale;
+    bool use_finite_difference_hessian;
+    bfgs(double tolerance = 1e-3);
+    void minimize(const std::function<double(const arma::vec&)>& f,
+                const std::function<arma::vec(const arma::vec&)>& grad_f,
+                arma::vec& x, int max_iter = -1);
+    void minimize(const std::function<double(const arma::vec&)>& f,
+                const std::function<arma::vec(const arma::vec&)>& grad_f,
+                const std::function<arma::mat(const arma::vec&)>& hessian,
+                arma::vec& x, int max_iter = -1);
+};
 ```
-**note:** like Newton's method, `bfgs()` stores the Hessian in memory, and solves a linear system at each step, this may become inneficient in space and time when the problem is sufficiently large.
+The function `minimize` solves the system $\min_x f(x)$. The initial guess should be stored in `x` and this value will be updated with the solution found by BFGS.
+
+The parameter `use_finite_difference_hessian` allows the user to specify whether to approximate the initial hessian by finite diferences, the default value is `false`, so instead the initial hessian is set to the identity matrix.
+
+The parameters `wolfe_c1`, `wolfe_c2` are the traditional paramters of the strong wolfe conditions:
+$f(x_k + \alpha_k p_k) \leq f(x_k) + c_1 \alpha_k p_k^T\nabla f(x_k)$ and $-p_k^T\nabla f(x_k + \alpha_k p_k) \leq -c_2 p_k^T\nabla f(x_k)$. The default values are `wolfe_c1 = 1e-4` and `wolfe_c2 = 0.9`.
+
+The parameter `wolfe_scale` is used in the line minimization step to determing $\alpha_k$ satisfying the Wolfe conditions. We constrain `0 <= wolfe_scale <= 1`, a value closer to 1 allows for slower but potentially more accurate line minimization. The default value is 0.5.
+
+**note:** like Broyden's method, `bfgs()` stores the inverse hessian in memory, this may become inneficient in space and time when the problem is sufficiently large.
 
 ### Limited Memory BFGS
-Uses the limited memory BFGS algorithm, which differs from BFGS by storing a limited number of previous values of `x` and `df(x)` rather than a full matrix. The number of steps can be specified by `steps_to_remember` in `lbfgs_opts`.
+Uses the limited memory BFGS algorithm, which differs from BFGS by storing a limited number of previous values of `x` and `grad_f(x)` rather than a full matrix. The number of steps stored can be specified by `steps_to_remember`.
 
 ```cpp
-void lbfgs(const function<double(const arma::vec&)>& f,
-           const const function<arma::vec(const arma::vec&)>& df,
-           arma::vec& x,
-           lbfgs_opts& opts);
+class lbfgs : public optimizer {
+    public:
+    unsigned int steps_to_remember;
+    double wolfe_c1;
+    double wolfe_c2;
+    double wolfe_scale;
+    lbfgs(double tolerance = 1e-3, uint num_steps = 5);
+    void minimize(const std::function<double(const arma::vec&)>& f,
+            const std::function<arma::vec(const arma::vec&)>& grad_f,
+            arma::vec& x, int max_iter = -1);
+};
 ```
 
 ### Momentum Gradient Descent
-Uses momentum gradient descent using adaptive line minimization. The damping parameter (explained in this [article](https://distill.pub/2017/momentum/)) can be specified in the options class.
+Momentum gradient descent using adaptive line minimization.
 ```cpp
-void mgd(const function<double(const arma::vec&)>& f,
-         arma::vec& x,
-         gd_opts& opts);
+class mgd : public optimizer {
+    public:
+    double damping_param;
+    double step_size;
+    mgd(double tolerance = 1e-3);
+    void minimize(const std::function<arma::vec(const arma::vec&)>& grad_f, arma::vec& x, int max_iter = -1);
+};
 ```
+The parameter `damping_param` is has a good explaination found in this [article](https://distill.pub/2017/momentum/). Setting this value to 0 is equivalent to traditional gradient descent.
 
-### Stochastic Gradient Descent
-Uses random mini-batch gradient descent using adaptive line minimization. The batch size may be specified in the options class. If a damping parameter is specified in the options class, mini-batch momentum will be used.
-```cpp
-void sgd(const function<double(const arma::vec&)>& f,
-         arma::vec& x,
-         gd_opts& opts);
-```
+The step size can be specified by `step_size` this can improve performance over the adaptive line minimization when the gradient is easy to evaluate but the may require more itterations until convergence.
 
 ### Nonlinear Conjugate Gradient Descent
 Uses the conjugate gradient algorithm for nonlinear objective functions with adaptive line minimization. Although this method uses only gradient information, it benefits from quasi-newton like super-linear convergence rates.
 ```cpp
-void nlcgd(const function<double(const arma::vec&)>& f,
-           arma::vec& x,
-           nonlin_opts& opts);
+class nlcgd : public optimizer {
+    public:
+    double step_size;
+    nlcgd(double tolerance = 1e-3);
+    void minimize(const std::function<arma::vec(const arma::vec&)>& grad_f, arma::vec& x, int max_iter = -1);
+};
 ```
+The step size can be specified by `step_size` this can improve performance over the adaptive line minimization when the gradient is easy to evaluate but the may require more itterations until convergence.
 
 ### Adjusted Gradient Descent
-This method was designed to approximate the conjugate to the gradient by storing only one previous* step. This method benefits from super-linear convergence rates similar to quasi-newton methods.
+This method was designed to approximate the the Newton direction by storing only one previous step; the idea relies on the zig-zag behavior of traditional gradient descent. This method benefits from super-linear convergence rates similar to quasi-newton methods.
 ```cpp
-void adj_gd(const function<double(const arma::vec&)>& f,
-           arma::vec& x,
-           nonlin_opts& opts);
+class adj_gd : public optimizer {
+    public:
+    double step_size;
+    adj_gd(double tolerance = 1e-3);
+    void minimize(const std::function<arma::vec(const arma::vec&)>& grad_f, arma::vec& x, int max_iter = -1);
+};
 ```
+The step size can be specified by `step_size` this can improve performance over the adaptive line minimization when the gradient is easy to evaluate but the may require more itterations until convergence.
 
 **note:** I designed this method from experimentation, and it seems effective.
 
+### Nelder-Mead Gradient Free Minimization
+The [Nelder-Mead method](https://en.wikipedia.org/wiki/Nelder%E2%80%93Mead_method) is a derivative free method that constructs a simplex in n dimensions and iteratively updates its vertices in the direction where the function decreases in value. This method is ideal for low dimensional problems (e.g. 2,3, 10 dimensions, maybe not 100, though). The simplex is initialized using a guess $x_0$ of the argmin of the objective function, the second vertex in the simplex is $x_1 = x_0 + \alpha\vec v_1/||\vec v_1||$  where $\vec v_1$ is a random vector $\vec v_1 \sim N(0,1)$. Iteratively each other point is constructed $x_i = x_0 + \vec \alpha\vec v_i/||\vec v_i||$ where $\vec v_i^T\vec v_j = \delta_{ij}$ (i.e. a new orthogonal direction). This is done to guarantee the simplex is spread out, moreover the direction is random (as oposed to, e.g., the coordinate directions) to avoid pathological cases.
+
+```cpp
+class nelder_mead : public optimizer {
+    public:
+    double step;
+    double expand;
+    double contract;
+    double shrink;
+    double initial_side_length;
+    nelder_mead(double tolerance = 1e-2);
+
+    void minimize(const std::function<double(const arma::vec&)>& f, arma::vec& x);
+};
+```
+The parameter `step` is associated with the scaling of the reflection step, the default value is 1. The parameter `expand` is the scaling of the expanding step, the default value is 2. The parameter `contract` is the scaling of the contraction step, the default value is 0.5. The paramter `shrink` is the scaling of the shrinking step, the default value is 0.5. All of these parameters are explained [here](http://www.scholarpedia.org/article/Nelder-Mead_algorithm).
+
+The parameter `initial_side_length` is the value $\alpha$ as desribed in the simplex initialization procedure discussed above.
+
 ### Genetic Maximization Algorithm
-This method uses a genetic algorithm for _**maximization**_. This method has a variety of parameters for updating the population of parameters to minimize with respect to:
+This method uses a genetic algorithm for _**maximization**_.
+```cpp
+class gen_optim : public optimizer {
+    public:
+    double reproduction_rate;
+    double mutation_rate;
+    double search_radius;
+    double diversity_weight;
+    unsigned int population_size;
+    unsigned int diversity_cutoff;
+    unsigned int random_seed;
+    unsigned int max_iterations;
+    gen_optim(double tolerance = 1e-1);
+    void maximize(const std::function<double(const arma::vec& x)>& f,
+                    arma::vec& x,
+                    const arma::vec& lower_bound,
+                    const arma::vec& upper_bound);
+    void maximize(const std::function<double(const arma::vec&)>& f, arma::vec& x);
+};
+```
+This method has a variety of parameters for updating the population of parameters to minimize with respect to:
 * `population_size` : number of samples.
 * `reproduction_rate` : parameter for geometric probability distribution of "reproducing agents". i.e. if `reproduction_rate` is close to 1, then only the most fit will reproduce and the algorithm will converge more quickly at the cost of possibly not optimal results (such a getting stuck at local maxima). If `reproduction_rate` is close to 0, then most members will be able to participate at the cost of slower convergence. default value = 0.5.
 * `diversity_limit` : number of iterations after which we stop incentivising variance in the population. A lower value means quicker convergence at the cost possible not optimal results (such as getting stuck at local optima).
 * `mutation_rate` : rate at which to introduce random perturbation to the population. Values close to 1 result in a population with higher variance resulting in slower convergence. Values close to 0 result in a population with higher variance resulting in faster convergence at the cost possible not optimal results (such as getting stuck at local optima).
 
-We can use this method for both box constrained and unconstrained maximization. The box constrained version:
-```cpp
-double genOptim(const function<double(const arma::vec&)>& f,
-                arma::vec& x,
-                const arma::vec& xMin, const arma::vec& xMax,
-                gen_opts& opts);
-```
-Where `x` is constrained such that `xMin <= x <= xMax`. No initial value is needed and the sample space is sampled uniformly.
-
-The unconstrained version:
-```cpp
-double genOptim(const function<double(const arma::vec&)>& f,
-                arma::vec& x,
-                gen_opts& opts)
-```
-where an initial guess for `x` should be provided (by setting the value of `x` directly) and some `search_radius` should be provided in the options class (the `search_radius` serves as the intial standard deviation of the population). The `search_radius` default value = 1, but this value should really be determined by the based on the application.
-
-**note:** the value returned is the maxima of the objective function.
-
-### Binary Descision Maximization
-Given a function that inputs a vector of binary values returns a double, we can attempt to find an maximimum of this function using a genetic algorithm.
-```cpp
-double boolOptim(std::function<double(const arma::uvec&)> f,
-                 arma::uvec& x,
-                 unsigned int input_size);
-```
-where `input_size` is the size of `x` (i.e. the number of descisions).
+We can use this method for both box constrained and unconstrained maximization.
 
 ## Interpolation
 ### Cubic Interpolation
 ```cpp
-class CubicInterp
+class cubic_interp
 ```
-Fits piecewise cubic polynomials to data. The fitting occurs on construction:
+Fits piecewise cubic polynomials to data. The fitting occurs on construction or using the `fit` function:
 ```cpp
-CubicInterp::CubicInterp(const arma::vec& x, const arma::mat& Y);
+cubic_interp::cubic_interp(const arma::vec& x, const arma::mat& Y);
+
+cubic_interp& cubic_interp::fit(const arma::vec& x, const arma::mat& Y); // returns *this
 ```
 We can save/load an interpolating object to a stream (such as a file stream):
 ```cpp
-CubicInterp::save(ostream& out);
-CubicInterp::load(istream& in);
+cubic_interp::save(ostream& out);
+cubic_interp::load(istream& in);
 ```
 We can also load a saved object on construction:
 ```cpp
-CubicInterp::CubicInterp(istream& in);
+cubic_interp::cubic_interp(istream& in);
 ```
 Note, the data matrix will be stored to the stream as part of the object and can be recovered when the object is loaded using:
 ```cpp
-arma::vec CubicInterp::data_X(); // independent values
-arma::mat CubicInterp::data_Y(); // dependent values
+arma::vec cubic_interp::data_X(); // independent values
+arma::mat cubic_interp::data_Y(); // dependent values
 ```
 
 We can predict based on the interpolation using the `predict` member function or the `()` operator:
 ```cpp
-arma::mat CubicInterp::predict(const arma::vec&);
-arma::mat CubicInterp::operator()(const arma::vec&);
+arma::mat cubic_interp::predict(const arma::vec&);
+arma::mat cubic_interp::operator()(const arma::vec&);
 ```
 
 ### Polynomial Interpolation
 Class wrapper for armadillo's `polyfit` and `polyval` specialized for interpolation.
 ```cpp
-class polyInterp
+class poly_interp
 ```
-We initialize the object:
+We fit the polynomial on construction or using `fit()`:
 ```cpp
-polyInterp::polyInterp(const arma::vec& x, const arma::mat& Y);
+poly_interp::poly_interp(const arma::vec& x, const arma::mat& Y);
+
+poly_interp& poly_interp::fit(const arma::vec& x, const arma::mat& Y); // returns *this
 ```
 We can save/load an interpolating object to a stream (such as a file stream):
 ```cpp
-polyInterp::save(ostream& out);
-polyInterp::load(istream& in);
+poly_interp::save(ostream& out);
+poly_interp::load(istream& in);
 ```
 We can also load a saved object on construction:
 ```cpp
-polyInterp::polyInterp(istream& in);
+poly_interp::poly_interp(istream& in);
 ```
 Note, the data matrix will be stored to the stream as part of the object and can be recovered when the object is loaded using:
 ```cpp
-arma::vec polyInterp::data_X(); // independent values
-arma::mat polyInterp::data_Y(); // dependent values
+arma::vec poly_interp::data_X(); // independent values
+arma::mat poly_interp::data_Y(); // dependent values
 ```
 
 We can predict based on the interpolation using the `predict` member function or the `()` operator:
 ```cpp
-arma::mat polyInterp::predict(const arma::vec&);
-arma::mat polyInterp::operator()(const arma::vec&);
+arma::mat poly_interp::predict(const arma::vec&);
+arma::mat poly_interp::operator()(const arma::vec&);
 ```
 
-If there is only a need to fit and interpolate a data set once, we may find it more efficient ($\mathcal O(n^3)\rightarrow\mathcal O(n^2)$) and numerically stable to interpolate using Lagrange interpolation:
+If there is only a need to fit and interpolate a data set once, we may find it more efficient ($\mathcal O(n^3)\rightarrow\mathcal O(n^2)$) and numerically stable(!) to interpolate using Lagrange interpolation:
 ```cpp
 arma::mat lagrange_interp(const arma::vec& x,
                          const arma::mat& Y,
@@ -550,25 +584,9 @@ arma::mat lagrange_interp(const arma::vec& x,
 ```
 where `xgrid` is the set of values to interpolate over.
 
-For high order polynomial interpolation, there is a likely hazard of exteme fluctuations in the values of polynomial (Runge's Phenomenon). wE can address this problem in `lagrange_interp` by setting `normalize=true`. If the $i^{th}$ Lagrange interpolating polynomial is $L_i(x) = \prod_{j\neq i}\frac{x - x_j}{x_i - x_j}$, then the interpolant is of the form: $f(x) = \sum_i y_i L_i(x)$. When `normalize=true`, the interpolant is instead: $\hat f(x)=\sum_i y_iL_i(x)e^{-(x-x_i)^2/\nu}$, where $\nu = \text{range}(x)/n$. This normalization helps whenever $x$ is approximately uniform.
+For high order polynomial interpolation, there is a likely hazard of exteme fluctuations in the values of polynomial (Runge's Phenomenon). We can atempt to address this problem in `lagrange_interp` by setting `normalize=true`. If the $i^{th}$ Lagrange interpolating polynomial is $L_i(x) = \prod_{j\neq i}\frac{x - x_j}{x_i - x_j}$, then the interpolant is of the form: $f(x) = \sum_i y_i L_i(x)$. When `normalize=true`, the interpolant is instead: $\hat f(x)=\sum_i y_iL_i(x)e^{-(x-x_i)^2/\nu}$, where $\nu = \text{range}(x)/2n$. This normalization helps whenever $x$ is approximately uniform.
 
-_**note:**_ When using `normalize=true`, remember that the resulting function is not a polynomial. 
-
-### Nearest Neighbor Interpolation
-We can do basic interpolation (on sorted data) using a single nearest neighbor. The result is a piecewise constant function:
-```cpp
-arma::mat nearestInterp(const arma::vec& x,
-                        const arma::mat& Y,
-                        const arma::vec& xgrid);
-```
-
-### Linear Interpolation
-We can perform piecewise linear interpolation (on sorted data):
-```cpp
-arma::mat linearInterp(const arma::vec& x,
-                       const arma::mat& Y,
-                       const arma::vec& xgrid);
-```
+_**note:**_ When using `normalize=true`, remember that the resulting function is no longer a polynomial.
 
 ### Sinc interpolation
 Given sorted _**uniformly spaced**_ points on an interval, we can interpolate the data using a linear combination of sinc functions $\text{sinc}(x) = \frac{\sin(\pi x)}{\pi x}$:
@@ -582,20 +600,35 @@ arma::mat sinc_interp(const arma::vec& x,
 ### K-Fold Train Test Split
 When performing cross validation we may want to split the data into training and testing subsets. The `k_fold` procedure splits the data into `k` equal sized subsets of the data (randomly selected) for repeated training and testing.
 ```cpp
-struct data_pair {
-    arma::mat X; // independent variable subset
-    arma::mat Y; // dependent variable subset
-    arma::umat indices; // indices in original set corresponding to this subset
-    arma::umat exclude_indices; // indices not included in this subset
+class k_folds {
+    public:
+    k_folds(const arma::mat& x, const arma::mat& y, unsigned int k=2, unsigned int dim=0);
+    arma::mat fold_X(unsigned int j);
+    arma::mat fold_Y(unsigned int j);
+    arma::mat not_fold_X(unsigned int j);
+    arma::mat not_fold_Y(unsigned int j);
+    arma::mat operator[](int j); // X
+    arma::mat operator()(int j); // Y
 };
-typedef vector<data_pair> folds;
-
-folds k_fold(const arma::mat& X,
-             const arma::mat& Y,
-             unsigned int k = 2,
-             unsigned int dim = 0);
 ```
-The parameter `dim` informs over which dimension of `X,Y` to split over, if `dim` is 0, then we split up the columns, if `dim` is 1, then we split up the rows.
+The parameter `dim` informs over which dimension of `x,y` to split over, if `dim` is 0, then we split up the columns, if `dim` is 1, then we split up the rows.
+
+we access the `j`th fold using `fold_X` and `fold_Y` and we access the complement to the `j`th fold using `not_fold_X` and `not_fold_Y`. We can alternatively use the `[]` operator has the functionality both `fold_X` using positive indexing and `not_fold_X` using negative indexing. We can use the `()` operator has the functionality both `fold_Y` using positive indexing and `not_fold_Y` using negative indexing.
+
+example:
+```cpp
+mat X = randu(100,1);
+mat Y = 2*x;
+
+k_fold train_test(X,Y,3);
+
+int j = 0;
+mat train_X = train_test[j]; // == train_test.fold_X(j)
+mat test_X = train_test[-1 - j]; // == train_test.not_fold_X(j)
+
+mat train_Y = train_test.fold_Y(j); // == train_test(j)
+mat test_Y = train_test.not_fold_Y(j); // == train_test(-1-j)
+```
 
 ### K-Means Clustering
 ```cpp
@@ -713,6 +746,61 @@ void splines::load(istream& in);
 splines::splines(istream& in); // load on construction
 ```
 
+### Logistic Regression
+Fit linear or kernel logistic model to any dimensional data set. By default we fit gaussian kernel basis with radius 1 along side linear basis, but just an option exists to remove the radial basis. By default the regression is done via L2-regularization and the regularization parameter is determined by cross validation, the metric for the cross validation and for the optimization procedure is log-likelihood. The resulting model is a one vs. all probabilistic model, when the categories are predicted the maximum probability is selected. When fitting the full rbf model, `lbfgs` solver is used, but when fitting just the linear basis, `nelder_mead` is used instead.
+```cpp
+class logistic_regression
+```
+We initialize the class by specifying $\beta$ which is the radius of the gaussian, i.e. $K(x,x_0)=e^{-||x-x_0||^2/\beta}$, and the regularizing paramter `Lambda`:
+```cpp
+logistic_regression::logistic_regression(double Beta = 1, double Lambda = nan)
+```
+if `Beta <= 0`, then only a linear basis is used, if `Lambda < 0 || isnan(Lambda)` then it is determined by cross validation.
+
+We fit the model by calling `fit()`:
+```cpp
+void logistic_regression::fit(const arma::mat& x, const arma::mat& y, bool echo = true);
+```
+The parameter `x` is simply the independent variable, where each row is an observation. The parameter `y` on the other hand should have as many colomns as categories and the (i,j) element should be 1.0 if the i^th observation belongs to the j^th category, and 0.0 otherwise. The parameter `echo` allows the user to specify whether they would like the function to display progress during cross validation to `std::cout`. This option is provided because the cross validation may take a while.
+
+Once our logistic model is fit, we can predict probabilities and categories using:
+```cpp
+arma::mat predict_probabilities(const arma::mat& xx);
+arma::umat predict_categories(const arma::mat& xx);
+```
+The output of `predict_categories()` is of the same format as the `y` matrix from fitting. The (i,j) element of `predict_probabilities()` specifies the probability that the i^th observation belongs to the j^th category.
+
+We can extract extra information from the fit such as the various parameters and coefficients computed and we can get the radial basis matrix for any new sample data:
+```cpp
+double logistic_regression::kernel_param() const; // beta
+double logistic_regression::regularizing_param() const; // lambda
+
+/* z = [1, X]*c + K(X)*d  ==> probability = softmax(z) */
+arma::mat logistic_regression::rbf(const arma::mat& xx); // K(X) radial basis kernel
+arma::mat logistic_regression::linear_coefs() const; // c
+arma::mat logistic_regression::kernel_coefs() const; // d
+```
+The `logistic_regression` object also saves a copy of the data which can be retrieved:
+```cpp
+arma::mat logistic_regression::data_X();
+arma::mat logistic_regression::data_Y();
+```
+We can also get a table of the results from cross validation:
+```cpp
+arma::mat logistic_regression::get_cv_results() const;
+```
+Where the first colomn is the set of `lambda`s tested, and the second colomn is the coresponding average log-likelihood score from cross validation, the value lambda used by the solver will be the one with the maximum log-likelihood associated with it.
+
+We can save/load `logistic_regression` objects to stream (files) via:
+```cpp
+void logistic_regression::load(std::istream& in);
+void logistic_regression::save(std::ostream& out);
+```
+or on construction:
+```cpp
+logistic_regression::logistic_regression(std::istream& in);
+```
+
 ### Kernel Smoothing
 Kernel smoothing may be applied to quickly approximate a function at a point $x_0$ by weighted sum of samples within a bandwidth $\beta$ of $x_0$. The weights are determined by a symmetric kernel function $K(\cdot,\cdot)$ of which there are variety of options (we define $K(x,x_0)=f\left(\frac{||x-x_0||}{\beta}\right)$):
 
@@ -819,20 +907,21 @@ double regularizer::regularizing_param() const; // returns the regularization pa
 arma::mat regularizer::regularizing_mat() const; // returns the regualarizing matrix
 ```
 
-# `ODE.hpp` Documentation
+# `numerics::ode` Documentation
 ## Table of Contents
-* [`numerics.hpp` documentation](#`numerics.hpp-documentation`)
+* [`numerics.hpp` documentation](#`numerics.hpp`-documentation)
 * [differential operators](#differential-operators)
 * [Initial Value Problems](#Initial-Value-Problem-Solvers)
-    * [general solver](#general-solver)
     * [Dormand-Prince 4/5](#dormand-prince-4/5)
-    * [backward differentiation formula](#backward-differentiation-formula)
     * [Runge-Kutta $\mathcal O(4)$](#runge-kutta-fourth-order)
     * [Runge-Kutta $\mathcal O(5)$](#runge-kutta-fifth-order)
     * [backwards Euler](#backwards-euler)
     * [Adams-Moulton second order](#adams-moulton-second-order)
+    * [event control](#ivp-events)
 * [Boundary Value Problems](#boundary-value-problems-solver)
 * [Poisson's Equation](#poisson-solver)
+
+The following are all member of namespace `numerics::ode`.
 
 ## Differentiation Operators
 Given an interval $\Omega=[L,R]$, if we sample $\Omega$ at points $x = \{x_1, \cdots, x_N\}$ we can approximate the continuous operator $\frac{d}{dx}$ at the sampled points with discrete operator $D$. This operator can be applied to any differentiable $f:\Omega\rightarrow\mathbb{R}$ given the function values at the sample points: $y = \{f(x_1),\cdots,f(x_N)\}$ according to: $f'(x) \approx D y$.
@@ -879,7 +968,7 @@ vec F;
 if (method == 1) {
     A = zeros(N+1,N);
     A.rows(0,N-1) = D + alpha*eye(N,N);
-    A(N,0) = 1; // initial condition added at the end, matrix not square ==> less efficient solve
+    A(N,0) = 1; // initial condition added at the end, matrix not square ==> less efficient solve but derivative condition holds
     F = zeros(N+1);
     F.rows(0,N-1) = f(x);
     F(N) = beta;
@@ -897,128 +986,215 @@ If we have a system of $m$ ODEs, we can solve both initial value problems and bo
 ## Initial Value Problem Solvers
 We define a system of initial value problem as having the form: $u' = f(t,u)$ with $u(0) = u_0$. Where $t$ is the independent variable and $u(t)$ is the dependent variable and is a row vector. All of the systems solvers are able to handle events. Some of the solvers have error control via adaptive step size selection. For the implicit solvers we can also provide a jacobian matrix $\frac{\partial f}{\partial u}$ to improve solver performance. All implicit solvers use Broyden's method to compute steps.
 
-Solver interface:
+All solver inherit from the `ivp` class:
 ```cpp
-// system
-typedef function<arma::rowvec(double,const arma::rowvec&)> odefun;
-
-void solver(const odefun& f, arma::vec& t, arma::mat& u, ivp_options& opts);
-ivp_options solver(const odefun& f, arma::vec& t, arma::mat& u);
-
-// single variable
-arma::vec solver(std::function<double(double,double)> f, arma::vec& t, double u0, ivp_options& opts);
-arma::vec solver(std::function<double(double,double)> f, arma::vec& t, double u0);
+class ivp {
+    public:
+    unsigned int max_nonlin_iter;
+    double max_nonlin_err;
+    unsigned int stopping_event;
+    
+    void add_stopping_event(const std::function<double(double,const arma::rowvec&)>& event, event_direction dir = ALL);
+};
 ```
-The parameter `t` should be initialized to `{t_initial, t_final}`, this parameter will be overwritten with the grid points selected by the solver on the interval. For systems the parameter `u` should be initialized to $u_0$ as a single row vector. This parameter will be overwritten by the solver so that $u = u(t)$.
+Events are defined in a [later section](#ivp-events).
 
-### General Solver
-Returns a cubic interpolant object constructed from the solver output:
+All IVP solvers have a function `ode_solve` which, at a higher level, describes the problem to solve and the solution (recall we are solving $u'=f(t,u), u(t_0)=u_0$):
 ```cpp
-typedef enum ODE_SOLVER {RK45,BDF23,RK4,RK5I,AM1,AM2} ode_solver;
-
-CubicInterp ivp(f,t,u,opts, ode_solver s = RK45);
+void ode_solve(f [,J], t, U);
 ```
-A choice of solver may be specified in addition to the other solver paramters. The solvers are explained below.
+
+The parameter `f` is $f(t,u)$.
+
+If `J` is provided, it is the jacobian matrix: $J(t,u) = \frac{\partial f}{\partial u}$. The jacobian may be provided to the implicit solvers, though they perform comparably without.
+
+The parameter `t` must be initialized to `{t_initial, t_final}`, this parameter will be overwritten with the grid points selected by the solver on the interval.
+
+The parameter `U` should be initialized to $u_0$ as a single row vector. This parameter will be overwritten by the solver so that the pair {`t(i), U.row(i)`} is {$t_i$,$u(t_i)$}.
 
 ### Dormand-Prince 4/5
 Fourth order explicit Runge-Kutta solver with adaptive step size for error control.
 ```cpp
-void rk45(f,t,u,opts);
+class rk45 : public ivp {
+    public:
+    double adaptive_step_min; // 0.05
+    double adaptive_step_max; // 0.5
+    double adaptive_max_err; // tol
+    rk45(double tol = 1e-3);
+    void ode_solve(
+        const std::function<arma::rowvec(double,const arma::rowvec&)>& f,
+        arma::vec& t,
+        arma::mat& U);
+};
 ```
-
-### Backward Differentiation Formula
-Second order implicit linear multistep solver using the TR-BDF method to control error.
-```cpp
-void bdf23(f,t,u,opts);
-```
-This solver accepts a jacobian matrix.
 
 ### Runge-Kutta Fourth Order
 classical Fourth order explicit Runge-Kutta solver with constant step size.
 ```cpp
-void rk4(f,t,u,opts);
+class rk4 : public ivp {
+    public:
+    double step; // step_size
+    rk4(double step_size = 0.1);
+    void ode_solve(
+        const std::function<arma::rowvec(double,const arma::rowvec&)>& f,
+        arma::vec& t,
+        arma::mat& U);
+};
 ```
 
 ### Runge-Kutta Fifth Order
 Fifth order implicit Runge-Kutta solver with constant step size.
 ```cpp
-void rk5i(f,t,u,opts);
+class rk5i : public ivp {
+    public:
+    double step;
+    rk5i(double step_size = 0.1);
+    void ode_solve(
+        const std::function<arma::rowvec(double,const arma::rowvec&)>& f,
+        arma::vec& t,
+        arma::mat& U);
+    void ode_solve(
+        const std::function<arma::rowvec(double,const arma::rowvec&)>& f,
+        const std::function<arma::mat(double,const arma::rowvec&)>& jacobian,
+        arma::vec& t,
+        arma::mat& U);
+};
 ```
 This object accepts a jacobian matrix.
 
 ### Backwards Euler
 First order implicit Euler's method with constant step size. (only practical for demonstrative purposes, this method is innaccurate):
 ```cpp
-void am1(f,t,u,opts);
+class am1 : public ivp {
+    public:
+    double step; // step_size
+    am1(double step_size = 0.1);
+    void ode_solve(
+        const std::function<arma::rowvec(double,const arma::rowvec&)>& f,
+        arma::vec& t,
+        arma::mat& U);
+    void ode_solve(
+        const std::function<arma::rowvec(double,const arma::rowvec&)>& f,
+        const std::function<arma::mat(double, const arma::vec&)>& jacobian,
+        arma::vec& t,
+        arma::mat& U);
+};
 ```
 
 ### Adams-Moulton Second Order
 Second order implicit linear multistep method with constant step size.
 ```cpp
-void am2(f,t,u,opts);
+class am2 : public ivp {
+    public:
+    double step; // step_size
+    am2(double step_size = 0.1);
+    void ode_solve(
+        const std::function<arma::rowvec(double,const arma::rowvec&)>& f,
+        arma::vec& t,
+        arma::mat& U);
+    void ode_solve(
+        const std::function<arma::rowvec(double,const arma::rowvec&)>& f,
+        const std::function<arma::mat(double, const arma::rowvec&)>& jacobian,
+        arma::vec& t,
+        arma::mat& U);
+};
 ```
-For a more extensive explaination of the functionality of any of these methods may be explored in the example file.
+
+### IVP Events
+The function:
+```cpp
+enum event_direction {
+    NEGATIVE = -1,
+    ALL = 0,
+    POSITIVE = 1
+};
+void add_stopping_event(const std::function<double(double,const arma::rowvec&)>& event, event_direction dir);
+```
+Allows the the user to add an event function which acts as a secondary stopping criterion for the solver. An event function specifies to the solver that whenever $\text{event}(t_k,u_k) = 0$ the solver should stop. We can further constrain the stopping event by controlling the sign of $\text{event}(t_{k-1},u_{k-1})$. e.g. if `dir = NEGATIVE`, the solver will stop iff: $\text{event}(t_k,u_k) = 0$ __*and*__ $\text{event}(t_{k-1},u_{k-1}) < 0$.
+
+The `ivp` member `stopping_event` will be set to the event index (of the events added) that stopped it. e.g. if the third event function added stops the solver, then `stopping_event = 2`.
 
 ## Boundary Value Problems Solver
-We can solve boundary value problems using finite difference methods. This method was described in the [operators section](#differentiation-operators), but this method is far more generalized. Our problem defined as follows:
+We can solve boundary value problems using finite difference methods. A procedure for simple linear problems was described in the [operators section](#differentiation-operators), but this method is far more generalized. Our problem defined as follows:
 
-Given interval domain $\Omega = [L,R]$, and _**system**_ of ODEs $u' = f(x,u)$ with boundary conditions $g(x)=0$ on $\partial\Omega$ which is equivalently defined: $g(u(L),u(R)) = 0)$. This general problem is solved (in the least squares sense) using Broyden's method which requires an initial guess $v(x)$ of the solution. One method for providing an initial guess is by solving the linearized problem $u' = \big(\frac{\partial f}{\partial u}\big|_{u=u_0}\big)\cdot u$ where $u_0$ should be either $u(L)$ or $u(R)$ that hopefully satisfies the boundary conditions.
+Given interval domain $\Omega = [L,R]$, and _**system**_ of ODEs $u' = f(x,u)$ with boundary conditions $g(u)=0$ on $\partial\Omega$ which is equivalently defined: $g(u(L),u(R)) = 0$. This general problem is solved (in the least squares sense) using Newton's method (but specifically a modified Broyden's method) which requires an initial guess $v(x)$ of the solution. One method for providing an initial guess is by solving the linearized problem $u' = \big(\frac{\partial f}{\partial u}\big|_{u=u_0}\big)\cdot u$ where $u_0$ should be either $u(L)$ or $u(R)$ that hopefully satisfies the boundary conditions.
 
 For example, given interval $\Omega=[0,1]$. if one of the equations is $u' = u(1-u)$ with boundary condition $u(0)=0$, solve instead $u' = (1-2u\big|_{u=0})u = 1$. So the initial guess should be $v(x) = Ce^x$ where $C$ should be chosen so that it atleast approximately satisfies the other boundary conditions.
+
+First we define the boundary conditions:
 ```cpp
-typedef function<arma::rowvec(double, arma::rowvec&)> odefun;
-
-struct bcfun {
-    double xL;
-    double xR;
-    function<arma::rowvec(const arma::rowvec&, const arma::rowvec&)> func;
+class boundary_conditions {
+    public:
+    double xL, xR;
+    std::function<arma::mat(const arma::rowvec&, const arma::rowvec&)> condition;
 };
-
-typedef function<arma::mat(const arma::vec&)> soln_init;
-
-struct dsolnp {
-    arma::vec independent_var_values;
-    arma::mat solution_values;
-    polyInterp soln;
-};
-
-dsolnp bvp(const odefun& f, const bcfun& g, const soln_init& v, bvp_opts& opts);
 ```
-The output struct `dsolnp` has the solution `independent_var_values` $=x$, `solution_values` $=u(x)$, and `soln` is a polynomial interpolation object that is fitted if `opts.order = CHEBYSHEV`.
+The user should declare a `boundary_conditions` instance and define `xL`$=L$, `xR`$=R$, and `condition`$=g(u(L),u(R))$ as either a lambda function, a function object, or a function pointer.
 
-For a more extensive explaination of the functionality of `bvp` may be explored in the example file.
+The initial guess $v(x)$ should be a vector function, e.g.
+```cpp
+mat v(const vec& x) {
+    return C*exp(x); // like the previous example
+}
+```
+Same for the governing ODE...
+
+The `bvp` class and solver:
+```cpp
+typedef enum BVP_SOLVERS {
+    FOURTH_ORDER,
+    SECOND_ORDER,
+    CHEBYSHEV
+} bvp_solvers;
+
+class bvp {
+    public:
+    unsigned int num_points; // number of points for collocation
+    unsigned int max_iterations; // maximum iterations for Broyden's method
+    double tol; // stopping criteria for tolerance
+    bvp_solvers order;
+    int num_iterations(); // returns the number of iterations needed by the solver
+    bvp(int N = 32);
+    void ode_solve(
+        arma::vec& x,
+        arma::mat& U,
+        const std::function<arma::rowvec(double,const arma::rowvec&)>& f,
+        const boundary_conditions& bc,
+        const std::function<arma::mat(const arma::vec&)>& guess);
+    void ode_solve(
+        arma::vec& x,
+        arma::mat& U,
+        const std::function<arma::rowvec(double,const arma::rowvec&)>& f,
+        const std::function<arma::mat(double, const arma::rowvec&)>& jacobian,
+        const boundary_conditions& bc,
+        const std::function<arma::mat(const arma::vec&)>& guess);
+};
+```
+the solver works both with or without a jacobian.
 
 ### Poisson Solver
 Given a rectangular region $\Omega$ in the $x,y$ plane, we can numerically solve Poisson's equation $\nabla^2 u = f(x,y)$ with boundary conditions $u(x,y)=g(x,y)$ on $\partial\Omega$ using similar procedures to solving linear ODEs.
+
+We define the boundary conditions:
 ```cpp
-typedef function<arma::vec(const arma::vec&, const arma::vec&)> pde2fun;
-
-struct bcfun_2d {
-    double lower_x, upper_x; // interval in x
-    double lower_y, upper_y; // interval in y
-    
-    function<arma::vec(const arma::vec&)> lower_x_bc;
-    // u(x=lower_x, y) = g(y)
-
-    function<arma::vec(const arma::vec&)> upper_x_bc;
-    // u(x=upper_x, y) = g(y)
-    
-    function<arma::vec(const arma::vec&)> lower_y_bc;
-    // u(x, y=lower_y) = g(x)
-    
-    function<arma::vec(const arma::vec&)> upper_y_bc;
-    // u(x, y=upper_y) = g(x)
+class boundary_conditions_2d {
+    public:
+    double lower_x, upper_x, lower_y, upper_y;
+    std::function<arma::mat(const arma::mat&, const arma::mat&)> dirichlet_condition;
 };
-
-
-
-struct soln_2d {
-    arma::mat X, Y; // independent variables
-    arma::mat U; // solution
-    void save(ostream& out);
-    void load(istream& in);
-};
-
-soln_2d poisson2d(const pde2fun& f, const bcfun_2d& g, unsigned int num_pts = 48);
 ```
-This solver uses the spectral order method only.
+We have to specify the rectangular bounds on x and y. We must also specify `dirichlet_condition`$=g(x,y)$. Which should be matrix valued function.
+
+We solve the problem with the function:
+```cpp
+void poisson2d(
+    arma::mat& X,
+    arma::mat& Y,
+    arma::mat& U,
+    const std::function<arma::mat(const arma::mat&, const arma::mat&)>& f,
+    const boundary_conditions_2d& bc,
+    int num_grid_points = 32);
+```
+`X,Y,U` will be overwritten with the grid points solved for.
+
+Where `num_grid_points` is the number of grid points along each direction, meaning the total number of points solved for will be `num_grid_points`^2. This solver uses the chebyshev spectral order method only.

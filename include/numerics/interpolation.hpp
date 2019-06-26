@@ -12,6 +12,10 @@ class cubic_interp {
     cubic_interp();
     cubic_interp(std::istream&);
     cubic_interp(const arma::vec&, const arma::mat&);
+    cubic_interp& fit(const arma::vec& X, const arma::mat& Y) {
+        cubic_interp(X,Y);
+        return *this;
+    }
     arma::mat operator()(const arma::vec&);
     arma::mat predict(const arma::vec&);
     arma::vec data_X();

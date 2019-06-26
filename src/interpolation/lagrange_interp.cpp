@@ -30,7 +30,7 @@ arma::mat numerics::lagrange_interp(const arma::vec& x, const arma::mat& y, cons
     int nu = u.n_elem;
     arma::mat v(nu, y.n_cols, arma::fill::zeros);
     double var;
-    if (normalize) var = arma::range(x)/x.n_elem;
+    if (normalize) var = 0.5*arma::range(x)/x.n_elem;
 
     for (int i(0); i <  nx; ++i) {
         arma::mat P(nu, y.n_cols, arma::fill::ones);

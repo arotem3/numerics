@@ -1,7 +1,7 @@
 #include "numerics.hpp"
 #include "matplotlibcpp.h"
 
-// g++ -g -Wall -o interp interp_ex.cpp -lnumerics -larmadillo -I/usr/include/python2.7 -lpython2.7
+// g++ -g -Wall -o interp interp_ex.cpp -O3 -lnumerics -larmadillo -I/usr/include/python2.7 -lpython2.7
 
 using namespace numerics;
 namespace plt = matplotlibcpp;
@@ -20,24 +20,22 @@ arma::mat f(const arma::vec& x) {
 
 int main() {
     arma::arma_rng::set_seed_random();
-    double a = -3; double b = 3; double m = 20; double n = 150; bool normalize_lagrange_interp = true;
+    double a = -3; double b = 3; double m = 25; double n = 150; bool normalize_lagrange_interp = false;
 
     arma::vec x = (b-a)*arma::regspace<arma::vec>(0,m)/m + a;
     arma::mat y = f(x);
 
-    CubicInterp fSpline(x,y);
+    cubic_interp fSpline(x,y);
     arma::vec u = arma::linspace(x.min(), x.max(), n);
     arma::mat v;
 
     plt::suptitle("interpolation");
     
-    for (int i(0); i < 5; ++i) {
+    for (int i(0); i < 3; ++i) {
         std::string title;
-        if (i==0) {v = nearestInterp(x,y,u); title = "nearest neighbor";}
-        else if (i==1) {v = linearInterp(x,y,u); title = "linear";}
-        else if (i==2) {v = fSpline(u); title = "cubic spline";}
-        else if (i==3) {v = lagrange_interp(x,y,u, normalize_lagrange_interp); title = "lagrange";}
-        else if (i==4) {v = sinc_interp(x,y,u); title = "sinc";}
+        if (i==0) {v = fSpline(u); title = "cubic spline";}
+        else if (i==1) {v = lagrange_interp(x,y,u, normalize_lagrange_interp); title = "lagrange";}
+        else if (i==2) {v = sinc_interp(x,y,u); title = "sinc";}
 
         std::cout << std::endl << title << std::endl;
         std::cout << "max error : " << arma::norm(v - f(u), "inf") << std::endl;
@@ -51,7 +49,7 @@ int main() {
         ddvec v2;
         if (y.n_cols==2) v2 = arma::conv_to<ddvec>::from(v.col(1));
 
-        plt::subplot(3,2,i+1);
+        plt::subplot(2,2,i+1);
         plt::title(title);
         plt::plot(xx, y1, "or");
         if (y.n_cols==2) plt::plot(xx, y2, "ob");

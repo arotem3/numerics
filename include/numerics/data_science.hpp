@@ -148,3 +148,51 @@ class regularizer {
     double eff_df() const;
     double regularizing_param() const;
 };
+
+class logistic_regression {
+    private:
+    arma::mat x,y,c,d;
+    arma::vec L, cv_scores;
+    double lambda, beta;
+    int n_obs;
+    arma::mat softmax(const arma::mat&);
+    std::string fit_linear(double lam);
+    std::string fit_no_replace(const arma::mat& X, const arma::mat& Y, double lam);
+
+    public:
+    logistic_regression(double Beta = 1, double Lambda = arma::datum::nan);
+    logistic_regression(std::istream& in);
+    void load(std::istream& in);
+    void save(std::ostream& out);
+
+    void fit(const arma::mat& X, const arma::mat& Y, bool echo = true);
+
+    arma::mat rbf(const arma::mat& xgrid);
+    arma::mat predict_probabilities(const arma::mat& xgrid);
+    arma::umat predict_categories(const arma::mat& xgrid);
+
+    double regularizing_param() const {
+        return lambda;
+    }
+    double kernel_param() const {
+        return beta;
+    }
+    arma::mat linear_coefs() const {
+        return c;
+    }
+    arma::mat kernel_coefs() const {
+        return d;
+    }
+    arma::mat get_cv_results() const {
+        arma::mat rslts = arma::zeros(L.n_rows,2);
+        rslts.col(0) = L;
+        rslts.col(1) = cv_scores;
+        return rslts;
+    }
+    arma::mat data_X() {
+        return x;
+    }
+    arma::mat data_Y() {
+        return y;
+    }
+};

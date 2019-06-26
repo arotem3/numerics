@@ -5,8 +5,8 @@
  * --- jacobian  : J(x) jacobian of system.
  * --- x : initial guess as to where the root, also where the root will be returned to.
  * --- max_iter : maximum number of iterations allowed. */
-void numerics::newton::fsolve(std::function<arma::vec(const arma::vec&)> f,
-                             std::function<arma::mat(const arma::vec&)> jacobian,
+void numerics::newton::fsolve(const std::function<arma::vec(const arma::vec&)>& f,
+                             const std::function<arma::mat(const arma::vec&)>& jacobian,
                              arma::vec& x,
                              int max_iter) {
     if (max_iter <= 0) {
@@ -18,7 +18,7 @@ void numerics::newton::fsolve(std::function<arma::vec(const arma::vec&)> f,
     uint k = 0;
 
     do {
-        if (k > max_iterations) {
+        if (k >= max_iterations) {
             exit_flag = 1;
             num_iter += k;
             return;

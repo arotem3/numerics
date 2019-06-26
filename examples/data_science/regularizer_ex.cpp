@@ -1,7 +1,7 @@
 #include "numerics.hpp"
 #include "matplotlibcpp.h"
 
-// g++ -g -Wall -o regularizer regularizer_ex.cpp -lnumerics -larmadillo -I/usr/include/python2.7 -lpython2.7
+// g++ -g -Wall -o regularizer regularizer_ex.cpp -O3 -lnumerics -larmadillo -I/usr/include/python2.7 -lpython2.7
 
 using namespace numerics;
 namespace plt = matplotlibcpp;
@@ -56,7 +56,8 @@ int main() {
     regularizer lm; std::cout << "...regularizing by cross validation of lambdas for L2 regularization" << std::endl << std::endl;
     
     bool use_conj_gradient = false;
-    arma::vec yhat = lm.fit(basis, Y, use_conj_gradient).predict(basis_grid);
+    arma::vec c = lm.fit(basis, Y, use_conj_gradient);
+    arma::vec yhat = basis_grid*c;
 
     std::cout << "regularizing param: " << lm.regularizing_param() << std::endl
               << "MSE: " << lm.MSE() << std::endl

@@ -6,14 +6,20 @@
  * --- k : number of folds.
  * --- dim : dimension to split along. default dim=0, i.e. split the colomns where each row is treated as a data point. dim=1 implies each colomn is a data point and we split the rows. */
 numerics::k_folds::k_folds(const arma::mat& x, const arma::mat& y, uint k, uint dim) {
-    int m = X.n_rows, n = X.n_cols;
+    int m = x.n_rows, n = x.n_cols;
     direction = dim;
     num_folds = k;
 
     X = x;
     Y = y;
-    range = arma::shuffle(arma::regspace<arma::uvec>(0,m-1));
-    I = arma::reshape(range, m/k, k);
+    if (direction==0) {
+        range = arma::shuffle(arma::regspace<arma::uvec>(0,m-1));
+        I = arma::reshape(range, m/k, k);
+    } else {
+        range = arma::shuffle(arma::regspace<arma::uvec>(0,n-1));
+        I = arma::reshape(range, n/k, k);
+    }
+    range = arma::regspace<arma::uvec>(0,k-1);
 }
 
 /* fold_X(j) : return the x-values of the j^th fold */

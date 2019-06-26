@@ -11,13 +11,13 @@ double numerics::ode::ivp::event_handle(double prev_t, const arma::rowvec& prev_
     int num_events = events.size();
     
     for (int i=0; i < num_events; ++i) {
-        event_func event = events.at(i);
-        event_out prev_result = event(prev_t, prev_U);
-        event_out result = event(t,V);
-        if (arma::sign(result.val) != arma::sign(prev_result.val)) { // event has occured
-            if (result.val - prev_result.val < 0) {
-                if (result.dir == NEGATIVE || result.dir == ALL) { // negative event
-                    if (std::abs(result.val) < 1e-4) { // we stop!
+        auto event = events.at(i);
+        double prev_result = event(prev_t, prev_U);
+        double result = event(t,V);
+        if (arma::sign(result) != arma::sign(prev_result)) { // event has occured
+            if (result - prev_result < 0) {
+                if (event_dirs.at(i) == NEGATIVE || event_dirs.at(i) == ALL) { // negative event
+                    if (std::abs(result) < 1e-4) { // we stop!
                         stopping_event = i;
                         return 0;
                     } else { // update k
@@ -25,8 +25,8 @@ double numerics::ode::ivp::event_handle(double prev_t, const arma::rowvec& prev_
                     }
                 } else k = k; // false positive
             } else {
-                if (result.dir == POSITIVE || result.dir == ALL) { // positive event
-                    if (std::abs(result.val) < 1e-4) { // we stop!
+                if (event_dirs.at(i) == POSITIVE || event_dirs.at(i) == ALL) { // positive event
+                    if (std::abs(result) < 1e-4) { // we stop!
                         stopping_event = i;
                         return 0;
                     } else { // update k

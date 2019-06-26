@@ -49,7 +49,8 @@ void numerics::ode::am2::ode_solve(const std::function<arma::rowvec(double,const
             arma::rowvec z = U.row(i-1) + (k/2) * ( f(t(i-1),U.row(i-1)) + f(t(i), x.t()) );
             return x - z.t();
         };
-        fsolver.fsolve(backEulerStep,V);
+        fsolver.fsolve(trapStep,V);
+        U.row(i) = V.t();
 
         double kk = event_handle(t(i-1), U.row(i-1), t(i), V.t(), k);
         if (0 < kk && kk < k) {
@@ -57,7 +58,6 @@ void numerics::ode::am2::ode_solve(const std::function<arma::rowvec(double,const
             continue;
         }
 
-        U.row(i) = V.t();
         if (t(i) >= tf) break; // t span stop
         if (kk == 0) break; // event stop
 
@@ -133,7 +133,7 @@ void numerics::ode::am2::ode_solve(const std::function<arma::rowvec(double,const
             J = arma::eye(arma::size(J)) - (k/2) * J;
             return J;
         };
-        fsolver.fsolve(backEulerStep, trap_jac, V);
+        fsolver.fsolve(trapStep, trap_jac, V);
 
         double kk = event_handle(t(i-1), U.row(i-1), t(i), V.t(), k);
         if (0 < kk && kk < k) {

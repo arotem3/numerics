@@ -15,7 +15,7 @@ I have only a simple CMakeLists.txt, so any modifications will have to be provid
 ### basic compiling instructions:
 This assumes you have both armadillo and numerics installed in the default locations that your compiler can find (e.g. `/usr/local/lib/`).
 ```
-g++ main.cpp -lnumerics -larmadillo
+g++ main.cpp -O3 -lnumerics -larmadillo
 ```
 The order is important because `libnumerics` also has to link against `libarmadillo`.
 

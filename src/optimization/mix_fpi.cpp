@@ -4,7 +4,7 @@
  * --- f : vector function of x = f(x).
  * --- x : initial guess and solution output.
  * --- max_iter : maximum number of iterations allowed. */
-void numerics::mix_fpi::find_fixed_point(std::function<arma::vec(const arma::vec&)> f,
+void numerics::mix_fpi::find_fixed_point(const std::function<arma::vec(const arma::vec&)>& f,
                               arma::vec& x,
                               int max_iter) {
     if (max_iter <= 0) {
@@ -19,7 +19,7 @@ void numerics::mix_fpi::find_fixed_point(std::function<arma::vec(const arma::vec
 
     uint k = 0;
     do {
-        if (k > max_iterations) {
+        if (k >= max_iterations) {
             exit_flag = 1;
             num_iter += k;
             return;

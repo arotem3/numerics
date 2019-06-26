@@ -205,7 +205,7 @@ arma::mat numerics::kmeans::operator[](uint i) {
 std::ostream& numerics::kmeans::summary(std::ostream& out) {
     out << "----------------------------------------------------" << std::endl;
     out << "\t\tk-means clustering" << std::endl
-        << "number of clusters: " << k << "\t\tnumber of data entries: " << data.n_cols << std::endl
+        << "number of clusters: " << k << "\t\tnumber of data entries: " << data.n_rows << std::endl
         << "\t\t\tcentroids:" << std::endl;
     
     out << "\t";

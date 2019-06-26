@@ -1,10 +1,9 @@
-#include "ODE.hpp"
+#include "numerics.hpp"
 #include "matplotlibcpp.h"
 
-// g++ -g -Wall -o bvp bvp_ex.cpp -lnumerics -larmadillo -I/usr/include/python2.7 -lpython2.7
+// g++ -g -Wall -o bvp bvp_ex.cpp -O3 -lnumerics -larmadillo -I/usr/include/python2.7 -lpython2.7
 
-using namespace ODE;
-namespace plt = matplotlibcpp;
+using namespace numerics::ode;
 typedef std::vector<double> ddvec;
 
 int main() {
@@ -16,57 +15,59 @@ int main() {
               << "we will also use an intial guess of u(x) = 1 and v(x) = 0 as another example."
               << std::endl << std::endl;
 
-    odefun f = [](double x, const arma::rowvec& u) -> arma::rowvec {
+    auto f = [](double x, const arma::rowvec& u) -> arma::rowvec {
         arma::rowvec up(2, arma::fill::zeros);
         up(0) = u(1);
         up(1) = -std::sin(u(0));
         return up;
     };
 
-    odeJac J = [](double x,const arma::rowvec& u) -> arma::mat {
+    auto J = [](double x,const arma::rowvec& u) -> arma::mat {
         arma::mat A = arma::zeros(2,2);
         A(0,1) = 1;
         A(1,0) = -std::cos(u(0));
         return A;
     };
 
-    bcfun bc;
+    boundary_conditions bc;
     bc.xL = 0;
     bc.xR = 2*M_PI;
-    bc.func = [](const arma::rowvec& uL, const arma::rowvec& uR) -> arma::rowvec {
+    bc.condition = [](const arma::rowvec& uL, const arma::rowvec& uR) -> arma::rowvec {
         arma::rowvec v(2);
         v(0) = uL(0) - 1; // solution fixed as 1 at end points
         v(1) = uR(0) - 1;
         return v;
     };
 
-    soln_init guess = [](const arma::vec& x) -> arma::mat {
+    std::function<arma::mat(const arma::vec&)> guess = [](const arma::vec& x) -> arma::mat {
         arma::mat y = arma::zeros(x.n_elem,2);
         y.col(0) = arma::cos(x);
         y.col(1) = arma::sin(x);
         return y;
     };
 
-    bvp_opts opts;
-    // opts.nlnopts.err = 1e-7; // play around with the nonlinear solver tolerance
-    // opts.order = bvp_solvers::SECOND_ORDER; std::cout << "using second order solver..." << std::endl;
-    // opts.order = bvp_solvers::FOURTH_ORDER; std::cout << "using fourth order solver..." << std::endl;
-    opts.order = bvp_solvers::CHEBYSHEV; std::cout << "using spectral solver..." << std::endl;
-    opts.num_points = 50;
-    opts.jacobian_func = &J; // providing a jacobian function may improve runtime
+    bvp bvp_solver;
+    // bvp_solver.tol = 1e-7; // play around with the nonlinear solver tolerance
+    // bvp_solver.order = bvp_solvers::SECOND_ORDER; std::cout << "using second order solver..." << std::endl;
+    // bvp_solver.order = bvp_solvers::FOURTH_ORDER; std::cout << "using fourth order solver..." << std::endl;
+    bvp_solver.order = bvp_solvers::CHEBYSHEV; std::cout << "using spectral solver..." << std::endl;
+    bvp_solver.num_points = 50;
 
-    dsolnp soln = bvp(f, bc, guess, opts);
-    std::cout << "Number of nonlinear iterations needed by solver: " << opts.nlnopts.num_iters_returned << std::endl;
-            ddvec x = arma::conv_to<ddvec>::from(soln.independent_var_values);
-            ddvec u1 = arma::conv_to<ddvec>::from(soln.solution_values.col(0));
-            ddvec v1 = arma::conv_to<ddvec>::from(soln.solution_values.col(1));
+    arma::vec x;
+    arma::mat U;
+    // bvp_solver.ode_solve(x,U,f,bc,guess); 
+    bvp_solver.ode_solve(x,U,f,J,bc,guess); // providing a jacobian function can improve performance
+    std::cout << "Number of nonlinear iterations needed by solver: " << bvp_solver.num_iterations() << std::endl;
+            ddvec x1 = arma::conv_to<ddvec>::from(x);
+            ddvec u1 = arma::conv_to<ddvec>::from(U.col(0));
+            ddvec v1 = arma::conv_to<ddvec>::from(U.col(1));
             
-            plt::subplot(2,1,1);
+            matplotlibcpp::subplot(2,1,1);
             std::map<std::string,std::string> ls = {{"marker","o"},{"label","u(x) -- initial guess u = cos(x)"},{"ls","-"},{"color","blue"}};
-            plt::plot(x,u1,ls);
-            plt::subplot(2,1,2);
+            matplotlibcpp::plot(x1,u1,ls);
+            matplotlibcpp::subplot(2,1,2);
             ls["label"] = "v(x) -- initial guess v = sin(x)"; ls["color"] = "red";
-            plt::plot(x,v1,ls);
+            matplotlibcpp::plot(x1,v1,ls);
 
     guess = [](const arma::vec& x) -> arma::mat {
         arma::mat y = arma::zeros(x.n_elem,2);
@@ -75,22 +76,23 @@ int main() {
         return y;
     };
 
-    soln = bvp(f, bc, guess, opts);
-    std::cout << "Number of nonlinear iterations needed by solver: " << opts.nlnopts.num_iters_returned << std::endl;
-            x = arma::conv_to<ddvec>::from(soln.independent_var_values);
-            ddvec u2 = arma::conv_to<ddvec>::from(soln.solution_values.col(0));
-            ddvec v2 = arma::conv_to<ddvec>::from(soln.solution_values.col(1));
-            plt::subplot(2,1,1);
+    // bvp_solver.ode_solve(x,U,f,bc,guess);
+    bvp_solver.ode_solve(x,U,f,J,bc,guess); // providing a jacobian function can improve performance
+    std::cout << "Number of nonlinear iterations needed by solver: " << bvp_solver.num_iterations() << std::endl;
+            x1 = arma::conv_to<ddvec>::from(x);
+            ddvec u2 = arma::conv_to<ddvec>::from(U.col(0));
+            ddvec v2 = arma::conv_to<ddvec>::from(U.col(1));
+            matplotlibcpp::subplot(2,1,1);
             ls["label"] = "u(x) -- initial guess u = 1"; ls["color"] = "magenta"; ls["ls"] = "--"; ls["marker"] = "s";
-            plt::plot(x,u2,ls);
-            plt::legend();
-            plt::subplot(2,1,2);
+            matplotlibcpp::plot(x1,u2,ls);
+            matplotlibcpp::legend();
+            matplotlibcpp::subplot(2,1,2);
             ls["label"] = "v(x) -- initial guess v = 0"; ls["color"] = "black";
-            plt::plot(x,v2,ls);
-            plt::legend();
-            plt::suptitle("u' = v, v' = -sin(u), u(0) = u(2*pi) = 1");
-            plt::tight_layout();
-            plt::show();
+            matplotlibcpp::plot(x1,v2,ls);
+            matplotlibcpp::legend();
+            matplotlibcpp::suptitle("u' = v, v' = -sin(u), u(0) = u(2*pi) = 1");
+            matplotlibcpp::tight_layout();
+            matplotlibcpp::show();
 
     return 0;
 }

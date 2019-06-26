@@ -4,7 +4,7 @@
  * --- f : function to find least squares solution of.
  * --- x : solution, initialized to a good guess.
  * --- max_iter : maximum allowed iterations. */
-void numerics::lmlsqr::fsolve(std::function<arma::vec(const arma::vec& x)> f,
+void numerics::lmlsqr::fsolve(const std::function<arma::vec(const arma::vec& x)>& f,
                              arma::vec& x,
                              int max_iter) {
     if (max_iter <= 0) {
@@ -22,7 +22,7 @@ void numerics::lmlsqr::fsolve(std::function<arma::vec(const arma::vec& x)> f,
 
     uint k = 0;
     do {
-        if (k > max_iterations) {
+        if (k >= max_iterations) {
             exit_flag = 1;
             num_iter += k;
             return;
@@ -73,8 +73,8 @@ void numerics::lmlsqr::fsolve(std::function<arma::vec(const arma::vec& x)> f,
  * --- jacobian : J(x) jacobian function of f(x).
  * --- x : solution, initialized to a good guess.
  * --- max_iter : maximum allowed iterations. */
-void numerics::lmlsqr::fsolve(std::function<arma::vec(const arma::vec& x)> f,
-                             std::function<arma::mat(const arma::vec& x)> jacobian,
+void numerics::lmlsqr::fsolve(const std::function<arma::vec(const arma::vec& x)>& f,
+                             const std::function<arma::mat(const arma::vec& x)>& jacobian,
                              arma::vec& x,
                              int max_iter) {
     if (max_iter <= 0) {
@@ -93,7 +93,7 @@ void numerics::lmlsqr::fsolve(std::function<arma::vec(const arma::vec& x)> f,
 
     uint k = 0;
     do {
-        if (k > max_iterations) {
+        if (k >= max_iterations) {
             exit_flag = 1;
             num_iter += k;
             return;

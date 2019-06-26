@@ -1,6 +1,6 @@
 #include "numerics.hpp"
 
-// g++ -g -Wall -o polynomials polynomials_ex.cpp -lnumerics -larmadillo
+// g++ -g -Wall -o polynomials polynomials_ex.cpp -O3 -lnumerics -larmadillo
 
 int main() {
     arma::vec p = {1, 1, 1, 1}; // x^3 + x^2 + x + 1

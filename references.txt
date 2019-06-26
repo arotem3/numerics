@@ -22,4 +22,8 @@ algorithms:
 
 [6] Lloyd N. Trefethen "Spectral Methods in MATLAB"
 
-[7] a lot of Google/Wikipedia...
+[7] Manolis I. A.Lourakis "A Brief Description of the Levenberg-Marquardt Algorithm Implemened by levmar"
+
+[8] http://www.scholarpedia.org/article/Nelder-Mead_algorithm
+
+[*] a lot of Wikipedia...

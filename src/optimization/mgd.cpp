@@ -4,7 +4,7 @@
  * --- f : gradient function.
  * --- x : initial guess.
  * --- max_iter : maximum number of iterations allowed. */
-void numerics::mgd::minimize(std::function<arma::vec(const arma::vec&)> grad_f, arma::vec& x, int max_iter) {
+void numerics::mgd::minimize(const std::function<arma::vec(const arma::vec&)>& grad_f, arma::vec& x, int max_iter) {
     if (max_iter <= 0) {
         if (max_iterations <= 0) max_iterations = 100;
     } else max_iterations = max_iter;
@@ -24,7 +24,7 @@ void numerics::mgd::minimize(std::function<arma::vec(const arma::vec&)> grad_f, 
 
     uint k = 1;
     do {
-        if (k > max_iterations) {
+        if (k >= max_iterations) {
             exit_flag = 1;
             num_iter += k;
             return;

@@ -1,45 +1,52 @@
 #include "numerics.hpp"
 
-// g++ -Wall -g -o integrate integrate_ex.cpp -lnumerics -larmadillo
+// g++ -Wall -g -o integrate integrate_ex.cpp -O3 -lnumerics -larmadillo
 
 using namespace numerics;
+
+double g(double x) {
+    double y = 0;
+    for (int i=1; i <= 10; ++i) {
+        y += std::sin(i*x)/i;
+    }
+    return (0.5 - y/M_PI);
+}
 
 int main() {
     std::cout << "we will now try to integerate exp[-x^2] over [0,1]" << std::endl << std::endl;
     
     auto f = [](double x) -> double {return std::exp(-std::pow(x,2));}; // f(x) = exp[-x^2]
     
-    long double val = 0.746824132812427025;
+    long double val = 0.746824132812427025l;
     double I = integrate(f,0,1);
-    std::cout << "|error| < machine epsilon" << std::endl;
+    std::cout << "|error| < 1e-5" << std::endl;
     std::cout << "\tintegrate() estimate: " << I << std::endl << "\tactual value: " << val << std::endl
               << "\terror: " << std::abs(I - val) << std::endl;
     
-    I = integrate(f, 0, 1, LOBATTO, 1);
+    I = integrate(f, 0, 1, 1.0);
     std::cout << "|error| < 1" << std::endl;
     std::cout << "\tintegrate() estimate: " << I << std::endl << "\tactual value: " << val << std::endl
               << "\terror: " << std::abs(I - val) << std::endl; 
 
-    std::cout << "\nnow we compare Simpson, Lobatto, and Chebyshev for the function: tan[sin x] + 2 over [0,2*pi]" << std::endl;
+    std::cout << "\nnow we compare Simpson, Lobatto, and Chebyshev for the function: 0.5 - sum(sin(j*x)/j, {j,1,10})/pi  over [-pi,pi]" << std::endl;
 
-    auto g = [](double x){ return std::tan(std::sin(x))+2; }; // g(x) = tan[sin x] + 2
-    val = 12.566370614359;
+    val = M_PI;
     std::cout << "using |err| < 0.001" << std::endl;
     double y;
     clock_t t = clock();
-    y = simpson_integral(g, 0, 2*M_PI, 1e-3);
+    y = simpson_integral(g, -M_PI, M_PI, 1e-3);
     t = clock() - t;
     std::cout << "simpson_integral() approx: " << y << " it took " << (float)t/CLOCKS_PER_SEC << " secs" << std::endl;
     std::cout << "\ttrue error: " << std::abs(val - y) << std::endl;
 
     t = clock();
-    y = lobatto_integral(g, 0, 2*M_PI, 1e-3);
+    y = lobatto_integral(g, -M_PI, M_PI, 1e-3);
     t = clock() - t;
     std::cout << "lobatto_integral() approx: " << y << " it took " << (float)t/CLOCKS_PER_SEC << " secs" << std::endl;
     std::cout << "\ttrue error: " << std::abs(val - y) << std::endl;
 
     t = clock();
-    y = chebyshev_integral(g, 0, 2*M_PI);
+    y = chebyshev_integral(g, -M_PI, M_PI);
     t = clock() - t;
     std::cout << "chebyshev_integral() approx: " << y << " it took " << (float)t/CLOCKS_PER_SEC << " secs" << std::endl;
     std::cout << "\ttrue error: " << std::abs(val - y) << std::endl;

@@ -24,7 +24,16 @@ arma::mat numerics::approx_jacobian(const std::function<arma::vec(const arma::ve
  * --- x : vector to evaluate jacobian at.
  * --- h : finite difference step size. method is O(h^4) */
 arma::vec numerics::jacobian_diag(const std::function<arma::vec(const arma::vec&)>& f, const arma::vec& x, double h) {
-    arma::vec J = f(x - 2*h) - 8*f(x - h) + 8*f(x + h) - f(x + 2*h);
-    J /= 12*h;
+    int m = x.n_elem;
+    arma::vec J = arma::zeros(m);
+    for (int i=0; i < m; ++i) {
+        auto ff = [&f,&x,i](double z) -> double {
+            arma::vec u = x;
+            u(i) = z;
+            u = f(u);
+            return u(i);
+        };
+        J(i) = deriv(ff, x(i), h);
+    }
     return J;
 }

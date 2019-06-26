@@ -90,11 +90,11 @@ void numerics::regularizer::cross_validate(const arma::mat& X, const arma::mat& 
     for (int i=0; i < N; ++i) {
         for (uint j=0; j < num_folds; ++j) {
             fit_no_replace(
-                split.fold_X(j),
-                split.fold_Y(j),
+                split.not_fold_X(j),
+                split.not_fold_Y(j),
                 L(i)
             );
-            cv_scores(i) = cv;
+            cv_scores(i) += cv;
         }
     }
     int indmin = arma::index_min(cv_scores);

@@ -92,7 +92,7 @@ void numerics::linear_adj_gd(const arma::sp_mat& A, const arma::mat& b, arma::ma
 /*  minimize(grad_f, x) : "adjusted" gradient descent, a multistep acceleration method of my own design
  * --- grad_f : gradient function.
  * --- x : intial guess and output variable. */
-void numerics::adj_gd::minimize(std::function<arma::vec(const arma::vec&)> grad_f, arma::vec& x, int max_iter) {
+void numerics::adj_gd::minimize(const std::function<arma::vec(const arma::vec&)>& grad_f, arma::vec& x, int max_iter) {
     if (max_iter <= 0) {
         if (max_iterations <= 0) max_iterations = 100;
     } else max_iterations = max_iter;
@@ -104,7 +104,7 @@ void numerics::adj_gd::minimize(std::function<arma::vec(const arma::vec&)> grad_
 
     uint k = 1;
     do {
-        if (k > max_iterations) {
+        if (k >= max_iterations) {
             exit_flag = 1;
             num_iter += k;
             return;

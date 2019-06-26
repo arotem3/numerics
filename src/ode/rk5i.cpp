@@ -8,7 +8,7 @@
 void numerics::ode::rk5i::ode_solve(const std::function<arma::rowvec(double,const arma::rowvec&)>& f, arma::vec& t, arma::mat& U) {
     double k = step;
     arma::rowvec U0 = arma::vectorise(U).t();
-    int m = U.n_cols; // dimension of solution space
+    int m = U0.n_cols; // dimension of solution space
     if (m == 0) { // no initial conditions err
         std::cerr << "rk5i() failed: no initial condition input." << std::endl;
         return;
@@ -85,11 +85,11 @@ void numerics::ode::rk5i::ode_solve(const std::function<arma::rowvec(double,cons
  * --- t  : vector to store t-values initialized at {t_initial, t_final}.
  * --- U  : vector to store the solution first row must be u(t0). */
 void numerics::ode::rk5i::ode_solve(const std::function<arma::rowvec(double,const arma::rowvec&)>& f,
-                                    const std::function<arma::mat(double,const arma::vec&)>& jacobian,
+                                    const std::function<arma::mat(double,const arma::rowvec&)>& jacobian,
                                     arma::vec& t, arma::mat& U) {
     double k = step;
     arma::rowvec U0 = arma::vectorise(U).t();
-    int m = U.n_cols; // dimension of solution space
+    int m = U0.n_cols; // dimension of solution space
     if (m == 0) { // no initial conditions err
         std::cerr << "rk5i() failed: no initial condition input." << std::endl;
         return;

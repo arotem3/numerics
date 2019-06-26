@@ -12,7 +12,7 @@
 void numerics::ode::bvp::ode_solve(arma::vec& x, arma::mat& U,
                               const std::function<arma::rowvec(double,const arma::rowvec&)>& f,
                               const boundary_conditions& bc,
-                              const std::function<arma::vec(const arma::vec&)>& guess) {
+                              const std::function<arma::mat(const arma::vec&)>& guess) {
     int m = num_points;
     int n = guess({bc.xL}).n_elem; // system dimension
     arma::mat D;
@@ -76,7 +76,7 @@ void numerics::ode::bvp::ode_solve(arma::vec& x, arma::mat& U,
     arma::vec F,F1 = ff(U),du,JiY;
     uint k = 0;
     do {
-        if (k > max_iterations) {
+        if (k >= max_iterations) {
             std::cerr << "bvp() failed: too many iterations needed for convergence." << std::endl
                     << "returning current best estimate." << std::endl
                     << "!!!---not necessarily a good estimate---!!!" << std::endl
@@ -114,7 +114,7 @@ void numerics::ode::bvp::ode_solve(arma::vec& x, arma::mat& U,
                               const std::function<arma::rowvec(double,const arma::rowvec&)>& f,
                               const std::function<arma::mat(double, const arma::rowvec&)>& jacobian,
                               const boundary_conditions& bc,
-                              const std::function<arma::vec(const arma::vec&)>& guess) {
+                              const std::function<arma::mat(const arma::vec&)>& guess) {
     int m = num_points;
     int n = guess({bc.xL}).n_elem; // system dimension
     arma::mat D;
@@ -175,7 +175,7 @@ void numerics::ode::bvp::ode_solve(arma::vec& x, arma::mat& U,
     arma::vec F,F1 = ff(U),du,JiY;
     uint k = 0;
     do {
-        if (k > max_iterations) {
+        if (k >= max_iterations) {
             std::cerr << "bvp() failed: too many iterations needed for convergence." << std::endl
                     << "returning current best estimate." << std::endl
                     << "!!!---not necessarily a good estimate---!!!" << std::endl

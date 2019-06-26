@@ -1,6 +1,6 @@
 #include "numerics.hpp"
 
-// g++ -g -Wall -o cgd cgd_ex.cpp -lnumerics -larmadillo -lsuperlu
+// g++ -g -Wall -o cgd cgd_ex.cpp -O3 -lnumerics -larmadillo -lsuperlu
 
 using namespace numerics;
 
@@ -20,22 +20,19 @@ int main() {
     std::cout << "For the matrix of order " << n << ", the direct solver took " << (float)t/CLOCKS_PER_SEC << " seconds" << std::endl << std::endl;
 
     arma::mat y = arma::zeros(n,2);
-    numerics::cg_opts opts;
     t = clock();
-    cgd(A, b, y, opts);
+    cgd(A, b, y);
     t = clock() - t;
 
     std::cout << "Conjugate gradient method took " << (float)t/CLOCKS_PER_SEC << " seconds" << std::endl
-              << "with " << opts.num_iters_returned << " total iterations." << std::endl
               << "the maximum cgd() error was: " << arma::norm(y-x,"inf") << std::endl << std::endl;
 
     arma::mat z;
     t = clock();
-    linear_adj_gd(A,b,z,opts);
+    linear_adj_gd(A,b,z);
     t = clock() - t;
 
     std::cout << "adjusted gradient descent took " << (float)t/CLOCKS_PER_SEC << " seconds" << std::endl
-              << "with " << opts.num_iters_returned << " total iterations." << std::endl
               << "the maximum linear_adj_gd() error was: " << arma::norm(z-x,"inf") << std::endl << std::endl;
 
     return 0;

@@ -50,8 +50,8 @@ class newton : public nlsolver {
         max_iterations = 100;
     }
 
-    void fsolve(std::function<arma::vec(const arma::vec&)> f,
-        std::function<arma::mat(const arma::vec&)> jacobian,
+    void fsolve(const std::function<arma::vec(const arma::vec&)>& f,
+        const std::function<arma::mat(const arma::vec&)>& jacobian,
         arma::vec& x,
         int max_iter = -1);
 };
@@ -65,11 +65,11 @@ class broyd : public nlsolver {
         max_iterations = 100;
     }
 
-    void fsolve(std::function<arma::vec(const arma::vec&)> f,
+    void fsolve(const std::function<arma::vec(const arma::vec&)>& f,
                 arma::vec& x,
                 int max_iter = -1);
-    void fsolve(std::function<arma::vec(const arma::vec&)> f,
-                std::function<arma::mat(const arma::vec&)> jacobian,
+    void fsolve(const std::function<arma::vec(const arma::vec&)>& f,
+                const std::function<arma::mat(const arma::vec&)>& jacobian,
                 arma::vec& x,
                 int max_iter = -1);
 };
@@ -78,9 +78,6 @@ class lmlsqr : public nlsolver {
     public:
     double damping_param, damping_scale;
     bool use_cgd;
-    int num_iterations() {
-        return num_iter;
-    }
 
     lmlsqr(double tolerance = 1e-3) {
         tol = tolerance;
@@ -92,11 +89,11 @@ class lmlsqr : public nlsolver {
         damping_scale = 2;
     }
 
-    void fsolve(std::function<arma::vec(const arma::vec& x)> f,
+    void fsolve(const std::function<arma::vec(const arma::vec& x)>& f,
                 arma::vec& x,
                 int max_iter = -1);
-    void fsolve(std::function<arma::vec(const arma::vec& x)> f,
-                std::function<arma::mat(const arma::vec& x)> jacobian,
+    void fsolve(const std::function<arma::vec(const arma::vec& x)>& f,
+                const std::function<arma::mat(const arma::vec& x)>& jacobian,
                 arma::vec& x,
                 int max_iter = -1);
 };
@@ -113,7 +110,7 @@ class mix_fpi : public nlsolver {
         exit_flag = -1;
     }
 
-    void find_fixed_point(std::function<arma::vec(const arma::vec&)> f,
+    void find_fixed_point(const std::function<arma::vec(const arma::vec&)>& f,
                             arma::vec& x,
                             int max_iter = -1);
 };
@@ -178,18 +175,18 @@ class bfgs : public optimizer {
         use_finite_difference_hessian = false;
     }
 
-    void minimize(std::function<double(const arma::vec&)> f,
-                    std::function<arma::vec(const arma::vec&)> grad_f,
+    void minimize(const std::function<double(const arma::vec&)>& f,
+                    const std::function<arma::vec(const arma::vec&)>& grad_f,
                     arma::vec& x, int max_iter = -1);
-    void minimize(std::function<double(const arma::vec&)> f,
-                    std::function<arma::vec(const arma::vec&)> grad_f,
-                    std::function<arma::mat(const arma::vec&)> hessian,
+    void minimize(const std::function<double(const arma::vec&)>& f,
+                    const std::function<arma::vec(const arma::vec&)>& grad_f,
+                    const std::function<arma::mat(const arma::vec&)>& hessian,
                     arma::vec& x, int max_iter = -1);
 };
 
 class lbfgs : public optimizer {
     private:
-    void lbfgs_update(arma::vec& p, numerics_private_utility::cyc_queue& S, numerics_private_utility::cyc_queue& Y);
+    void lbfgs_update(arma::vec& p, numerics_private_utility::cyc_queue& S, numerics_private_utility::cyc_queue& Y, const arma::vec& hdiag);
 
     public:
     uint steps_to_remember;
@@ -206,9 +203,9 @@ class lbfgs : public optimizer {
         wolfe_scale = 0.5;
     }
 
-    void minimize(std::function<double(const arma::vec&)> f,
-                    std::function<arma::vec(const arma::vec&)> grad_f,
-                    arma::vec& x, int max_iter);
+    void minimize(const std::function<double(const arma::vec&)>& f,
+                    const std::function<arma::vec(const arma::vec&)>& grad_f,
+                    arma::vec& x, int max_iter = -1);
 };
 
 class mgd :public optimizer {
@@ -224,7 +221,7 @@ class mgd :public optimizer {
         step_size = 0;
     }
 
-    void minimize(std::function<arma::vec(const arma::vec&)> grad_f, arma::vec& x, int max_iter = -1);
+    void minimize(const std::function<arma::vec(const arma::vec&)>& grad_f, arma::vec& x, int max_iter = -1);
 };
 
 class nlcgd : public optimizer {
@@ -239,7 +236,7 @@ class nlcgd : public optimizer {
         step_size = 0;
     }
 
-    void minimize(std::function<arma::vec(const arma::vec&)> grad_f, arma::vec& x, int max_iter = -1);
+    void minimize(const std::function<arma::vec(const arma::vec&)>& grad_f, arma::vec& x, int max_iter = -1);
 };
 
 class adj_gd : public optimizer {
@@ -254,11 +251,38 @@ class adj_gd : public optimizer {
         step_size = 0;
     }
 
-    void minimize(std::function<arma::vec(const arma::vec&)> grad_f, arma::vec& x, int max_iter = -1);
+    void minimize(const std::function<arma::vec(const arma::vec&)>& grad_f, arma::vec& x, int max_iter = -1);
 };
 //--- linear contrained ---//
 double simplex(arma::mat&, arma::vec&);
 double simplex(const arma::rowvec&, const arma::mat&, const arma::vec&, arma::vec&);
+
+//--- gradient free ---//
+class nelder_mead : public optimizer {
+    private:
+    arma::mat init_simplex(const arma::vec& x);
+    
+    public:
+    double step;
+    double expand;
+    double contract;
+    double shrink;
+    double initial_side_length;
+
+    nelder_mead(double tolerance = 1e-2) {
+        tol = tolerance;
+        exit_flag = -1;
+        num_iter = 0;
+        max_iterations = 100;
+        step = 1;
+        expand = 2;
+        contract = 0.5;
+        shrink = 0.5;
+        initial_side_length = 1;
+    }
+
+    void minimize(const std::function<double(const arma::vec&)>& f, arma::vec& x);
+};
 
 //--- box contrained gradient free ---//
 class gen_optim : public optimizer {
