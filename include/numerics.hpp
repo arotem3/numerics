@@ -8,6 +8,8 @@
 #include <queue>
 #include <set>
 
+#include <omp.h>
+
 #define ARMA_USE_SUPERLU 1 // optional, but really should be used when handling sparse matrices
 #include <armadillo>
 

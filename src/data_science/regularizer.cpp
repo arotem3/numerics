@@ -87,15 +87,20 @@ void numerics::regularizer::cross_validate(const arma::mat& X, const arma::mat& 
     arma::vec L = arma::logspace(-5,3,N);
 
     arma::vec cv_scores = arma::zeros(N);
+    #pragma omp parallel
+    #pragma omp for
     for (int i=0; i < N; ++i) {
+        double score = 0;
         for (uint j=0; j < num_folds; ++j) {
             fit_no_replace(
                 split.not_fold_X(j),
                 split.not_fold_Y(j),
                 L(i)
             );
-            cv_scores(i) += cv;
+            score += cv;
         }
+        #pragma omp critical
+        cv_scores(i) += score;
     }
     int indmin = arma::index_min(cv_scores);
     lambda = L(indmin);

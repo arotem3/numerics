@@ -67,6 +67,7 @@ void numerics::ode::rk45::ode_solve(const std::function<arma::rowvec(double,cons
             }
 
         // (3) --- determine our next step-size q = (err/R)^(1/4)
+            if (kk == 0) break;
             q = std::pow(err/R, 0.2);
             if (q < 0.1) k *= 0.1;
             else if (q > 10) k *= 10;

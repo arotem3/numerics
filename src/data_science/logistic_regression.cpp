@@ -66,7 +66,7 @@ arma::mat numerics::logistic_regression::rbf(const arma::mat& xgrid) {
     return B;
 }
 
-std::string numerics::logistic_regression::fit_linear(double lam) {
+void numerics::logistic_regression::fit_linear(double lam) {
     arma::mat Phi = arma::join_rows(arma::ones(x.n_rows,1), x);
     
     auto f = [lam,&Phi,this](const arma::vec& cc) -> double {
@@ -79,11 +79,9 @@ std::string numerics::logistic_regression::fit_linear(double lam) {
     nelder_mead fmin;
     fmin.minimize(f,cc);
     c = arma::reshape(cc, Phi.n_cols, y.n_cols);
-    std::string flag; fmin.get_exit_flag(flag);
-    return flag;
 }
 
-std::string numerics::logistic_regression::fit_no_replace(const arma::mat& X, const arma::mat& Y, double lam) {
+void numerics::logistic_regression::fit_no_replace(const arma::mat& X, const arma::mat& Y, double lam) {
     int m = X.n_rows, n = X.n_cols;
     arma::mat Phi = arma::ones(m, 1+n+n_obs);
     Phi.cols(1,n) = X;
@@ -106,11 +104,9 @@ std::string numerics::logistic_regression::fit_no_replace(const arma::mat& X, co
     d = arma::reshape(dd, Phi.n_cols, y.n_cols);
     c = d.rows(0,n);
     d = d.rows(n+1,n+n_obs);
-    std::string flag; fmin.get_exit_flag(flag);
-    return flag;
 }
 
-void numerics::logistic_regression::fit(const arma::mat& X, const arma::mat& Y, bool echo) {
+void numerics::logistic_regression::fit(const arma::mat& X, const arma::mat& Y) {
     if (X.n_rows != Y.n_rows) {
         std::cerr << "logistic_regression::fit() error : x.n_rows = " << X.n_rows << " != " << Y.n_rows << " = y.n_rows" << std::endl
                   << "fit not performed." << std::endl;
@@ -121,7 +117,7 @@ void numerics::logistic_regression::fit(const arma::mat& X, const arma::mat& Y, 
     y = Y;
 
 
-    if (std::isnan(lambda) || lambda < 0) {
+    if (std::isnan(lambda) || lambda < 0) { // lambda to be determined by cross validation
         uint num_folds = 10;
         if (X.n_rows / num_folds < 10) {
             num_folds = 5;
@@ -134,37 +130,32 @@ void numerics::logistic_regression::fit(const arma::mat& X, const arma::mat& Y, 
         int N = 25;
         L = arma::logspace(-2,3,N);
 
-        cv_scores = arma::zeros(N); // using log-likelihood, so maximizing
-        std::string flag;
+        cv_scores = arma::zeros(N);
+
+        #pragma omp parallel // run parameter sweep in parallel
+        #pragma omp for
         for (int i=0; i < N; ++i) {
             int r = 0;
-            if (echo) std::cout << "performing " << num_folds << "-fold validation for lambda = " << L(i) << " ...\n";
+            double score = 0;
             for (uint j=0; j < num_folds; ++j) {
-                if (beta > 0) flag = fit_no_replace(split.not_fold_X(j),split.not_fold_Y(j),L(i));
-                else flag = fit_linear(L(i));
-
-                if (echo) std::cout << "\tfit on CV set " << j << " of " << num_folds << " returned flag: "
-                                    << flag << std::endl;
-
-                double score = arma::accu( split.fold_Y(j) % predict_probabilities(split.fold_X(j)) );
-                if (std::isnan(score)) continue;
-                cv_scores(i) += score;
+                if (beta > 0) fit_no_replace(split.not_fold_X(j),split.not_fold_Y(j),L(i));
+                else fit_linear(L(i));
+                double score_new = arma::accu( split.fold_Y(j) % predict_probabilities(split.fold_X(j)) );
+                if (std::isnan(score_new)) continue;
+                score += score_new;
                 r++;
             }
-            if (echo) std::cout << "completed cross validation for lambda = " << L(i)
-                                << " with average log-likelihood = " << cv_scores(i) << std::endl << std::endl;
-            if (r != 0) cv_scores(i) /= r;
-            else cv_scores(i) = 0;
+            if (r != 0) score /= r;
+            else score = 0;
+            
+            cv_scores(i) = score;
         }
-        int indmax = cv_scores.index_max();
+        int indmax = cv_scores.index_max(); // using log-likelihood, so maximizing
         lambda = L(indmax);
-        if (echo) std::cout << "optimal lambda = " << lambda << std::endl;
     }
 
     if (beta > 0) fit_no_replace(x,y,lambda);
     else fit_linear(lambda);
-    
-    if (echo) std::cout << "fit successful!\n\n"; 
 }
 
 arma::mat numerics::logistic_regression::predict_probabilities(const arma::mat& xgrid) {

@@ -55,14 +55,19 @@ numerics::kernel_smooth::kernel_smooth(const arma::vec& X, const arma::vec& Y, d
         arma::vec bdws = arma::logspace(std::log10(min_interval), std::log10(max_interval), m);
         arma::vec cv_score = arma::zeros(m);
         
+        #pragma omp parallel
+        #pragma omp for
         for (int i=0; i < m; ++i) {
+            double score = 0;
             for (int j=0; j < num_folds; ++j) {
                 ind = arma::find(arma::regspace(0,num_folds-1) != j);
                 arma::umat ii = I.rows(ind);
                 ii = arma::vectorise(ii);
                 arma::vec s = predict(x(ii), y(ii), x(I.row(j).t()), bdws(i)) - y(I.row(j).t());
-                cv_score(i) += arma::dot(s,s);
+                score += arma::dot(s,s);
             }
+            #pragma omp critical
+            cv_score(i) += score;
         }
         cv_score /= num_folds;
         int imin = cv_score.index_min();

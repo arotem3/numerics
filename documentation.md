@@ -948,7 +948,17 @@ The function `diffmat2` samples the interval uniformly and provies a second orde
 
 The function `cheb` samples the interval at Chebyshev nodes and converges spectrally. If no interval is provided, the interval is set to $[-1,1]$. The resulting operator is dense. Moreover $(D_{\text{cheb}})^k = \frac{d^k}{dx^k}$.
 
-In all three cases the $n\times n$ operator has rank $n-1$ which follows from the intuition that the null space of the derivative is the set of all (piecewise-)constant functions. 
+In all three cases the $n\times n$ operator has rank $n-1$ which follows from the intuition that the null space of the derivative is the set of all (piecewise-)constant functions.
+
+A more generic differentiation matrix is offered by the following two functions:
+```cpp
+arma::rowvec diffvec(const arma::vec& x, double x0, unsigned int k=1);
+
+arma::mat diffmat(const arma::vec& x, unsigned int k=0, unsigned int bdw=2);
+```
+Where `diffvec` returns a rowvector $\vec d_k$ such that $\vec d_k\cdot f(\vec x) \approx f^{(k)}(x_0)$.
+
+The function `diffmat` produces a differentiation matrix $D$ for any grid of points $x$ (does not need to be uniform or sorted) such that $D_k f(x) \approx f^{(k)}(x)$. Setting the `bdw` parameter will allow the user to select the number of nearby points to use in the approximation, for example if `bdw=2` then for $x_i$, the points $\{x_{i-1},x_i,x_{i+1}\}$ will be used in the approximation. Moreover, expect the error in the approximation to be $\mathcal O(h^{\text{bdw}})$ where $h$ is the maximum spacing in $x$. A special benefit of `diffmat` is that we can find any order derivative, moreover for any $n\times n$ $D_{k}$ we have $\text{rank}(D_k) = n-k$, and the eigenvalues are of the form $\lambda = i^kb$ where $b \geq 0$ and $i = \sqrt{-1}$. (so $D_2$ is positive semi-definite for example).
 
 Given a linear ODE of the form: $y' + \alpha y = f(x)$ and the initial condition: $y(L) = \beta$, we can approximate the solution by solving the linear system: $(D+\alpha I)y = f(x) \land y(L) = \beta$. This can be solved either by concatentating the constraint to the rest of the system, or by replacing the first row of the system with the constraint. This might look like:
 ```cpp
@@ -961,7 +971,7 @@ double L, R, alpha, beta;
 int N;
 int method; // set to 1 or 2
 
-diffmat2(D,x,L,R,N); // or diffmat4(), or cheb()
+diffmat2(D,x,L,R,N); // or diffmat4(), or cheb(), or diffmat()
 
 mat A;
 vec F;
@@ -981,7 +991,7 @@ if (method == 1) {
 }
 y = solve(A,F); // the solution
 ```
-If we have a system of $m$ ODEs, we can solve both initial value problems and boundary value problems using a similar method where instead the operator is replaced with $(I_{m,m}\otimes D)$ and $f(x)$ is vectorized. Once a solution $y$ is found it is reshaped so that it is $n\times m$.
+If we have a system of $m$ ODEs, we can solve both initial value problems and boundary value problems using a similar method where instead the operator is replaced with $(I_{m,m}\otimes D)$ ($\otimes$ is the Kronecker product) and $f(x)$ is vectorized. Once a solution $y$ is found it is reshaped so that it is $n\times m$.
 
 ## Initial Value Problem Solvers
 We define a system of initial value problem as having the form: $u' = f(t,u)$ with $u(0) = u_0$. Where $t$ is the independent variable and $u(t)$ is the dependent variable and is a row vector. All of the systems solvers are able to handle events. Some of the solvers have error control via adaptive step size selection. For the implicit solvers we can also provide a jacobian matrix $\frac{\partial f}{\partial u}$ to improve solver performance. All implicit solvers use Broyden's method to compute steps.
@@ -1041,9 +1051,29 @@ class rk4 : public ivp {
         arma::mat& U);
 };
 ```
+### Runge-Kutta Implicit Fourth Order
+Fourth order diagonally implicit Runge-Kutta solver with adaptive step size controlled by comparing the solution from the fully implicit nonlinear solution and the linearized solution. Method is A-stable and L-stable.
+```cpp
+class rk45i : public ivp {
+    public:
+    double adaptive_step_min;
+    double adaptive_step_max;
+    double adaptive_max_err; // tol
+    rk45i(double tol = 1e-3);
+    void ode_solve(
+        const std::function<arma::rowvec(double,const arma::rowvec&)>& f,
+        arma::vec& t, 
+        arma::mat& U);
+    void ode_solve(
+        const std::function<arma::rowvec(double,const arma::rowvec&)>& f,
+        const std::function<arma::mat(double,const arma::rowvec&)>& jacobian,
+        arma::vec& t,
+        arma::mat& U);
+};
+```
 
-### Runge-Kutta Fifth Order
-Fifth order implicit Runge-Kutta solver with constant step size.
+### Runge-Kutta Implicit Fifth Order
+Fifth order semi-implicit Runge-Kutta solver with constant step size.
 ```cpp
 class rk5i : public ivp {
     public:

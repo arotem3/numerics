@@ -156,8 +156,8 @@ class logistic_regression {
     double lambda, beta;
     int n_obs;
     arma::mat softmax(const arma::mat&);
-    std::string fit_linear(double lam);
-    std::string fit_no_replace(const arma::mat& X, const arma::mat& Y, double lam);
+    void fit_linear(double lam);
+    void fit_no_replace(const arma::mat& X, const arma::mat& Y, double lam);
 
     public:
     logistic_regression(double Beta = 1, double Lambda = arma::datum::nan);
@@ -165,7 +165,7 @@ class logistic_regression {
     void load(std::istream& in);
     void save(std::ostream& out);
 
-    void fit(const arma::mat& X, const arma::mat& Y, bool echo = true);
+    void fit(const arma::mat& X, const arma::mat& Y);
 
     arma::mat rbf(const arma::mat& xgrid);
     arma::mat predict_probabilities(const arma::mat& xgrid);

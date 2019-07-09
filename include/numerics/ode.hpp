@@ -21,6 +21,8 @@ namespace ode {
     } event_direction;
 
     // --- Utility ---------------- //
+    arma::rowvec diffvec(const arma::vec& x, double x0, uint k=1);
+    arma::mat diffmat(const arma::vec& x, uint k=1, uint bdw=2);
     void diffmat4(arma::mat& D, arma::vec& x, double L, double R, uint m);
     void diffmat2(arma::mat& D, arma::vec& x, double L, double R, uint m);
     void cheb(arma::mat& D, arma::vec& x, double L, double R, uint m);
@@ -55,11 +57,27 @@ namespace ode {
         double adaptive_step_max;
         double adaptive_max_err;
         rk45(double tol = 1e-3) {
-            adaptive_step_min = 5e-2;
+            adaptive_step_min = 5e-3;
             adaptive_step_max = 0.5;
             adaptive_max_err = tol;
         }
         void ode_solve(const std::function<arma::rowvec(double,const arma::rowvec&)>& f, arma::vec& t, arma::mat& U);
+    };
+
+    class rk45i : public ivp {
+        public:
+        double adaptive_step_min;
+        double adaptive_step_max;
+        double adaptive_max_err;
+        rk45i(double tol = 1e-3) {
+            adaptive_step_min = 5e-3;
+            adaptive_step_max = 0.5;
+            adaptive_max_err = tol;
+        }
+        void ode_solve(const std::function<arma::rowvec(double,const arma::rowvec&)>& f, arma::vec& t, arma::mat& U);
+        void ode_solve(const std::function<arma::rowvec(double,const arma::rowvec&)>& f,
+                    const std::function<arma::mat(double,const arma::rowvec&)>& jacobian,
+                    arma::vec& t, arma::mat& U);
     };
 
     class rk4 : public ivp {

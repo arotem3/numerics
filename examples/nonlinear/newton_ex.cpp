@@ -38,8 +38,8 @@ int main() {
     // numerics::lmlsqr fsolver; std::cout << "using Levenberg-Marquardt least squares..." << std::endl;
 
     clock_t t = clock();
-    // fsolver.fsolve(f,J,x);
-    fsolver.fsolve(f,x); // broyd and lmlsqr
+    fsolver.fsolve(f,J,x);
+    // fsolver.fsolve(f,x); // broyd and lmlsqr do not need a jacobian function
     t = clock() - t;
 
     arma::vec F = f(x);

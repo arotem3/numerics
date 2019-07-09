@@ -14,8 +14,7 @@ void numerics::broyd::fsolve(const std::function<arma::vec(const arma::vec&)>& f
     arma::vec F1,dx,y;
     
     arma::vec F = f(x);
-    arma::mat Jinv = approx_jacobian(f,x);
-    Jinv = arma::pinv(Jinv);
+    arma::mat J = approx_jacobian(f,x);
 
     uint k = 0;
 
@@ -26,7 +25,7 @@ void numerics::broyd::fsolve(const std::function<arma::vec(const arma::vec&)>& f
             return;
         }
 
-        dx = -(Jinv*F);
+        dx = arma::solve(J,-F);
         x += dx;
 
         F1 = f(x);
@@ -36,14 +35,13 @@ void numerics::broyd::fsolve(const std::function<arma::vec(const arma::vec&)>& f
             return;
         }
 
-        y = Jinv*(F1 - F);
-        Jinv += (dx - y)*dx.t() * Jinv / arma::dot(dx, y);
+        y = (F1 - F);
+        J += (y - J*dx)*dx.t() / arma::dot(dx,dx);
         F = F1;
 
-        if (F.has_nan() || F.has_inf() || Jinv.has_nan() || Jinv.has_inf()) {
+        if (F.has_nan() || F.has_inf() || J.has_nan() || J.has_inf()) {
             F = f(x);
-            Jinv = approx_jacobian(f,x);
-            Jinv = arma::pinv(Jinv);
+            J = approx_jacobian(f,x);
         }
         k++;
     } while (arma::norm(F,"inf") > tol);
@@ -63,12 +61,11 @@ void numerics::broyd::fsolve(const std::function<arma::vec(const arma::vec&)>& f
         if (max_iterations <= 0) max_iterations = 100;
     } else max_iterations = max_iter;
 
-    arma::mat Jinv;
+    arma::mat J;
     arma::vec F,F1,dx,y;
     
     F = f(x);
-    Jinv = jacobian(x);
-    Jinv = arma::pinv(Jinv);
+    J = jacobian(x);
 
     uint k = 0;
 
@@ -79,7 +76,7 @@ void numerics::broyd::fsolve(const std::function<arma::vec(const arma::vec&)>& f
             return;
         }
 
-        dx = -(Jinv*F);
+        dx = arma::solve(J,-F);
         x += dx;
 
         F1 = f(x);
@@ -89,14 +86,13 @@ void numerics::broyd::fsolve(const std::function<arma::vec(const arma::vec&)>& f
             return;
         }
 
-        y = Jinv*(F1 - F);
-        Jinv += (dx - y)*dx.t() * Jinv / arma::dot(dx, y);
+        y = (F1 - F);
+        J += (y - J*dx)*dx.t() / arma::dot(dx,dx);
         F = F1;
 
-        if (F.has_nan() || F.has_inf() || Jinv.has_nan() || Jinv.has_inf()) {
+        if (F.has_nan() || F.has_inf() || J.has_nan() || J.has_inf()) {
             F = f(x);
-            Jinv = jacobian(x);
-            Jinv = arma::pinv(Jinv);
+            J = jacobian(x);
         }
         k++;
     } while (arma::norm(F,"inf") > tol);

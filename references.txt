@@ -26,4 +26,8 @@ algorithms:
 
 [8] http://www.scholarpedia.org/article/Nelder-Mead_algorithm
 
+[9] Fornberg, Bengt "Calculation of weights in finite difference formulas"
+
+[10] E. Hairer, G. Wanner, "Solving Ordinary Differential Equations II"
+
 [*] a lot of Wikipedia...

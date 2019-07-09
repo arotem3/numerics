@@ -17,7 +17,7 @@ This assumes you have both armadillo and numerics installed in the default locat
 ```
 g++ main.cpp -O3 -lnumerics -larmadillo
 ```
-The order is important because `libnumerics` also has to link against `libarmadillo`.
+The order is important because `libnumerics` also has to link against `libarmadillo`. It is also recommended that you use optimization during compile, such as `-O2`, or `-O3`.
 
 ## numerics.hpp is a numeric library hosting:
 * integration (4th order and 7-pt lobatto).

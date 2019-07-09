@@ -1,7 +1,9 @@
 cmake_minimum_required(VERSION 3.10)
 project(numerics)
 
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 11)
+
+find_package(OpenMP)
 
 include_directories(include)
 
@@ -46,6 +48,7 @@ add_library(numerics SHARED
         src/ode/rk4.cpp
         src/ode/rk5i.cpp
         src/ode/rk45.cpp
+        src/ode/rk45i.cpp
         src/ode/poisson2d.cpp
 
         src/optimization/adj_gd.cpp
@@ -68,6 +71,10 @@ add_library(numerics SHARED
         src/utility/meshgrid.cpp
         src/utility/sample_from.cpp
 )
+
+if(OpenMP_FOUND)
+	target_link_libraries(numerics PRIVATE OpenMP::OpenMP_CXX)
+endif()
 
 install(TARGETS numerics DESTINATION lib)
 install(FILES include/numerics.hpp DESTINATION include)

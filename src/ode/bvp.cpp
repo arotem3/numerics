@@ -16,13 +16,12 @@ void numerics::ode::bvp::ode_solve(arma::vec& x, arma::mat& U,
     int m = num_points;
     int n = guess({bc.xL}).n_elem; // system dimension
     arma::mat D;
-    if (order == bvp_solvers::CHEBYSHEV) {
-        cheb(D, x, bc.xL, bc.xR, m);
-    } else if (order == bvp_solvers::SECOND_ORDER) diffmat2(D, x, bc.xL, bc.xR, m);
+    if (order == bvp_solvers::CHEBYSHEV) cheb(D, x, bc.xL, bc.xR, m);
+    else if (order == bvp_solvers::SECOND_ORDER) diffmat2(D, x, bc.xL, bc.xR, m);
     else diffmat4(D, x, bc.xL, bc.xR, m);
     
     auto ff = [&](const arma::vec& u) -> arma::vec {
-        arma::mat U = arma::reshape(u,m,n);
+        arma::mat U = arma::reshape(u,n,m).t();
         arma::rowvec BC = bc.condition(U.row(0), U.row(m-1));
         
         arma::mat F = arma::zeros(m,n);
@@ -30,26 +29,32 @@ void numerics::ode::bvp::ode_solve(arma::vec& x, arma::mat& U,
             F.row(i) = f( x(i), U.row(i) );
         }
 
-        arma::mat A = D*U - F;
+        arma::mat A = (D*U - F).t();
         arma::vec z = arma::join_cols( arma::vectorise(A), BC.t() );
         return z;
     };
 
     auto J = [&](const arma::vec& u) -> arma::mat {
-        arma::mat U = arma::reshape(u,m,n);
+        arma::mat U = arma::reshape(u,n,m).t();
         arma::mat DF = arma::zeros(m*n,m*n);
         for (int i(0); i < m; ++i) {
             auto fff = [&](const arma::vec& v) -> arma::vec {
                 return f( x(i), v.t() ).t();
             };
             arma::mat JJ = approx_jacobian( fff, U.row(i).t() );
-            for (int j(0); j < n; ++j) {
-                for (int k(0); k < n; ++k) {
-                    DF(m*j+i, m*k+i) = JJ(j,k);
+            DF.rows(i*n, (i+1)*n-1).cols(i*n, (i+1)*n-1) = JJ;
+        }
+        arma::mat DD = arma::zeros(arma::size(DF));
+        for (int i=0; i < m; ++i) {
+            for (int j=0; j < n; ++j) {
+                arma::uvec ii = arma::find(D.row(i) != 0);
+                arma::uvec jj = ii*n + j;
+                for (uint k=0; k < ii.n_elem; ++k) {
+                    DD(i*n + j, jj(k)) = D(i, ii(k));
                 }
             }
         }
-        DF += arma::kron(arma::eye(n,n), D);
+        DF += DD;
 
         auto bc_wrapper = [&](const arma::vec& v) -> arma::vec {
             arma::mat V = arma::reshape(v,2,n).t(); // fills by row...
@@ -60,20 +65,16 @@ void numerics::ode::bvp::ode_solve(arma::vec& x, arma::mat& U,
         arma::mat X = approx_jacobian(bc_wrapper, vv);
         int p = X.n_rows;
         arma::mat bc_jac = arma::zeros(p,m*n);
-        short j = 0;
-        for (int i(0); i < n; ++i) {
-            bc_jac.col(i*m) = X.col(j);
-            j++;
-            bc_jac.col((i+1)*m-1) = X.col(j);
-            j++;
-        }
+        bc_jac.head_cols(n) = X.head_cols(n);
+        bc_jac.tail_cols(n) = X.tail_cols(n);
         DF = arma::join_cols(DF,bc_jac);
         return DF;
     };
     
-    U = arma::vectorise( guess(x) );
-    arma::mat Jinv = arma::pinv( J(U) );
-    arma::vec F,F1 = ff(U),du,JiY;
+    U = guess(x);
+    U = arma::vectorise( U.t() );
+    arma::mat JJ =  J(U);
+    arma::vec F,F1 = ff(U),du,y;
     uint k = 0;
     do {
         if (k >= max_iterations) {
@@ -84,20 +85,21 @@ void numerics::ode::bvp::ode_solve(arma::vec& x, arma::mat& U,
             break;
         }
         F = F1;
-        du = -(Jinv * F);
+        du = arma::solve(JJ,-F);
+        if ( JJ.has_nan() ) {
+            JJ = J(U);
+        }
         U += du;
         F1 = ff(U);
 
-        JiY = Jinv*(F1 - F);
-        Jinv += (du - JiY)*du.t()*Jinv/arma::dot(du, JiY);
-        if ( Jinv.has_nan() ) {
-            Jinv = arma::pinv( J(U) );
-        }
+        y = (F1 - F);
+        JJ += (y - JJ*du)*du.t() / arma::dot(du, du);
+        
 
         k++;
     } while (arma::norm(du,"inf") > tol);
     num_iter = k;
-    U = arma::reshape(U,m,n);
+    U = arma::reshape(U,n,m).t();
 }
 
 /* ode_solve(x, U, f, bc, guess) : solves general systems of  (potentially) nonlinear boudary value problems.
@@ -118,13 +120,12 @@ void numerics::ode::bvp::ode_solve(arma::vec& x, arma::mat& U,
     int m = num_points;
     int n = guess({bc.xL}).n_elem; // system dimension
     arma::mat D;
-    if (order == bvp_solvers::CHEBYSHEV) {
-        cheb(D, x, bc.xL, bc.xR, m);
-    } else if (order == bvp_solvers::SECOND_ORDER) diffmat2(D, x, bc.xL, bc.xR, m);
+    if (order == bvp_solvers::CHEBYSHEV) cheb(D, x, bc.xL, bc.xR, m);
+    else if (order == bvp_solvers::SECOND_ORDER) diffmat2(D, x, bc.xL, bc.xR, m);
     else diffmat4(D, x, bc.xL, bc.xR, m);
     
     auto ff = [&](const arma::vec& u) -> arma::vec {
-        arma::mat U = arma::reshape(u,m,n);
+        arma::mat U = arma::reshape(u,n,m).t();
         arma::rowvec BC = bc.condition(U.row(0), U.row(m-1));
         
         arma::mat F = arma::zeros(m,n);
@@ -132,47 +133,49 @@ void numerics::ode::bvp::ode_solve(arma::vec& x, arma::mat& U,
             F.row(i) = f( x(i), U.row(i) );
         }
 
-        arma::mat A = D*U - F;
+        arma::mat A = (D*U - F).t();
         arma::vec z = arma::join_cols( arma::vectorise(A), BC.t() );
         return z;
     };
 
     auto J = [&](const arma::vec& u) -> arma::mat {
-        arma::mat U = arma::reshape(u,m,n);
+        arma::mat U = arma::reshape(u,n,m).t();
         arma::mat DF = arma::zeros(m*n,m*n);
         for (int i(0); i < m; ++i) {
-            arma::mat JJ = jacobian( x(i), U.row(i) );
-            for (int j(0); j < n; ++j) {
-                for (int k(0); k < n; ++k) {
-                    DF(m*j+i, m*k+i) = JJ(j,k);
+            arma::mat JJ = jacobian(x(i), U.row(i));
+            DF.rows(i*n, (i+1)*n-1).cols(i*n, (i+1)*n-1) = JJ;
+        }
+        arma::mat DD = arma::zeros(arma::size(DF));
+        for (int i=0; i < m; ++i) {
+            for (int j=0; j < n; ++j) {
+                arma::uvec ii = arma::find(D.row(i) != 0);
+                arma::uvec jj = ii*n + j;
+                for (uint k=0; k < ii.n_elem; ++k) {
+                    DD(i*n + j, jj(k)) = D(i, ii(k));
                 }
             }
         }
-        DF += arma::kron(arma::eye(n,n), D);
+        DF += DD;
 
         auto bc_wrapper = [&](const arma::vec& v) -> arma::vec {
             arma::mat V = arma::reshape(v,2,n).t(); // fills by row...
-            arma::mat bc_result = bc.condition( V.row(0), V.row(1) );
+            arma::mat bc_result = bc.condition(V.row(0),V.row(1));
             return arma::vectorise(bc_result);
         };
         arma::vec vv = arma::join_rows( U.row(0), U.row(m-1) ).t();
         arma::mat X = approx_jacobian(bc_wrapper, vv);
         int p = X.n_rows;
         arma::mat bc_jac = arma::zeros(p,m*n);
-        short j = 0;
-        for (int i(0); i < n; ++i) {
-            bc_jac.col(i*m) = X.col(j);
-            j++;
-            bc_jac.col((i+1)*m-1) = X.col(j);
-            j++;
-        }
+        bc_jac.head_cols(n) = X.head_cols(n);
+        bc_jac.tail_cols(n) = X.tail_cols(n);
         DF = arma::join_cols(DF,bc_jac);
         return DF;
     };
     
-    U = arma::vectorise( guess(x) );
-    arma::mat Jinv = arma::pinv( J(U) );
-    arma::vec F,F1 = ff(U),du,JiY;
+    U = guess(x);
+    U = arma::vectorise( U.t() );
+    arma::mat JJ =  J(U);
+    arma::vec F,F1 = ff(U),du,y;
     uint k = 0;
     do {
         if (k >= max_iterations) {
@@ -183,18 +186,19 @@ void numerics::ode::bvp::ode_solve(arma::vec& x, arma::mat& U,
             break;
         }
         F = F1;
-        du = -(Jinv * F);
+        du = arma::solve(JJ,-F);
+        if ( JJ.has_nan() ) {
+            JJ = J(U);
+        }
         U += du;
         F1 = ff(U);
 
-        JiY = Jinv*(F1 - F);
-        Jinv += (du - JiY)*du.t()*Jinv/arma::dot(du, JiY);
-        if ( Jinv.has_nan() ) {
-            Jinv = arma::pinv( J(U) );
-        }
+        y = (F1 - F);
+        JJ += (y - JJ*du)*du.t() / arma::dot(du, du);
+        
 
         k++;
     } while (arma::norm(du,"inf") > tol);
     num_iter = k;
-    U = arma::reshape(U,m,n);
+    U = arma::reshape(U,n,m).t();
 }

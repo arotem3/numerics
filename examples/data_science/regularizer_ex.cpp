@@ -38,11 +38,11 @@ arma::mat roughness_matrix(arma::mat& X, arma::vec& centers) {
 
 int main() {
     // arma::arma_rng::set_seed(123);
-    int n_obs = 40;
+    int n_obs = 30;
     arma::vec X = 5*arma::randu(n_obs) - 2.5;
     arma::mat Y = f(X) + 0.05*arma::randn(n_obs,1);
 
-    int N = 30;
+    int N = 40;
     arma::vec centers = arma::linspace(-2.5, 2.5, N-2);
     arma::mat basis = gen_basis(X, centers);
 

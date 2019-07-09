@@ -30,7 +30,7 @@ int main() {
         double x = u(0);
         double y = u(1);
         arma::mat M = {{     0      ,   1   },
-                       { -2*x*y - 1 , 1-x*x }};
+                       { -2*x*y - 1 , (1-x*x) }};
         return M;
     };
 
@@ -61,13 +61,14 @@ int main() {
     // am1 dsolver; std::cout << "using Adam's Multon O(k) method, i.e. implicit Euler..." << std::endl;
     // am2 dsolver; std::cout << "using Adam's Multon O(k^2) method, i.e. trapezoid rule..." << std::endl;
     // rk4 dsolver; std::cout << "using Runge Kutta O(k^4) method..." << std::endl;
-    rk5i dsolver; std::cout << "using diagonally implicit Runge Kutta O(k^5) method..." << std::endl;
+    // rk5i dsolver; std::cout << "using diagonally implicit Runge Kutta O(k^5) method..." << std::endl;
+    rk45i dsolver; std::cout << "using adaptive diagonally implicit Runge Kutta O(k^4-->5) method..." << std::endl;
     
-    dsolver.step = 0.2;
-    // dsolver.adaptive_max_err = 1e-2;
+    // dsolver.step = 0.2;
+    dsolver.adaptive_max_err = 1e-4;
     if (add_event) dsolver.add_stopping_event(evnt, POSITIVE);
-    dsolver.ode_solve(f,t,U);
-    // dsolver.ode_solve(f,J,t,U); // am1, am2, rk5i, bdf23
+    // dsolver.ode_solve(f,t,U);
+    dsolver.ode_solve(f,J,t,U); // am1, am2, rk5i, rk45i
 
     tt = arma::conv_to<ddvec>::from(t);
     uu0 = arma::conv_to<ddvec>::from(U.col(0));

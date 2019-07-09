@@ -1,7 +1,7 @@
 #include "numerics.hpp"
 #include "matplotlibcpp.h"
 
-// g++ -g -Wall -o logistic_regression logistic_regression_ex.cpp -O3 -O3 -lnumerics -larmadillo -I/usr/include/python2.7 -lpython2.7
+// g++ -g -Wall -o logistic_regression logistic_regression_ex.cpp -O3 -lnumerics -larmadillo -I/usr/include/python2.7 -lpython2.7
 
 std::vector<double> conv(const arma::mat& u) {
     return arma::conv_to<std::vector<double>>::from(u);
@@ -26,12 +26,13 @@ int main() {
     }
 
     numerics::logistic_regression model;
-    std::cout << "this may take a while..." << std::endl;
     model.fit(X,Y);
 
     arma::vec xgrid = arma::linspace(-M_PI,M_PI,1000);
     arma::mat p = model.predict_probabilities(xgrid);
     arma::umat categories = model.predict_categories(X);
+
+    std::cout << model.get_cv_results();
 
     auto xx = conv(X);
     auto y1 = conv(Y.col(0));
