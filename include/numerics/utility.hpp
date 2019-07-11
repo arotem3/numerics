@@ -25,6 +25,68 @@ namespace numerics_private_utility {
         void clear();
         arma::mat data();
     };
+
+    namespace kd_tree_util {
+        struct node {
+            node() {
+                ind = 0;
+                left_child = nullptr;
+                right_child = nullptr;
+                parent = nullptr;
+            }
+            ~node() {
+                if (left_child != nullptr) {
+                    left_child->~node();
+                    delete left_child;
+                }
+                if (right_child != nullptr) {
+                    right_child->~node();
+                    delete right_child;
+                }
+            }
+            uint ind;
+            node* left_child;
+            node* right_child;
+            node* parent;
+        };
+
+        struct dist_ind {
+            double dist;
+            uint ind;
+        };
+
+        struct DI_less {
+            bool operator() (const dist_ind& a, const dist_ind& b) {
+                return a.dist < b.dist;
+            }
+        };
+
+        typedef std::priority_queue<dist_ind,std::vector<dist_ind>,DI_less> pqueue;
+        
+        class kd_tree {
+            private:
+            uint first_split;
+            node* head;
+            arma::mat X;
+            arma::mat bounding_box;
+            node* build_tree(const arma::mat& data, const arma::uvec& inds, int d);
+            void find_kNN(const arma::rowvec& pt, node* T, uint current_dim, const arma::mat& bounds, pqueue& kbest, const uint& k);
+            double find_min(node* T, uint dim, uint current_dim);
+            double find_max(node* T, uint dim, uint current_dim);
+
+            public:
+            kd_tree() {};
+            kd_tree(const arma::mat& data);
+            arma::mat data();
+            arma::mat find_kNN(const arma::rowvec& pt, uint k=1);
+            arma::uvec index_kNN(const arma::rowvec& pt, uint k=1);
+            void kNN_update(const arma::rowvec& pt, pqueue& KNNs);
+            double min(uint dim);
+            double max(uint dim);
+            uint size();
+            uint dim();
+        };
+    }
 }
 
 // --- misc
@@ -37,3 +99,5 @@ void meshgrid(arma::mat&, const arma::vec&);
 
 arma::vec sample_from(int, const arma::vec&, const arma::vec& labels = arma::vec());
 double sample_from(const arma::vec&, const arma::vec& labels = arma::vec());
+
+uint index_median(const arma::vec& x);

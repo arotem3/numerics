@@ -196,3 +196,59 @@ class logistic_regression {
         return y;
     }
 };
+
+typedef enum KNN_ALG {
+    AUTO,
+    KD_TREE,
+    BRUTE
+} knn_algorithm;
+
+typedef enum KNN_METRIC {
+    CONSTANT,
+    DISTANCE
+} knn_metric;
+
+class knn_regression {
+    protected:
+    bool categorical_loss;
+    numerics_private_utility::kd_tree_util::kd_tree X_tree;
+    arma::mat X_array;
+    arma::mat Y;
+    arma::uvec kk;
+    arma::vec cv_scores;
+    int k;
+    knn_algorithm alg;
+    knn_metric metr;
+    double fit_no_replace(const arma::mat& train_X, const arma::mat& train_Y, const arma::mat& test_X, const arma::mat& test_Y, int K);
+    arma::rowvec voting_func(const arma::rowvec& pt, const arma::mat& neighbors_X, const arma::mat& neighbors_Y);
+    arma::uvec brute_knn(const arma::rowvec& pt, const arma::mat& X, int K);
+
+    public:
+    knn_regression(uint K, knn_algorithm algorithm = AUTO, knn_metric metric = CONSTANT);
+    knn_regression(const arma::uvec K_set, knn_algorithm algorithm = AUTO, knn_metric metric = CONSTANT);
+    knn_regression& fit(const arma::mat& X, const arma::mat& Y);
+    arma::mat predict(const arma::mat xgrid);
+    int num_neighbors() const {
+        return k;
+    }
+    arma::mat get_cv_results() const;
+};
+
+class knn_classifier : public knn_regression {
+    public:
+    knn_classifier(uint K, knn_algorithm algorithm = AUTO, knn_metric metric = CONSTANT) : knn_regression(K,algorithm,metric) {
+        categorical_loss = true;
+    }
+    knn_classifier(const arma::uvec K_set, knn_algorithm algorithm = AUTO, knn_metric metric = CONSTANT) : knn_regression(K_set,algorithm,metric) {
+        categorical_loss = true;
+    }
+    arma::mat predict_probabilities(const arma::mat& xgrid) {
+        return predict(xgrid);
+    }
+    arma::umat predict_categories(const arma::mat& xgrid) {
+        arma::uvec ind = arma::index_max(predict_probabilities(xgrid),1);
+        arma::umat categories = arma::zeros<arma::umat>(ind.n_rows,Y.n_cols);
+        for (uint i=0; i < ind.n_rows; ++i) categories(i,ind(i)) = 1;
+        return categories;
+    }
+};

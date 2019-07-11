@@ -23,6 +23,7 @@ add_library(numerics SHARED
         src/data_science/regularizer.cpp
         src/data_science/splines.cpp
         src/data_science/logistic_regression.cpp
+        src/data_science/knn_regression.cpp
 
         src/derivatives/approx_jacobian.cpp
         src/derivatives/deriv.cpp
@@ -70,6 +71,8 @@ add_library(numerics SHARED
         src/utility/cyc_queue.cpp
         src/utility/meshgrid.cpp
         src/utility/sample_from.cpp
+        src/utility/index_median.cpp
+        src/utility/kd_tree.cpp
 )
 
 if(OpenMP_FOUND)
