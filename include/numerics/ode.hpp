@@ -14,11 +14,11 @@ limitations under the License. */
 
 namespace ode {
     // --- IVP events ------------ //
-    typedef enum EVENT_DIR {
+    enum class event_direction {
         NEGATIVE = -1,
         ALL = 0,
         POSITIVE = 1
-    } event_direction;
+    };
 
     // --- Utility ---------------- //
     arma::rowvec diffvec(const arma::vec& x, double x0, uint k=1);
@@ -45,7 +45,7 @@ namespace ode {
             stopping_event = -1;
         }
 
-        void add_stopping_event(const std::function<double(double,const arma::rowvec&)>& event, event_direction dir = ALL) {
+        void add_stopping_event(const std::function<double(double,const arma::rowvec&)>& event, event_direction dir = event_direction::ALL) {
             events.push_back(event);
             event_dirs.push_back(dir);
         }

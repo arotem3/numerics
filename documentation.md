@@ -38,6 +38,7 @@
     * [k-means clustering](#k-means-clustering)
     * [splines](#splines)
     * [logistic regression](#logistic-regression)
+    * [k nearest neighbors](#k-nearest-neighbors-regression)
     * [kernel smoothing](#kernel-smoothing)
     * [Regularized Linear Least Squares Regression](#Regularized-Linear-Least-Squares-Regression)
 * [`ODE.hpp`](#`numerics::ode`-Documentation)
@@ -99,7 +100,7 @@ where `p` is the coefficient vector, and `c` is the constant of integration; by 
 
 ### Integration
 ```cpp
-enum integrator {SIMPSON,LOBATTO};
+enum class integrator {SIMPSON,LOBATTO};
 
 double integrate(const function<double(double)>& f,
                  double a, double b,
@@ -759,9 +760,9 @@ if `Beta <= 0`, then only a linear basis is used, if `Lambda < 0 || isnan(Lambda
 
 We fit the model by calling `fit()`:
 ```cpp
-void logistic_regression::fit(const arma::mat& x, const arma::mat& y, bool echo = true);
+void logistic_regression::fit(const arma::mat& x, const arma::mat& y);
 ```
-The parameter `x` is simply the independent variable, where each row is an observation. The parameter `y` on the other hand should have as many colomns as categories and the (i,j) element should be 1.0 if the i^th observation belongs to the j^th category, and 0.0 otherwise. The parameter `echo` allows the user to specify whether they would like the function to display progress during cross validation to `std::cout`. This option is provided because the cross validation may take a while.
+The parameter `x` is simply the independent variable, where each row is an observation. The parameter `y` on the other hand should have as many colomns as categories and the (i,j) element should be 1.0 if the i^th observation belongs to the j^th category, and 0.0 otherwise.
 
 Once our logistic model is fit, we can predict probabilities and categories using:
 ```cpp
@@ -801,6 +802,56 @@ or on construction:
 logistic_regression::logistic_regression(std::istream& in);
 ```
 
+### k Nearest Neighbors Regression
+Predict on data using k nearest neighbors. The method applies both kd-trees and a brute force strategy to compute the nearest neighbors. The kd-tree implementation is the default if the dimension of the space is relatively small and there is sufficient data to justify it. If this is not the case, the algorithm will instead default to a brute force strategy. When predicting there are two options (1) average value of the k nearest neighbors or (2) a distance weighing of the nearest neighbors using a radial basis function $w_i = e^{-||x-x_i||^2/\sigma^2} / \sum_j e^{-||x-x_j||^2/\sigma^2}$. The default method is averaging. The number of nearest neighbors can be defined explicitly or a set of integers can be provided and the data structure will determine the optimal value by cross validation.
+
+```cpp
+class knn_regression
+```
+To construct a knn object, we must supply either `k` the number of NNs or a vector of `k` values to test via cross validation on the MSE score.
+
+```cpp
+enum class knn_algorithm {
+    AUTO,
+    KD_TREE,
+    BRUTE
+};
+
+enum class knn_metric {
+    CONSTANT,
+    DISTANCE
+};
+
+knn_regression::knn_regression(unsigned int k, knn_algorithm alg, knn_metric metr);
+
+knn_regression::knn_regression(const arma::uvec& k, knn_algorithm alg, knn_metric metr);
+```
+We fit the object via:
+```cpp
+knn_regression& knn_regression::fit(const arma::mat& x, const arma::mat& y);
+```
+The parameter `x` is the independent variable, where each row is an observation. The parameter `y` is the dependent variable.
+
+Once our model is fit, we can predict values of our function using:
+```cpp
+arma::mat knn_regression::predict(const arma::mat& xx);
+```
+We can also request additional information from the object:
+```cpp
+int knn_regression::num_neighbors() const; // get k used to predict
+arma::mat knn_regression::get_cv_results() const; // first column is the set of k tested, second column is the corresponding MSE score.
+```
+We can use a modified version of `knn_regression` for (multi-)classification:
+```cpp
+class knn_classifier : public knn_regression
+```
+This class is treated the same as `knn_regression` with the additional functionality:
+```cpp
+arma::mat knn_classifier::predict_probabilities(const arma::mat& xx);
+arma::umat knn_classifier::predict_categories(const arma::mat& xx);
+```
+Where `predict_probabilities()` is equivalent to `predict()`. Additionally cross validation is performed on the F1 score instead of MSE.
+
 ### Kernel Smoothing
 Kernel smoothing may be applied to quickly approximate a function at a point $x_0$ by weighted sum of samples within a bandwidth $\beta$ of $x_0$. The weights are determined by a symmetric kernel function $K(\cdot,\cdot)$ of which there are variety of options (we define $K(x,x_0)=f\left(\frac{||x-x_0||}{\beta}\right)$):
 
@@ -817,7 +868,12 @@ class kernel_smooth
 
 We construct a smoothing object via:
 ```cpp
-typedef enum KERNELS {RBF,square,triangle,parabolic} kernels;
+enum class kernels {
+    RBF,
+    square,
+    triangle,
+    parabolic
+};
 
 kernel_smooth::kernel_smooth(double bdw=0, kernels k=RBF);
 
@@ -1133,7 +1189,7 @@ class am2 : public ivp {
 ### IVP Events
 The function:
 ```cpp
-enum event_direction {
+enum class event_direction {
     NEGATIVE = -1,
     ALL = 0,
     POSITIVE = 1
@@ -1171,11 +1227,11 @@ Same for the governing ODE...
 
 The `bvp` class and solver:
 ```cpp
-typedef enum BVP_SOLVERS {
+enum class bvp_solvers {
     FOURTH_ORDER,
     SECOND_ORDER,
     CHEBYSHEV
-} bvp_solvers;
+};
 
 class bvp {
     public:

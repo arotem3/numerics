@@ -29,8 +29,8 @@ int main() {
     alg = numerics::KD_TREE; // stores data in kd-tree allowing for O(log n) query time when x.n_cols << x.n_rows
     // alg = numerics::BRUTE; // stores data as is ==> O(n) query time
     numerics::knn_metric metr;
-    // metr = numerics::CONSTANT; // takes the average of all the neighbors
-    metr = numerics::DISTANCE; // weighs the average accoriding to distance
+    metr = numerics::CONSTANT; // takes the average of all the neighbors
+    // metr = numerics::DISTANCE; // weighs the average accoriding to distance
     arma::uvec k_set = {1,2,4,8,16,32};
     numerics::knn_classifier model(k_set,alg,metr);
     model.fit(X,Y);
@@ -44,7 +44,7 @@ int main() {
 
     std::cout << "optimal k: " << model.num_neighbors() << '\n'
               << "Precision : " << prec << '\n'
-              << "cross validation table:\n" << model.get_cv_results();
+              << "cross validation table:\n\tk\tF1\n" << model.get_cv_results();
 
     auto xx = conv(X);
     auto y1 = conv(Y.col(0));

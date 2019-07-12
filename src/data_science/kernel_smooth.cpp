@@ -92,10 +92,10 @@ void numerics::kernel_smooth::save(std::ostream& out) {
 void numerics::kernel_smooth::load(std::istream& in) {
     int k;
     in >> n >> k >> bdw >> cv;
-    if (k==0) kern = RBF;
-    else if (k==1) kern = square;
-    else if (k==2) kern = triangle;
-    else kern = parabolic;
+    if (k==0) kern = kernels::RBF;
+    else if (k==1) kern = kernels::square;
+    else if (k==2) kern = kernels::triangle;
+    else kern = kernels::parabolic;
     x = arma::zeros(n);
     y = arma::zeros(n);
     for (uint i=0; i < n; ++i) in >> x(i);

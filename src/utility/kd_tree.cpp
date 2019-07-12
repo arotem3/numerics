@@ -139,13 +139,6 @@ arma::mat numerics::numerics_private_utility::kd_tree_util::kd_tree::find_kNN(co
     return X.rows(ind);
 }
 
-/* kNN_update(query_pt, kNNs) : update the priority queue kNNs relative to a new query_pt. This is a good approach whenever k is sufficiently large or the neighbors need to be computed for many nearby points (such as in k-means). Method is average case O(log k * log n).
- * --- query_pt : new data point to update priority queue for.
- * --- kNNs : priority queue filled with k nearest neighbors. caveat: must be filled. */
-void numerics::numerics_private_utility::kd_tree_util::kd_tree::kNN_update(const arma::rowvec& pt, pqueue& KNNs) {
-    find_kNN(pt, head, first_split, bounding_box, KNNs, KNNs.size());
-}
-
 arma::mat numerics::numerics_private_utility::kd_tree_util::kd_tree::data() {
     return X;
 }

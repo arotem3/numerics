@@ -1,10 +1,10 @@
 // --- data analysis ---------- //
-typedef enum KERNELS {
+enum class kernels {
     RBF,
     square,
     triangle,
     parabolic
-} kernels;
+};
 
 class k_folds {
     private:
@@ -103,8 +103,8 @@ class kernel_smooth {
     arma::vec predict(const arma::vec&, const arma::vec&, const arma::vec&, double h);
 
     public:
-    kernel_smooth(const arma::vec&, const arma::vec&, double bdw=0, kernels k=RBF);
-    kernel_smooth(double bdw=0, kernels k=RBF);
+    kernel_smooth(const arma::vec&, const arma::vec&, double bdw=0, kernels k=kernels::RBF);
+    kernel_smooth(double bdw=0, kernels k=kernels::RBF);
     kernel_smooth(std::istream&);
 
     void save(std::ostream&);
@@ -197,16 +197,16 @@ class logistic_regression {
     }
 };
 
-typedef enum KNN_ALG {
+enum class knn_algorithm {
     AUTO,
     KD_TREE,
     BRUTE
-} knn_algorithm;
+};
 
-typedef enum KNN_METRIC {
+enum class knn_metric {
     CONSTANT,
     DISTANCE
-} knn_metric;
+};
 
 class knn_regression {
     protected:
@@ -224,22 +224,32 @@ class knn_regression {
     arma::uvec brute_knn(const arma::rowvec& pt, const arma::mat& X, int K);
 
     public:
-    knn_regression(uint K, knn_algorithm algorithm = AUTO, knn_metric metric = CONSTANT);
-    knn_regression(const arma::uvec K_set, knn_algorithm algorithm = AUTO, knn_metric metric = CONSTANT);
+    knn_regression(uint K, knn_algorithm algorithm = knn_algorithm::AUTO, knn_metric metric = knn_metric::CONSTANT);
+    knn_regression(const arma::uvec K_set, knn_algorithm algorithm = knn_algorithm::AUTO, knn_metric metric = knn_metric::CONSTANT);
     knn_regression& fit(const arma::mat& X, const arma::mat& Y);
-    arma::mat predict(const arma::mat xgrid);
+    arma::mat predict(const arma::mat& xgrid);
+    arma::mat operator()(const arma::mat& xgrid) {
+        return predict(xgrid);
+    }
     int num_neighbors() const {
         return k;
     }
     arma::mat get_cv_results() const;
+    arma::mat data_X() {
+        if (alg == knn_algorithm::KD_TREE) return X_tree.data();
+        else return X_array;
+    }
+    arma::mat data_Y() {
+        return Y;
+    }
 };
 
 class knn_classifier : public knn_regression {
     public:
-    knn_classifier(uint K, knn_algorithm algorithm = AUTO, knn_metric metric = CONSTANT) : knn_regression(K,algorithm,metric) {
+    knn_classifier(uint K, knn_algorithm algorithm = knn_algorithm::AUTO, knn_metric metric = knn_metric::CONSTANT) : knn_regression(K,algorithm,metric) {
         categorical_loss = true;
     }
-    knn_classifier(const arma::uvec K_set, knn_algorithm algorithm = AUTO, knn_metric metric = CONSTANT) : knn_regression(K_set,algorithm,metric) {
+    knn_classifier(const arma::uvec K_set, knn_algorithm algorithm = knn_algorithm::AUTO, knn_metric metric = knn_metric::CONSTANT) : knn_regression(K_set,algorithm,metric) {
         categorical_loss = true;
     }
     arma::mat predict_probabilities(const arma::mat& xgrid) {

@@ -16,7 +16,7 @@ double numerics::ode::ivp::event_handle(double prev_t, const arma::rowvec& prev_
         double result = event(t,V);
         if (arma::sign(result) != arma::sign(prev_result)) { // event has occured
             if (result - prev_result < 0) {
-                if (event_dirs.at(i) == NEGATIVE || event_dirs.at(i) == ALL) { // negative event
+                if (event_dirs.at(i) == event_direction::NEGATIVE || event_dirs.at(i) == event_direction::ALL) { // negative event
                     if (std::abs(result) < 1e-4) { // we stop!
                         stopping_event = i;
                         return 0;
@@ -25,7 +25,7 @@ double numerics::ode::ivp::event_handle(double prev_t, const arma::rowvec& prev_
                     }
                 } else k = k; // false positive
             } else {
-                if (event_dirs.at(i) == POSITIVE || event_dirs.at(i) == ALL) { // positive event
+                if (event_dirs.at(i) == event_direction::POSITIVE || event_dirs.at(i) == event_direction::ALL) { // positive event
                     if (std::abs(result) < 1e-4) { // we stop!
                         stopping_event = i;
                         return 0;

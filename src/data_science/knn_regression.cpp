@@ -16,7 +16,7 @@ numerics::knn_regression::knn_regression(const arma::uvec K_set, knn_algorithm a
 
 double numerics::knn_regression::fit_no_replace(const arma::mat& train_X, const arma::mat& train_Y, const arma::mat& test_X, const arma::mat& test_Y, int K) {
     arma::mat yhat(arma::size(test_Y));
-    if (alg == KD_TREE) {
+    if (alg == knn_algorithm::KD_TREE) {
         numerics_private_utility::kd_tree_util::kd_tree T(train_X);
         for (int i=0; i < test_X.n_rows; ++i) {
             arma::uvec nn = T.index_kNN(test_X.row(i), K);
@@ -33,8 +33,12 @@ double numerics::knn_regression::fit_no_replace(const arma::mat& train_X, const 
         arma::uvec ind = arma::index_max(yhat,1);
         arma::umat categories = arma::zeros<arma::umat>(arma::size(yhat));
         for (uint i=0; i < ind.n_rows; ++i) categories(i,ind(i)) = 1;
-        for (uint i=0; i < yhat.n_cols; ++i) score += arma::sum(categories.col(i) == test_Y.col(i) && categories.col(i)) / (double)arma::sum(categories.col(i));
-        score /= yhat.n_cols;
+        double precision = 0, recall = 0;
+        for (uint i=0; i < yhat.n_cols; ++i) {
+            recall += arma::sum(categories.col(i) == test_Y.col(i) && categories.col(i)) / (double)arma::sum(test_Y.col(i));
+            precision += arma::sum(categories.col(i) == test_Y.col(i) && categories.col(i)) / (double)arma::sum(categories.col(i));
+        }
+        score += (2*precision*recall) / (precision + recall) / yhat.n_cols;
     } else score = arma::norm(yhat - test_Y,"fro") / test_X.n_rows;
 
     return score;
@@ -46,9 +50,9 @@ numerics::knn_regression& numerics::knn_regression::fit(const arma::mat& x, cons
         return *this;
     }
     Y = y;
-    if (alg == AUTO) {
-        if (x.n_cols < 10 && std::pow(2,x.n_cols) < x.n_rows) alg = KD_TREE;
-        else alg = BRUTE;
+    if (alg == knn_algorithm::AUTO) {
+        if (x.n_cols < 10 && std::pow(2,x.n_cols) < x.n_rows) alg = knn_algorithm::KD_TREE;
+        else alg = knn_algorithm::BRUTE;
     }
     if (!kk.is_empty()) { // cross validation
         k_folds split(x,y,3);
@@ -75,14 +79,14 @@ numerics::knn_regression& numerics::knn_regression::fit(const arma::mat& x, cons
         k = kk(ind);
     }
 
-    if (alg == KD_TREE) X_tree = numerics_private_utility::kd_tree_util::kd_tree(x);
+    if (alg == knn_algorithm::KD_TREE) X_tree = numerics_private_utility::kd_tree_util::kd_tree(x);
     else X_array = x;
     return *this;
 }
 
-arma::mat numerics::knn_regression::predict(const arma::mat xgrid) {
+arma::mat numerics::knn_regression::predict(const arma::mat& xgrid) {
     arma::mat yhat = arma::zeros(xgrid.n_rows, Y.n_cols);
-    if (alg == KD_TREE) {
+    if (alg == knn_algorithm::KD_TREE) {
         #pragma omp parallel
         #pragma omp for
         for (int i=0; i < xgrid.n_rows; ++i) {
@@ -101,7 +105,7 @@ arma::mat numerics::knn_regression::predict(const arma::mat xgrid) {
 }
 
 arma::rowvec numerics::knn_regression::voting_func(const arma::rowvec& pt, const arma::mat& x, const arma::mat& y) {
-    if (metr == CONSTANT) {
+    if (metr == knn_metric::CONSTANT) {
         return arma::mean(y);
     } else {
         arma::vec W = arma::zeros(x.n_rows);

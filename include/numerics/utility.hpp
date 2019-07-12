@@ -80,7 +80,6 @@ namespace numerics_private_utility {
             arma::mat data();
             arma::mat find_kNN(const arma::rowvec& pt, uint k=1);
             arma::uvec index_kNN(const arma::rowvec& pt, uint k=1);
-            void kNN_update(const arma::rowvec& pt, pqueue& KNNs);
             double min(uint dim);
             double max(uint dim);
             uint size();

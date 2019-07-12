@@ -22,12 +22,12 @@ int main() {
     alg = KD_TREE; // stores data in kd-tree allowing for O(log n) query time when x.n_cols << x.n_rows
     // alg = BRUTE; // stores data as is ==> O(n) query time
     knn_metric metr;
-    metr = CONSTANT; // takes the average of all the neighbors
-    // metr = DISTANCE; // weighs the average accoriding to distance
+    // metr = CONSTANT; // takes the average of all the neighbors
+    metr = DISTANCE; // weighs the average accoriding to distance
     arma::uvec k_set = {1,2,4,8,16,32};
     numerics::knn_regression model(k_set,alg,metr);
     model.fit(x,y);
-    arma::vec t = arma::linspace(-3,3,300);
+    arma::vec t = arma::linspace(-3,3,500);
     arma::vec yhat = model.predict(t);
 
     std::cout << "optimal k: " << model.num_neighbors() << '\n'
