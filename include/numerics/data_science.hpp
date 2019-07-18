@@ -34,7 +34,8 @@ class kmeans {
     arma::mat init_clusters();
 
     public:
-    kmeans(arma::mat&, int);
+    uint max_iterations;
+    kmeans(arma::mat& x, int k, int max_iter = 100);
     kmeans(std::istream&);
     void load(std::istream&);
     void save(std::ostream&);
@@ -58,12 +59,13 @@ class splines {
     private:
     arma::mat c, d;
     arma::mat X, Y;
+    arma::vec cv_scores;
     std::vector<std::vector<int>> monomials;
     int n, m, dim;
     double lambda, df, gcv;
     
     void gen_monomials();
-    void fit(arma::mat&, arma::mat&, arma::mat&, arma::mat&);
+    arma::mat rbf(const arma::mat& x, const arma::mat& xgrid);
 
     public:
     splines(int m);
@@ -129,14 +131,14 @@ class regularizer {
     private:
     arma::mat coefs, regular_mat;
     double lambda, cv, df;
-    bool use_cgd, use_L2;
+    bool use_L2, use_cgd;
     void cross_validate(const arma::mat&, const arma::mat&);
     void fit_no_replace(const arma::mat&, const arma::mat&, double);
 
     public:
     regularizer(double lambda = arma::datum::nan);
     regularizer(const arma::mat&, double lambda = arma::datum::nan);
-    regularizer(const arma::mat&, const arma::mat&, double lambda = arma::datum::nan, bool use_conj_grad = true);
+    regularizer(const arma::mat&, const arma::mat&, double lambda = arma::datum::nan);
     regularizer(const arma::mat&, const arma::mat&, const arma::mat&, double lambda = arma::datum::nan, bool use_conj_grad = true);
 
     arma::mat fit(const arma::mat&, const arma::mat&, bool use_conj_grad = true);

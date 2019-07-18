@@ -31,7 +31,7 @@ void numerics::ode::rk5i::ode_solve(const std::function<arma::rowvec(double,cons
     fsolver.tol = max_nonlin_err;
     fsolver.max_iterations = max_nonlin_iter;
 
-    unsigned short i = 1;
+    unsigned long long i = 1;
     while (t(i) <= tf) {
         t(i) = t(i-1) + k;
         if (t(i) > tf) {
@@ -69,13 +69,13 @@ void numerics::ode::rk5i::ode_solve(const std::function<arma::rowvec(double,cons
         if (t(i) >= tf) break; // t span stop
         if (kk == 0) break; // event stop
         i++;                        // move to the next step
-        if (i+1 == t.n_rows) {
+        if (i+1 >= t.n_rows) {
             t.resize(t.n_rows*2,1);
             U.resize(U.n_rows*2,U.n_cols);
         }
     }
-    t = t( arma::span(0,i) );
-    U = U.rows( arma::span(0,i) );
+    t = t( arma::span(0,i-1) );
+    U = U.rows( arma::span(0,i-1) );
 }
 
 /* ode_solve(f, jacobian, t, U) : diagonally implicit runge kutta O(K^5) method for any explicit first order system of ODEs.
@@ -112,7 +112,7 @@ void numerics::ode::rk5i::ode_solve(const std::function<arma::rowvec(double,cons
     fsolver.tol = max_nonlin_err;
     fsolver.max_iterations = max_nonlin_iter;
 
-    unsigned short i = 1;
+    unsigned long long i = 1;
     while (t(i) <= tf) {
         t(i) = t(i-1) + k;
         if (t(i) > tf) {
@@ -160,7 +160,7 @@ void numerics::ode::rk5i::ode_solve(const std::function<arma::rowvec(double,cons
         if (t(i) >= tf) break; // t span stop
         if (kk == 0) break; // event stop
         i++;                        // move to the next step
-        if (i+1 == t.n_rows) {
+        if (i+1 >= t.n_rows) {
             t.resize(t.n_rows*2,1);
             U.resize(U.n_rows*2,U.n_cols);
         }

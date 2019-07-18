@@ -33,27 +33,63 @@ numerics::splines::splines(const arma::mat& X, const arma::mat& Y, int m) {
 
     gen_monomials();
     arma::mat P = polyKern(X);
-    arma::mat Q,R;
-    arma::qr(Q,R,P);
-    arma::mat Pinv = arma::solve(R, Q.t());
-    Q = Q.cols(dim+1, n-1);
+    arma::mat Pi = arma::pinv(P);
 
     arma::mat K = rbf(X);
+
+
+    arma::mat V; arma::vec D;
+    arma::eig_sym(D, V, K);
+
     
     int N = 50;
     arma::vec L = arma::logspace(-3,3,N-2);
     L = arma::join_cols(arma::vec({0,arma::datum::inf}), L);
 
-    arma::vec GCV = arma::zeros(N);
+    cv_scores = arma::zeros(N);
 
     for (int i=0; i<N; ++i) {
-        this->lambda = L(i);
-        fit(K, P, Q, Pinv);
-        GCV(i) = gcv;
+        double lam = L(i);
+        if (lam == 0) {
+            k_folds split(X,Y,3);
+            double cv = 0;
+            for (int i=0; i < 3; ++i) {
+                arma::mat K0 = rbf(split.not_fold_X(i), split.not_fold_X(i));
+                arma::mat K0i = arma::pinv(K0); // shouldn't happen
+                arma::mat c_hat = K0i * split.not_fold_Y(i);
+                arma::mat yhat = rbf(split.not_fold_X(i),split.fold_X(i)) * c_hat;
+                double dof = arma::trace(K0*K0i);
+                int nn = 2*n/3;
+                cv += std::pow(arma::norm(yhat - split.fold_Y(i)),2);
+            }
+            cv_scores(i) += cv/n;
+        } else if (std::isinf(lam)) {
+            arma::mat hatmat = P*Pi;
+            arma::mat yhat = hatmat*Y;
+            double dof = arma::trace(hatmat);
+            double cv = arma::norm(Y - yhat) / (1 - dof/n);
+            cv_scores(i) = cv*cv/n;
+        } else {
+            arma::mat Ki = V * arma::diagmat(1/(D + lam)) * V.t();
+            arma::mat c_hat = Ki * Y;
+            arma::mat d_hat = Pi * (Y - K*c_hat);
+            arma::mat yhat = K*c_hat + P*d_hat;
+            Ki = K*Ki;
+            double dof = arma::trace(P*Pi*(arma::eye(n,n) - Ki) + Ki);
+            double cv = arma::norm(Y - yhat) / (1 - dof/n);
+            cv_scores(i) = cv*cv/n;
+        }
     }
-    int I = GCV.index_min();
+    int I = cv_scores.index_min();
     this->lambda = L(I);
-    fit(K, P, Q, Pinv);
+    arma::mat Ki = V * arma::diagmat(1/(D + lambda)) * V.t();
+    c = Ki * Y;
+    d = Pi * (Y - K*c);
+    arma::mat yhat = K*c + P*d;
+    Ki = K*Ki;
+    df = arma::trace(P*Pi*(arma::eye(n,n) - Ki) + Ki);
+    gcv = arma::norm(Y - yhat) / (1 - df/n);
+    gcv *= gcv/n;
 }
 
 /* splines(X, Y, lambda, m) : initialize and fit splines object.
@@ -62,6 +98,10 @@ numerics::splines::splines(const arma::mat& X, const arma::mat& Y, int m) {
  * --- lambda : smoothing parameter.
  * --- m : supplement fit by (m-1) degree polynomial, this parameter should be taken so m is small and (2*m - dimension of x) >= 1 */
 numerics::splines::splines(const arma::mat& X, const arma::mat& Y, double lambda, int m) {
+    if (X.n_rows != Y.n_rows) {
+        std::cerr << "splines() error: number of observations in x (" << X.n_rows << ") does not equal the number of observations in y (" << Y.n_rows << ").\n";
+        return;
+    }
     dim = X.n_cols;
     n = X.n_rows;
     if (2*m - dim < 1) {
@@ -75,46 +115,41 @@ numerics::splines::splines(const arma::mat& X, const arma::mat& Y, double lambda
     this->X = X;
     this->Y = Y;
 
-    gen_monomials();
-    arma::mat P = polyKern(X);
-    arma::mat Q,R;
-    arma::qr(Q,R,P);
-    arma::mat Pinv = arma::solve(R, Q.t());
-    Q = Q.cols(dim+1, n-1);
-
-    arma::mat HatMat = P * Pinv;
-    arma::mat K = rbf(X);
-    fit(K,P,Q,Pinv);
+    if (lambda == 0) {
+        arma::mat K = rbf(X);
+        arma::mat Ki = arma::pinv(K); // shouldn't happen
+        c = Ki*Y;
+        df = arma::trace(K*Ki);
+        gcv = 0;
+    } else if (std::isinf(lambda)) {
+        gen_monomials();
+        arma::mat P = polyKern(X);
+        arma::mat Pi = arma::pinv(P);
+        d = Pi*Y;
+        df = arma::trace(P*Pi);
+        gcv = arma::norm(Y - P*d,"fro");
+        gcv *= gcv/n;
+    } else {
+        gen_monomials();
+        arma::mat P = polyKern(X);
+        arma::mat Pi = arma::pinv(P);
+        arma::mat K = rbf(X);
+        arma::mat Ki;
+        bool chol_success = arma::inv_sympd(Ki,K + lambda*arma::eye(arma::size(K)));
+        if (!chol_success) Ki = arma::pinv(K + lambda*arma::eye(arma::size(K))); // shouldn't happen
+        c = Ki*Y;
+        d = Pi*(Y - K*c);
+        arma::mat yhat = K*c + P*d;
+        Ki = K*Ki;
+        df = arma::trace(P*Pi*(arma::eye(n,n) - Ki) + Ki);
+        gcv = arma::norm(Y - yhat) / (1 - df/n);
+        gcv *= gcv/n;
+    }
 }
 
 /* splines(in) : initialize spline object by loading object from a stream. */
 numerics::splines::splines(std::istream& in) {
     load(in);
-}
-
-/* fit(K, P, Q, Pinv) : private member function. */
-void numerics::splines::fit(arma::mat& K, arma::mat& P, arma::mat& Q, arma::mat& Pinv) {
-    arma::mat HatMat;
-    if (std::isinf(lambda)) {
-        c = arma::zeros(n);
-        d = Pinv * Y;
-        HatMat = P * Pinv;
-    } else {
-        arma::mat KHC = arma::solve(Q.t() * K * Q + lambda * arma::eye(n-dim-1,n-dim-1), Q.t() );
-        KHC = Q*KHC;
-        c = KHC*Y;
-
-        d = Pinv * (Y - K*c);
-
-        KHC = K * KHC;
-        HatMat = (P * Pinv) * (arma::eye(arma::size(KHC)) - KHC) + KHC;
-    }
-
-    df = arma::trace(HatMat);
-
-    arma::vec yHat = HatMat * Y;
-    gcv = arma::norm(Y - yHat) * n / (n - df);
-    gcv *= gcv;
 }
 
 /* fit(X, Y) : fit splines object.
@@ -140,6 +175,22 @@ arma::mat numerics::splines::rbf(const arma::mat& xgrid) {
     for (int i=0; i < ngrid; ++i) {
         for (int j=0; j < n; ++j) {
             double z = arma::norm(xgrid.row(i) - X.row(j));
+            K(i,j) = std::pow(z, 2*m-dim);
+            if (dim%2 == 0) K(i,j) *= std::log(z);
+            if (std::isnan(K(i,j)) || std::isinf(K(i,j))) K(i,j) = 0;
+        }
+    }
+    return K;
+}
+
+/* rbf(x,xgrid) : *private* build radial basis kernel from arbitrary data matrix x evaluated at xgrid. */
+arma::mat numerics::splines::rbf(const arma::mat& x, const arma::mat& xgrid) {
+    int n = x.n_rows;
+    int ngrid = xgrid.n_rows;
+    arma::mat K = arma::zeros(ngrid, n);
+    for (int i=0; i < ngrid; ++i) {
+        for (int j=0; j < n; ++j) {
+            double z = arma::norm(xgrid.row(i) - x.row(j));
             K(i,j) = std::pow(z, 2*m-dim);
             if (dim%2 == 0) K(i,j) *= std::log(z);
             if (std::isnan(K(i,j)) || std::isinf(K(i,j))) K(i,j) = 0;
@@ -212,9 +263,13 @@ arma::mat numerics::splines::predict(const arma::mat& xgrid) {
                   << "dim(fitted data) = " << dim << " =/= " << xgrid.n_cols << " = dim(new data)" << std::endl;
         return arma::mat();
     }
-    arma::mat K = rbf(xgrid);
-    arma::mat P = polyKern(xgrid);
-    return K*c + P*d;
+    if (lambda == 0) {
+        return rbf(xgrid)*c;
+    } else if (std::isinf(lambda)) {
+        return polyKern(xgrid)*d;
+    } else {
+        return rbf(xgrid)*c + polyKern(xgrid)*d;
+    }
 }
 
 /* splines::(xgrid) : same as predict(const arma::mat&). */

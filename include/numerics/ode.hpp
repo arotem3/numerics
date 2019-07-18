@@ -22,7 +22,8 @@ namespace ode {
 
     // --- Utility ---------------- //
     arma::rowvec diffvec(const arma::vec& x, double x0, uint k=1);
-    arma::mat diffmat(const arma::vec& x, uint k=1, uint bdw=2);
+    void diffmat(arma::sp_mat& D, const arma::vec& x, uint k=1, uint bdw=2);
+    void diffmat(arma::mat& D, const arma::vec& x, uint k=1, uint bdw=2);
     void diffmat4(arma::mat& D, arma::vec& x, double L, double R, uint m);
     void diffmat2(arma::mat& D, arma::vec& x, double L, double R, uint m);
     void cheb(arma::mat& D, arma::vec& x, double L, double R, uint m);
@@ -54,11 +55,9 @@ namespace ode {
     class rk45 : public ivp {
         public:
         double adaptive_step_min;
-        double adaptive_step_max;
         double adaptive_max_err;
-        rk45(double tol = 1e-3) {
-            adaptive_step_min = 5e-3;
-            adaptive_step_max = 0.5;
+        rk45(double tol = 1e-4) {
+            adaptive_step_min = 1e-6;
             adaptive_max_err = tol;
         }
         void ode_solve(const std::function<arma::rowvec(double,const arma::rowvec&)>& f, arma::vec& t, arma::mat& U);
@@ -67,11 +66,9 @@ namespace ode {
     class rk45i : public ivp {
         public:
         double adaptive_step_min;
-        double adaptive_step_max;
         double adaptive_max_err;
-        rk45i(double tol = 1e-3) {
-            adaptive_step_min = 5e-3;
-            adaptive_step_max = 0.5;
+        rk45i(double tol = 1e-4) {
+            adaptive_step_min = 1e-6;
             adaptive_max_err = tol;
         }
         void ode_solve(const std::function<arma::rowvec(double,const arma::rowvec&)>& f, arma::vec& t, arma::mat& U);
@@ -125,45 +122,74 @@ namespace ode {
                     arma::vec& t, arma::mat& U);
     };
     // --- BVPs ------------------- //
-    typedef enum BVP_SOLVERS {
-        FOURTH_ORDER,
-        SECOND_ORDER,
-        CHEBYSHEV
-    } bvp_solvers;
-
-    class boundary_conditions {
-        public:
-        double xL, xR;
-        std::function<arma::mat(const arma::rowvec& uL, const arma::rowvec& uR)> condition;
-    };
 
     class bvp {
-        private:
+        protected:
         int num_iter;
 
         public:
-        uint num_points, max_iterations;
+        uint max_iterations;
         double tol;
-        bvp_solvers order;
         int num_iterations() {
             return num_iter;
         }
-        
-        bvp(int N = 32) : num_points(N) {
-            order = FOURTH_ORDER;
-            tol = 1e-5;
+    };
+
+    class bvp_k : public bvp {
+        private:
+        int k;
+
+        public:
+        bvp_k(uint order = 4, double tolerance = 1e-5) {
+            tol = tolerance;
+            k = order;
             max_iterations = 100;
         }
 
         void ode_solve(arma::vec& x, arma::mat& U,
                     const std::function<arma::rowvec(double,const arma::rowvec&)>& f,
-                    const boundary_conditions& bc,
-                    const std::function<arma::mat(const arma::vec&)>& guess);
+                    const std::function<arma::vec(const arma::rowvec&, const arma::rowvec&)>& bc);
         void ode_solve(arma::vec& x, arma::mat& U,
                     const std::function<arma::rowvec(double,const arma::rowvec&)>& f,
                     const std::function<arma::mat(double, const arma::rowvec&)>& jacobian,
-                    const boundary_conditions& bc,
-                    const std::function<arma::mat(const arma::vec&)>& guess);
+                    const std::function<arma::vec(const arma::rowvec&, const arma::rowvec&)>& bc);
+    };
+
+    class bvp_cheb : public bvp {
+        public:
+        uint num_pts;
+        bvp_cheb(uint num_points = 32, double tolerance = 1e-5) {
+            tol = tolerance;
+            num_pts = num_points;
+            max_iterations = 100;
+        }
+
+        void ode_solve(arma::vec& x, arma::mat& U,
+                    const std::function<arma::rowvec(double,const arma::rowvec&)>& f,
+                    const std::function<arma::vec(const arma::rowvec&, const arma::rowvec&)>& bc,
+                    const std::function<arma::rowvec(double)>& guess);
+        void ode_solve(arma::vec& x, arma::mat& U,
+                    const std::function<arma::rowvec(double,const arma::rowvec&)>& f,
+                    const std::function<arma::mat(double, const arma::rowvec&)>& jacobian,
+                    const std::function<arma::vec(const arma::rowvec&, const arma::rowvec&)>& bc,
+                    const std::function<arma::rowvec(double)>& guess);
+    };
+
+    class bvpIIIa : public bvp {
+        public:
+        bvpIIIa(double tolerance = 1e-5) {
+            tol = tolerance;
+            max_iterations = 100;
+            num_iter = 0;
+        }
+        
+        void ode_solve(arma::vec& x, arma::mat& U,
+                        const std::function<arma::rowvec(double,const arma::rowvec&)>& f,
+                        const std::function<arma::vec(const arma::rowvec&,const arma::rowvec&)>& bc);
+        void ode_solve(arma::vec& x, arma::mat& U,
+                        const std::function<arma::rowvec(double,const arma::rowvec&)>& f,
+                        const std::function<arma::mat(double, const arma::rowvec&)>& jacobian,
+                        const std::function<arma::vec(const arma::rowvec&,const arma::rowvec&)>& bc);
     };
 
     // --- PDEs -------------------- //

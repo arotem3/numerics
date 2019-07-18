@@ -6,13 +6,9 @@
  * --- t  : vector to store t-values initialized at {t_initial, t_final}.
  * --- U  : vector to store the solution first row must be u(t0). */
 void numerics::ode::rk45::ode_solve(const std::function<arma::rowvec(double,const arma::rowvec&)>& f, arma::vec& t, arma::mat& U) {
-    double err = std::abs(adaptive_max_err);   // if err is set to zero (or lower) set it to eps(U0)
-    double kmin = adaptive_step_min;           // the minimum step-size allowed
-    double kmax = adaptive_step_max;           // the maximum step-size allowed
-    double k = kmax;                                // initialize our step-size at maximum
-
     double t_temp = t(0);
     double tf = t(1);
+    double k = std::min(1e-2,(tf - t_temp)/100);    // initialize our step-size at maximum
     arma::rowvec U_temp = arma::vectorise(U).t();
     t = arma::zeros(20);                // initialize memory
     t(0) = t_temp;
@@ -20,7 +16,7 @@ void numerics::ode::rk45::ode_solve(const std::function<arma::rowvec(double,cons
     U.row(0) = U_temp;
     
     bool notDone = true;    // check if the algorithm has reached the end
-    unsigned short j = 0;   // iterator for indexing our vector during the while loop
+    unsigned long long j = 0;   // iterator for indexing our vector during the while loop
     
     arma::rowvec V1;        // V1 - V6: RKF sub-equations used to construct our 4th order and 5th order solutions
     arma::rowvec V2;
@@ -48,8 +44,8 @@ void numerics::ode::rk45::ode_solve(const std::function<arma::rowvec(double,cons
             double kk = 2*k; // meaningless initialization greater that k for event handling
             if (j > 0) kk = event_handle(t(j), U.row(j), t(j) + k, rk4,k); // new k based on events
             
-            R = arma::norm(rk4 - rk5)/k;
-            if ( R < err ) {
+            R = arma::norm(rk4 - rk5,"inf");
+            if ( R < adaptive_max_err*arma::norm(U.row(j),"inf") ) {
                 if (0 < kk && kk < k) {     // event require us to try again with a smaller step size;
                     k = kk;
                     continue;
@@ -68,22 +64,18 @@ void numerics::ode::rk45::ode_solve(const std::function<arma::rowvec(double,cons
 
         // (3) --- determine our next step-size q = (err/R)^(1/4)
             if (kk == 0) break;
-            q = std::pow(err/R, 0.2);
-            if (q < 0.1) k *= 0.1;
-            else if (q > 10) k *= 10;
-            else k *= q;
+            k *= std::min(10.0, std::max(0.1, 0.9*std::pow(adaptive_max_err/R,0.2)));
             
-            k = (k > kmax) ? (kmax) : (k);  // check if our step-size is too big and fix it
+            if (k < adaptive_step_min) {            // k too small? our method does not converge to a solution
+                notDone = false;
+                std::cerr << "rk45() failed: method does not converge b/c current step-size = " << k << " < " << adaptive_step_min << " = minimum step-size allowed." << std::endl;
+                std::cerr << "\tfailed at t = " << t(j) << std::endl;
+            }
             if (t(j) >= tf) {               // check if we have reached tf
                 notDone = false;
             }
-            else if (t(j) + k > tf) {       // if we have reached tf, we change k
+            if (t(j) + k > tf) {       // if we have reached tf, we change k
                 k = tf - t(j);
-            }
-            else if (k < kmin) {            // k too small? our method does not converge to a solution
-                notDone = false;
-                std::cerr << "rk45() failed: method does not converge b/c minimum k exceeded." << std::endl;
-                std::cerr << "\tfailed at t = " << t(j) << std::endl;
             }
         // (4) --- loop again
     }

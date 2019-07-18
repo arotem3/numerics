@@ -48,7 +48,7 @@ The order is important because `libnumerics` also has to link against `libarmadi
 * implicit constant and adaptive step size IVP solvers (1st, 2nd, 4th, and 5th order)
 * implicit solvers use quasi-Newton methods making them more efficient than fixed point iteration.
 * event handling and other options passed to solver via class interface.
-* nonlinear BVP solver (2nd, 4th, spectral order)
+* nonlinear BVP solver (4th, and upto spectral order)
 
 For an in depth overview, refer to the `documentation.md` file. There are also example files for most of the functions found in `/examples/` directory.
 

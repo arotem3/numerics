@@ -15,7 +15,7 @@ arma::mat f(arma::mat& X) {
 }
 
 int main() {
-    // arma::arma_rng::set_seed(123);
+    arma::arma_rng::set_seed_random();
     arma::mat X = 5*arma::randu(100,1) - 2.5;
     arma::mat Y = f(X) + 0.05*arma::randn(100,1);
 

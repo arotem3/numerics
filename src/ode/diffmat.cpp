@@ -40,18 +40,18 @@ arma::rowvec numerics::ode::diffvec(const arma::vec& x, double x0, uint k) {
  * --- x : values to evaluate the operator for.
  * --- k : the order of the derivative (k < x.n_elem), e.g. k=1 is the first derivative.
  * --- bdw : number of points -1 to use in approximation, bdw > 1, if bdw = even then a symmetric differencing will be prefered when possible and if bdw = odd then a backwards differencing will be prefered. The truncation error should be ~ O(h^bdw), where h is the maximum spacing between consecutive x-values. */
-arma::mat numerics::ode::diffmat(const arma::vec& x, uint k, uint bdw) {
+void numerics::ode::diffmat(arma::mat& D, const arma::vec& x, uint k, uint bdw) {
     int n = x.n_elem;
     if (k >= n) {
         std::cerr << "diffmat() error: in order to approximate a " << k << "-order derivative, at least "
                   << k+1 << " x-values are needed but only " << n << " were provided." << std::endl;
-        return arma::rowvec();
+        return;
     }
     arma::uvec ind = arma::sort_index(x);
     arma::vec t = x(ind);
 
     bool center = (bdw%2 == 0);
-    arma::mat D = arma::zeros(n,n);
+    D = arma::zeros(n,n);
     for (int i=0; i < n; ++i) {
         int j = i - bdw/2;
         if (!center) j--;
@@ -61,7 +61,29 @@ arma::mat numerics::ode::diffmat(const arma::vec& x, uint k, uint bdw) {
     }
     D = D.cols(ind);
     D = D.rows(ind);
-    return D;
+}
+
+/* diffmat(x, k, bdw) : produces the differentiation matrix of nonuniformly spaced data.
+ * --- x : values to evaluate the operator for. (x must be sorted)
+ * --- k : the order of the derivative (k < x.n_elem), e.g. k=1 is the first derivative.
+ * --- bdw : number of points -1 to use in approximation, bdw > 1, if bdw = even then a symmetric differencing will be prefered when possible and if bdw = odd then a backwards differencing will be prefered. The truncation error should be ~ O(h^bdw), where h is the maximum spacing between consecutive x-values. */
+void numerics::ode::diffmat(arma::sp_mat& D, const arma::vec& x, uint k, uint bdw) {
+    int n = x.n_elem;
+    if (k >= n) {
+        std::cerr << "diffmat() error: in order to approximate a " << k << "-order derivative, at least "
+                  << k+1 << " x-values are needed but only " << n << " were provided." << std::endl;
+        return;
+    }
+
+    bool center = (bdw%2 == 0);
+    D = arma::zeros<arma::sp_mat>(n,n);
+    for (int i=0; i < n; ++i) {
+        int j = i - bdw/2;
+        if (!center) j--;
+        if (j < 0) j = 0;
+        if (j + bdw + 1 >= n) j = (n-1) - bdw;
+        D.row(i).cols(j,j+bdw) = diffvec(x.rows(j,j+bdw), x(i), k);
+    }
 }
 
 /* diffmat4(D, x, L, R, m) : returns the general 4th order differentiation matrix of uniformly spaced data.

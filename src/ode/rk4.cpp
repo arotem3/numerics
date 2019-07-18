@@ -27,7 +27,7 @@ void numerics::ode::rk4::ode_solve(const std::function<arma::rowvec(double,const
     arma::rowvec k3;
     arma::rowvec k4;
 
-    unsigned short i = 1;
+    unsigned long long i = 1;
     while (t(i) <= tf) {
         t(i) = t(i-1) + k;
         if (t(i) > tf) {

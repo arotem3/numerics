@@ -18,7 +18,7 @@ int main() {
     
     arma::arma_rng::set_seed_random();
     double lower = -5; double upper = 5;
-    arma::vec x = (upper-lower)*arma::randu(50) + lower;
+    arma::vec x = (upper-lower)*arma::randu(100) + lower;
     arma::vec t = arma::linspace(lower,upper);
     arma::vec y_true = f_true(t);
     arma::vec y = f_true(x) + 0.1*arma::randn(arma::size(x));
@@ -44,8 +44,11 @@ int main() {
     };
 
     numerics::lmlsqr lm;
-    lm.fsolve(f,J,b_hat); // specify jacobian
-    // lm.fsolve(f,b_hat); // compute jacobian by finite differences and Broyden updates
+    lm.use_cgd = false;
+    // lm.fsolve(f,J,b_hat); // specify jacobian
+    lm.fsolve(f,b_hat); // compute jacobian by finite differences and Broyden updates
+    std::string flag;
+    lm.get_exit_flag(flag);
 
     std::cout << "results after optimization : " << std::endl
               << "\tb_hat = " << b_hat.t()
@@ -53,7 +56,7 @@ int main() {
               << "\ttheoretical b = " << b.t()
               << "\ttheoretical b sum of squares  = " << arma::norm(f(b)) << std::endl
               << "\t||b - b_hat|| = " << arma::norm(b - b_hat,"inf") << std::endl << std::endl
-              << "\ttotal iterations required = " << lm.num_iterations() << std::endl
+              << "\tflag:" << flag << std::endl << std::endl
               << "resulting model:" << std::endl
               << "\ty = " << b_hat(0) << " + " << b_hat(1) << " / (" << b_hat(2) << " + "  << b_hat(3) << "x^2)" << std::endl;
     std::cout << "We can, ofcourse, use lmlsqr to compute roots of an algebraic system, which is explored in newton_ex" << std::endl;

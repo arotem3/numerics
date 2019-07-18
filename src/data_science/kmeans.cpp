@@ -3,7 +3,7 @@
 /* kmeans(A, k) : use k-means algorithm to cluster data.
  * --- A : data matrix, each col is a data input.
  * --- k : number of clusters. */
-numerics::kmeans::kmeans(arma::mat& A, int k) {
+numerics::kmeans::kmeans(arma::mat& A, int k, int max_iter) {
     if (k <= 1) {
         std::cerr << "kmeans() error: invalid input for k (valid 1 < k < #data)." << std::endl;
         std::cerr << "\terror thrown during call initialization of a kmeans object." << std::endl;
@@ -13,6 +13,7 @@ numerics::kmeans::kmeans(arma::mat& A, int k) {
         dataCluster = {NAN};
         return;
     }
+    max_iterations = (max_iter < 1) ? (100) : max_iter;
 
     dim = A.n_cols;
     int numPts = A.n_rows;
@@ -31,9 +32,12 @@ numerics::kmeans::kmeans(arma::mat& A, int k) {
         means = arma::zeros(k,dim);
         counts = arma::zeros(k);
         
+        #pragma omp parallel for
         for (int i=0; i < numPts; ++i) {
-            int a = closest_cluster(A.row(i));
-            means.row(a) += A.row(i); // if A.row(i) is in the cluster, then add it to the cluster sum
+            arma::rowvec Ai = A.row(i);
+            int a = closest_cluster(Ai);
+            #pragma omp critical
+            means.row(a) += Ai; // if A.row(i) is in the cluster, then add it to the cluster sum
             counts(a)++; // if A.row(i) is in the cluster, then increase the count of vectors in the cluster
         }
         means.each_col() /= counts; // compute the means of the clusters
@@ -41,7 +45,7 @@ numerics::kmeans::kmeans(arma::mat& A, int k) {
         if (arma::norm(means - C,"fro") < 0.01) notDone = false; // convergence criteria
         C = means;
         num_iters++;
-        if (num_iters >= 100) { // failed to converge in time
+        if (num_iters >= max_iterations) { // failed to converge in time
             std::cerr << "kmeans() error: failed to converge within the maximum number of iterations allowed." << std::endl
                       << "\treturning best clusters found so far." << std::endl;
             notDone = false;
@@ -61,10 +65,12 @@ arma::mat numerics::kmeans::init_clusters() {
     C.row(0) = data.row(i);
     for (int m = 1; m < k; ++m) {
         arma::vec D = arma::zeros(n);
+        #pragma omp parallel for
         for (i=0; i < n; ++i) {
-            double d = arma::norm( data.row(i) - C.row(0) );
+            arma::rowvec di = data.row(i);
+            double d = arma::norm( di - C.row(0) );
             for (int j=1; j<m; ++j) {
-                double d1 = arma::norm( data.row(i) - C.row(j) );
+                double d1 = arma::norm( di - C.row(j) );
                 if (d1 < d) d = d1;
             }
             D(i) = d*d;
@@ -158,7 +164,8 @@ arma::vec numerics::kmeans::predict(const arma::mat& B) {
     }
     
     arma::vec clustering = arma::zeros(B.n_rows);
-    for (unsigned int i(0); i < B.n_rows; ++i) {
+    #pragma omp parallel for
+    for (unsigned int i=0; i < B.n_rows; ++i) {
         clustering(i) = closest_cluster(B.row(i));
     }
     return clustering;
@@ -212,9 +219,9 @@ std::ostream& numerics::kmeans::summary(std::ostream& out) {
     for (int i(0); i < k; ++i) out << "|\t" << i << "\t|";
     out << std::endl << std::setprecision(3) << std::fixed;
     
-    for (int i(0); i < k; ++i) {
+    for (int i(0); i < dim; ++i) {
         out << "\t";
-        for (uint j(0); j < dim; ++j) {
+        for (uint j(0); j < k; ++j) {
             out << "|\t" << C(j,i) << "\t|";
         }
         out << std::endl;
@@ -225,23 +232,23 @@ std::ostream& numerics::kmeans::summary(std::ostream& out) {
 
 /* help(out) : prints out documentation for the kmeans object.
  * out : file/output stream to print docstring to. */
- std::ostream& numerics::kmeans::help(std::ostream& out) {
-     out << "----------------------------------------------------" << std::endl
-         << "out = kmeans(arma::mat data, int k) :" << std::endl
-         << "\tdata : data to cluster, each row is a datum instance." << std::endl
-         << "\tk : number of clusters." << std::endl << std::endl
-         << "Clusters data according to the K-Means heuristic" << std::endl
-         << "using the K-Means++ procedure for cluster initialization" << std::endl
-         << "returns an object that can be used as a clasifier." << std::endl << std::endl
-         << "obj : " << std::endl
-         << "\tload/save(ostream) : functions to save and load function to stream/file" << std::endl
-         << "\tgetClusters : returns cluster labels of original data." << std::endl
-         << "\tgetCentroids : returns cluster centers in order, i.e. listed 0,...,k-1" << std::endl
-         << "\tpredict(matrix) : given new data matrix, predict the likely associated cluster" << std::endl
-         << "\toperator()(matrix) : same as predict" << std::endl
-         << "\tall_from_cluster(int) : returns submatrix of the data containing the data from clusters" << std::endl
-         << "\toperator[](int) : same as all_from_cluster." << std::endl
-         << "\tsummary(ostream) : print summary results about the clustering." << std::endl
-         << "----------------------------------------------------" << std::endl;
-     return out;
- }
+std::ostream& numerics::kmeans::help(std::ostream& out) {
+    out << "----------------------------------------------------" << std::endl
+        << "out = kmeans(arma::mat data, int k) :" << std::endl
+        << "\tdata : data to cluster, each row is a datum instance." << std::endl
+        << "\tk : number of clusters." << std::endl << std::endl
+        << "Clusters data according to the K-Means heuristic" << std::endl
+        << "using the K-Means++ procedure for cluster initialization" << std::endl
+        << "returns an object that can be used as a clasifier." << std::endl << std::endl
+        << "obj : " << std::endl
+        << "\tload/save(ostream) : functions to save and load function to stream/file" << std::endl
+        << "\tgetClusters : returns cluster labels of original data." << std::endl
+        << "\tgetCentroids : returns cluster centers in order, i.e. listed 0,...,k-1" << std::endl
+        << "\tpredict(matrix) : given new data matrix, predict the likely associated cluster" << std::endl
+        << "\toperator()(matrix) : same as predict" << std::endl
+        << "\tall_from_cluster(int) : returns submatrix of the data containing the data from clusters" << std::endl
+        << "\toperator[](int) : same as all_from_cluster." << std::endl
+        << "\tsummary(ostream) : print summary results about the clustering." << std::endl
+        << "----------------------------------------------------" << std::endl;
+    return out;
+}

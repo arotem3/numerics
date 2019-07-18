@@ -688,7 +688,7 @@ ostream& kmeans::summary(ostream& out = cout);
 We can also retrieve basic documentation for the class using the `kmeans::help(ostream& out = cout)` member function.
 
 ### Splines
-Fit radial basis splines to any dimensional data set. The construction is based on both multivariate polynomial terms and a radial basis kernel (polyharmonic). We regularize the fit by constraining frobenius norm of the hessian. Essentially we are solving the quadratic optimization problem: $\min_{c,d}(y - Kc - Pd)^T (y - Kc - Pd) + \lambda c^T K c$. The parameter $\lambda \geq 0$ can be provided during construction, or can be determined automatically by cross validation (when $\lambda=0$, the resulting function interpolates. When $\lambda\rightarrow\infty$ the resulting function tends toward the polynomial fit). Spline fitting is based on [ridge regression](https://en.wikipedia.org/wiki/Tikhonov_regularization) with regularization matrix $\Gamma_{i,j}=\phi_j''(x_i)$. Where $\phi$ is the radial basis function, and $\alpha$ is some proporionality constant.
+Fit radial basis splines to any dimensional data set. The construction is based on both multivariate polynomial terms and a radial basis kernel (polyharmonic). We regularize the fit by constraining the magnitude of the polyharmonic basis. Essentially we are solving the quadratic optimization problem: $\min_{c,d}(y - Kc - Pd)^T (y - Kc - Pd) + \lambda c^T K c$. The parameter $\lambda \geq 0$ can be provided during construction, or can be determined automatically by cross validation (when $\lambda=0$, the resulting function interpolates. When $\lambda\rightarrow\infty$ the resulting function tends toward the polynomial fit). The cross validation is done efficiently by computing the eigenvalue decomposition of $K$ once and solving each regularized problem using matrix multiplication which improves the overall complexity from $\mathcal O(kN^3)$ to $\mathcal O(N^3+kN^2)$. Spline fitting is based on [ridge regression](https://en.wikipedia.org/wiki/Tikhonov_regularization) with regularization matrix $\Gamma_{i,j}=\phi_j(x_i)$. Where $\phi$ is the radial basis function.
 
 ```cpp
 class splines
@@ -922,7 +922,7 @@ kernel_smooth::kernel_smooth(std::istream& in); // load on construction
 ```
 
 ### Regularized Linear Least Squares Regression
-When fitting a large basis set to data (often the case in non-parametric modeling), overfitting becomes a significant problem. To combat this problem we can regularize our parameters during the fit. Essentially we are solving the minimization problem: $\min_c||y - \Phi c||^2 + \lambda c^T R c$. Where $\lambda \geq 0$ is the regularization parameter which can be determined from cross validation. When $\lambda =0$, the fit tends toward high variance. When $\lambda\rightarrow\infty$, the fit tends toward high bias. Determining $\lambda$ may be achieved by cross validation. By default $R = I$, which is similar to [support vector regression](https://en.wikipedia.org/wiki/Support-vector_machine) whenever a radial basis set is used.
+When fitting a large basis set to data (often the case in non-parametric modeling), overfitting becomes a significant problem. To combat this problem we can regularize our parameters during the fit. Essentially we are solving the minimization problem: $\min_c||y - \Phi c||^2 + \lambda c^T R c$. Where $\lambda \geq 0$ is the regularization parameter which can be determined from cross validation. When $\lambda =0$, the fit tends toward high variance. When $\lambda\rightarrow\infty$, the fit tends toward high bias. Determining $\lambda$ may be achieved by cross validation, like the spline class we take advantage of the (symmetric) eigenvalue decomposition (of $\Phi^T\Phi$) to speed up computations of the regularized solution. By default $R = I$.
 
 ```cpp
 class regularizer
@@ -969,12 +969,16 @@ arma::mat regularizer::regularizing_mat() const; // returns the regualarizing ma
 * [differential operators](#differential-operators)
 * [Initial Value Problems](#Initial-Value-Problem-Solvers)
     * [Dormand-Prince 4/5](#dormand-prince-4/5)
-    * [Runge-Kutta $\mathcal O(4)$](#runge-kutta-fourth-order)
-    * [Runge-Kutta $\mathcal O(5)$](#runge-kutta-fifth-order)
+    * [Runge-Kutta explicit $\mathcal O(4)$](#runge-kutta-fourth-order)
+    * [Runge-Kutta adaptive implicit $\mathcal O(4)$](#Runge-Kutta-Implicit-Fourth-Order)
+    * [Runge-Kutta implict $\mathcal O(5)$](#Runge-Kutta-Implicit-Fifth-Order)
     * [backwards Euler](#backwards-euler)
     * [Adams-Moulton second order](#adams-moulton-second-order)
     * [event control](#ivp-events)
 * [Boundary Value Problems](#boundary-value-problems-solver)
+    * [variable order method]()
+    * [spectral method]()
+    * [Lobatto IIIa]()
 * [Poisson's Equation](#poisson-solver)
 
 The following are all member of namespace `numerics::ode`.
@@ -1010,13 +1014,15 @@ A more generic differentiation matrix is offered by the following two functions:
 ```cpp
 arma::rowvec diffvec(const arma::vec& x, double x0, unsigned int k=1);
 
-arma::mat diffmat(const arma::vec& x, unsigned int k=0, unsigned int bdw=2);
+diffmat(arma::mat& D, const arma::vec& x, unsigned int k=0, unsigned int bdw=2);
+
+diffmat(arma::sp_mat& D, const arma::vec& x, unsigned int k=0, unsigned int bdw=2);
 ```
 Where `diffvec` returns a rowvector $\vec d_k$ such that $\vec d_k\cdot f(\vec x) \approx f^{(k)}(x_0)$.
 
 The function `diffmat` produces a differentiation matrix $D$ for any grid of points $x$ (does not need to be uniform or sorted) such that $D_k f(x) \approx f^{(k)}(x)$. Setting the `bdw` parameter will allow the user to select the number of nearby points to use in the approximation, for example if `bdw=2` then for $x_i$, the points $\{x_{i-1},x_i,x_{i+1}\}$ will be used in the approximation. Moreover, expect the error in the approximation to be $\mathcal O(h^{\text{bdw}})$ where $h$ is the maximum spacing in $x$. A special benefit of `diffmat` is that we can find any order derivative, moreover for any $n\times n$ $D_{k}$ we have $\text{rank}(D_k) = n-k$, and the eigenvalues are of the form $\lambda = i^kb$ where $b \geq 0$ and $i = \sqrt{-1}$. (so $D_2$ is positive semi-definite for example).
 
-Given a linear ODE of the form: $y' + \alpha y = f(x)$ and the initial condition: $y(L) = \beta$, we can approximate the solution by solving the linear system: $(D+\alpha I)y = f(x) \land y(L) = \beta$. This can be solved either by concatentating the constraint to the rest of the system, or by replacing the first row of the system with the constraint. This might look like:
+Given a linear ODE of the form: $y' + \alpha y = f(x)$ and the initial condition: $y(L) = \beta$, we can approximate the solution by solving the linear system: $(D+\alpha I)y = f(x) \land y(L) = \beta$. This can be solved either by forward substituting $y(L) = \beta$ into the linear system and solving the rest of the system:
 ```cpp
 vec f(vec& x) {
     // do something
@@ -1029,25 +1035,14 @@ int method; // set to 1 or 2
 
 diffmat2(D,x,L,R,N); // or diffmat4(), or cheb(), or diffmat()
 
-mat A;
-vec F;
-if (method == 1) {
-    A = zeros(N+1,N);
-    A.rows(0,N-1) = D + alpha*eye(N,N);
-    A(N,0) = 1; // initial condition added at the end, matrix not square ==> less efficient solve but derivative condition holds
-    F = zeros(N+1);
-    F.rows(0,N-1) = f(x);
-    F(N) = beta;
-} else if (method == 2) {
-    A = D + alpha*eye(N,N);
-    A.row(0) *= 0;
-    A(0,0) = 1; // initial condition replaces first row i.e. drops the derivative condition at y(L)
-    F = f(x);
-    F(0) = beta;
-}
-y = solve(A,F); // the solution
+mat A = D.rows(1,N-1).cols(1,N-1) + alpha*eye(N-1,N-1);
+vec d0 = D.col(0);
+vec F = f(x.rows(1,N-1)) - d0.rows(1,N-1)*beta;
+
+vec y(N);
+y.rows(1,N-1) = solve(A,F);
 ```
-If we have a system of $m$ ODEs, we can solve both initial value problems and boundary value problems using a similar method where instead the operator is replaced with $(I_{m,m}\otimes D)$ ($\otimes$ is the Kronecker product) and $f(x)$ is vectorized. Once a solution $y$ is found it is reshaped so that it is $n\times m$.
+If we have a system of $m$ ODEs, we can solve both initial value problems and boundary value problems using a similar method where instead the operator is replaced with $(D \otimes I_{m,m})$ ($\otimes$ is the Kronecker product) and $f(x)$ is vectorized (if `F` is $n\times m$ then set `F = vectorise(F.t())`). Once a solution $y$ is found it is reshaped so that it is $n\times m$ (if `y` is $n\cdot m\times 1$, then set `y = reshape(y,m,n).t()`). For these higher order system both initial value problems and boundary value problems may be solved.
 
 ## Initial Value Problem Solvers
 We define a system of initial value problem as having the form: $u' = f(t,u)$ with $u(0) = u_0$. Where $t$ is the independent variable and $u(t)$ is the dependent variable and is a row vector. All of the systems solvers are able to handle events. Some of the solvers have error control via adaptive step size selection. For the implicit solvers we can also provide a jacobian matrix $\frac{\partial f}{\partial u}$ to improve solver performance. All implicit solvers use Broyden's method to compute steps.
@@ -1203,60 +1198,113 @@ The `ivp` member `stopping_event` will be set to the event index (of the events 
 ## Boundary Value Problems Solver
 We can solve boundary value problems using finite difference methods. A procedure for simple linear problems was described in the [operators section](#differentiation-operators), but this method is far more generalized. Our problem defined as follows:
 
-Given interval domain $\Omega = [L,R]$, and _**system**_ of ODEs $u' = f(x,u)$ with boundary conditions $g(u)=0$ on $\partial\Omega$ which is equivalently defined: $g(u(L),u(R)) = 0$. This general problem is solved (in the least squares sense) using Newton's method (but specifically a modified Broyden's method) which requires an initial guess $v(x)$ of the solution. One method for providing an initial guess is by solving the linearized problem $u' = \big(\frac{\partial f}{\partial u}\big|_{u=u_0}\big)\cdot u$ where $u_0$ should be either $u(L)$ or $u(R)$ that hopefully satisfies the boundary conditions.
+Given interval domain $\Omega = [L,R]$, and _**system**_ of ODEs $u' = f(x,u)$ with boundary conditions $g(u)=0$ on $\partial\Omega$ which is equivalently defined: $g(u(L),u(R)) = 0$. This general problem is solved, if possible, using Newton's method which requires an initial guess of the solution. One method for providing an initial guess is by solving the linearized problem $u' = \big(\frac{\partial f}{\partial u}\big|_{u=u_0}\big)\cdot u$ where $u_0$ should be either $u(L)$ or $u(R)$. Moreover, it is ideal if the initial function satisfies the boundary conditions.
 
-For example, given interval $\Omega=[0,1]$. if one of the equations is $u' = u(1-u)$ with boundary condition $u(0)=0$, solve instead $u' = (1-2u\big|_{u=0})u = 1$. So the initial guess should be $v(x) = Ce^x$ where $C$ should be chosen so that it atleast approximately satisfies the other boundary conditions.
+For example, given interval $\Omega=[0,1]$. if one of the equations is $u'' = sin(u)$ with boundary condition $u(0)=1$ and $u(1)=0$. Set up the problem as a system of first order ODEs: $u' = v$ and $v' = sin(u)$, with the same boundary conditions. Then, solve instead $u' = v \land v'=(\frac{d}{du}sin(u)\big|_{u=1})u = cos(1)u$. The linearized solution is then $u(x) = b(e^{-a(x-2)} - e^{ax}) \land v(x) = -ba(e^{a(x-2)}+e^{ax})$ where $a=\sqrt{\cos 1}, b = e^{2\sqrt a} - 1$.
 
-First we define the boundary conditions:
+The `bvp` class:
 ```cpp
-class boundary_conditions {
-    public:
-    double xL, xR;
-    std::function<arma::mat(const arma::rowvec&, const arma::rowvec&)> condition;
-};
-```
-The user should declare a `boundary_conditions` instance and define `xL`$=L$, `xR`$=R$, and `condition`$=g(u(L),u(R))$ as either a lambda function, a function object, or a function pointer.
-
-The initial guess $v(x)$ should be a vector function, e.g.
-```cpp
-mat v(const vec& x) {
-    return C*exp(x); // like the previous example
-}
-```
-Same for the governing ODE...
-
-The `bvp` class and solver:
-```cpp
-enum class bvp_solvers {
-    FOURTH_ORDER,
-    SECOND_ORDER,
-    CHEBYSHEV
-};
-
 class bvp {
     public:
-    unsigned int num_points; // number of points for collocation
-    unsigned int max_iterations; // maximum iterations for Broyden's method
-    double tol; // stopping criteria for tolerance
-    bvp_solvers order;
+    unsigned int max_iterations; // maximum iterations for Newton's method
+    double tol; // stopping criteria
     int num_iterations(); // returns the number of iterations needed by the solver
-    bvp(int N = 32);
-    void ode_solve(
-        arma::vec& x,
-        arma::mat& U,
-        const std::function<arma::rowvec(double,const arma::rowvec&)>& f,
-        const boundary_conditions& bc,
-        const std::function<arma::mat(const arma::vec&)>& guess);
-    void ode_solve(
-        arma::vec& x,
-        arma::mat& U,
-        const std::function<arma::rowvec(double,const arma::rowvec&)>& f,
-        const std::function<arma::mat(double, const arma::rowvec&)>& jacobian,
-        const boundary_conditions& bc,
-        const std::function<arma::mat(const arma::vec&)>& guess);
 };
 ```
-the solver works both with or without a jacobian.
+
+### Variable Order Method
+We first introduce a method using local polynomial interpolation where the order of the polynomial may be selected by the user.
+
+```cpp
+class bvp_k : public bvp
+```
+We initialize the solver:
+```cpp
+bvp_k::bvp_k(unsigned int order = 4, double tolerance = 1e-5);
+```
+where `order` is the order of the interpolating polynomial - 1, and `tolerance` initializes `tol`.
+
+We solve a boundary value problem with:
+```cpp
+void bvp_k::ode_solve(
+    arma::vec& x,
+    arma::mat& U,
+    const std::function<arma::rowvec(double,const arma::rowvec&)>& odefun,
+    const std::function<arma::vec(const arma::rowvec&, const arma::rowvec&)>& bc
+    );
+
+void bvp_k::ode_solve(
+    arma::vec& x,
+    arma::mat& U,
+    const std::function<arma::rowvec(double,const arma::rowvec&)>& odefun,
+    const std::function<arma::mat(double, const arma::rowvec&)>& jacobian,
+    const std::function<arma::vec(const arma::rowvec&, const arma::rowvec&)>& bc
+    );
+```
+We are solving $u'=f(x,u)\land g(u(L),u(R)) = 0$, so `odefun` corresponds to $f$, and `bc` corresponds to $g$. The function `jacobian` corresponds to the derivative of $f$ with respect to $u$, i.e. $\frac{\partial f}{\partial u}$. It is necessary that `x` is initialized to a grid of points (of length $n$) with `x[0]`$=L$ and `x[n-1]`$=R$. The grid `x` should be sorted. The solver will solve the BVP at these grid points, so make sure this grid is dense. It is recommended that `U` is initialized to a guess of the initial problem (purhaps as outlined above), but this is not necessary. Regardless, the matrix must be initialized, this may just be setting it to `zeros(n,dim)` where `dim` is the dimension of the system of ODEs. The solution will overwrite `U`.
+
+### Chebyshev Spectral Method
+This method uses a spectrally converging method, where the BVP is solved at Chebyshev nodes scaled to the interval. Because the points are specific, an initial guess must be provided as a function that may be evaluated.
+
+```cpp
+class bvp_cheb : public bvp
+```
+We initialize the solver:
+```cpp
+bvp_cheb::bvp_cheb(unsigned int num_points = 32, double tolerance = 1e-5);
+```
+Where `num_points` is the number of points to use in the approximation, and `tolerance` initializes `tol`.
+
+We solve a boundary value problem with:
+```cpp
+void ode_solve(
+    arma::vec& x,
+    arma::mat& U,
+    const std::function<arma::rowvec(double,const arma::rowvec&)>& odefun,
+    const std::function<arma::vec(const arma::rowvec&, const arma::rowvec&)>& bc,
+    const std::function<arma::rowvec(double)>& guess
+    );
+
+void ode_solve(
+    arma::vec& x,
+    arma::mat& U,
+    const std::function<arma::rowvec(double,const arma::rowvec&)>& odefun,
+    const std::function<arma::mat(double, const arma::rowvec&)>& jacobian,
+    const std::function<arma::vec(const arma::rowvec&, const arma::rowvec&)>& bc,
+    const std::function<arma::rowvec(double)>& guess
+    );
+```
+Where `odefun`, `jacobian`, and `bc` are just as in `bvp_k`. With `bvp_cheb`, the parameter `x` should be initialized to a vector of length 2 and represent the boundaries of the interval, i.e. `x = {L,R}`. The matrix `U` may be empty. The parameter `guess` is an initial guess of $u(x)$, but may just return a row of zeros you have no guess. It is important that `guess(x).n_elem = dim` for all `x`$\in[L,R]$, where `dim` is the dimension of the system of ODEs. Both `x` and `U` will be set to the Chebyshev grid and approximate solution. This solution may be interpolated using a polynomial to get an approximation of the solution everywhere on the interval.
+
+### Lobatto IIIa method
+This method uses a 4th order Lobatto IIIa collocation formula.
+```cpp
+class bvpIIIa : public bvp
+```
+We initialize the solver:
+```cpp
+bvpIIIa::bvpIIIa(double tolerance = 1e-5);
+```
+where `tolerance` initializes `tol`.
+
+We solve a boundary value problem with:
+```cpp
+void bvp_k::ode_solve(
+    arma::vec& x,
+    arma::mat& U,
+    const std::function<arma::rowvec(double,const arma::rowvec&)>& odefun,
+    const std::function<arma::vec(const arma::rowvec&, const arma::rowvec&)>& bc
+    );
+
+void bvp_k::ode_solve(
+    arma::vec& x,
+    arma::mat& U,
+    const std::function<arma::rowvec(double,const arma::rowvec&)>& odefun,
+    const std::function<arma::mat(double, const arma::rowvec&)>& jacobian,
+    const std::function<arma::vec(const arma::rowvec&, const arma::rowvec&)>& bc
+    );
+```
+Which is treated exactly in the same way as `bvp_k`.
 
 ### Poisson Solver
 Given a rectangular region $\Omega$ in the $x,y$ plane, we can numerically solve Poisson's equation $\nabla^2 u = f(x,y)$ with boundary conditions $u(x,y)=g(x,y)$ on $\partial\Omega$ using similar procedures to solving linear ODEs.

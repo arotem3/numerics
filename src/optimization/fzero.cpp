@@ -10,7 +10,7 @@ double numerics::newton_1d(const std::function<double(double)>& f, const std::fu
     int max_iter = 100;
     
     double s;
-    short k = 0;
+    long long k = 0;
     do {
         if (k >= max_iter) { // too many iterations
             std::cerr <<  "newton() failed: too many iterations needed to converge." << std::endl
@@ -76,7 +76,7 @@ double numerics::secant(const std::function<double(double)>& f, double a, double
  * --- tol : approximate error and stopping criteria. */
 double numerics::bisect(const std::function<double(double)>& f, double a, double b, double tol) {
     tol = std::abs(tol); int max_iter = 100;
-    short k = 2;
+    long long k = 2;
 
     double fa = f(a), fb = f(b);
 

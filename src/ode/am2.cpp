@@ -36,7 +36,7 @@ void numerics::ode::am2::ode_solve(const std::function<arma::rowvec(double,const
     fsolver.fsolve(backEulerStep,V);
     U.row(1) = V.t();
 
-    unsigned short i = 2;
+    unsigned long long i = 2;
     while (t(i) <= tf) {
         t(i) = t(i-1) + k;
         if (t(i) > tf) {
@@ -115,7 +115,7 @@ void numerics::ode::am2::ode_solve(const std::function<arma::rowvec(double,const
     fsolver.fsolve(backEulerStep, euler_jac, V);
     U.row(1) = V.t();
 
-    unsigned short i = 2;
+    unsigned long long i = 2;
     while (t(i) <= tf) {
         t(i) = t(i-1) + k;
         if (t(i) > tf) {

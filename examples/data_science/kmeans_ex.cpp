@@ -9,25 +9,21 @@ typedef std::vector<double> ddvec;
 
 int main() {
     arma::arma_rng::set_seed_random();
-    arma::mat a1 = 3 + arma::randn(100,2);
-    arma::mat a2 = arma::randn(100,2);
-    arma::mat A = arma::join_cols(a1,a2);
-    kmeans kmu(A,2);
+    arma::mat A = arma::randn(200,2);
+    int k = 4;
+    numerics::kmeans kmu(A,k);
     
-    kmu.help();
-
-    arma::mat c0 = kmu[0]; // same as above also same as kmu.all_from_cluster(0);
-    arma::mat c1 = kmu[1];
+    // kmu.help();
 
     kmu.summary(std::cout);
 
-    ddvec c0x = arma::conv_to<ddvec>::from(c0.col(0));
-    ddvec c0y = arma::conv_to<ddvec>::from(c0.col(1));
-    ddvec c1x = arma::conv_to<ddvec>::from(c1.col(0));
-    ddvec c1y = arma::conv_to<ddvec>::from(c1.col(1));
-
-    matplotlibcpp::named_plot("cluster 0", c0x, c0y,"o");
-    matplotlibcpp::named_plot("cluster 1", c1x, c1y,"o");
+    for (int i=0; i < k; ++i) {
+        arma::mat cluster_i = kmu[i];// same as above also same as kmu.all_from_cluster(i);
+        ddvec x = arma::conv_to<ddvec>::from(cluster_i.col(0));
+        ddvec y = arma::conv_to<ddvec>::from(cluster_i.col(1));
+        matplotlibcpp::named_plot("cluster " + std::to_string(i), x, y, "o");
+    }
+    
     matplotlibcpp::legend();
     matplotlibcpp::show();
 

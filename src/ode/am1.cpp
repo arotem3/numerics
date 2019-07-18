@@ -26,7 +26,7 @@ void numerics::ode::am1::ode_solve(const std::function<arma::rowvec(double,const
     fsolver.tol = max_nonlin_err;
     fsolver.max_iterations = max_nonlin_iter;
 
-    unsigned short i = 1;
+    unsigned long long i = 1;
     while (t(i) <= tf) {
         t(i) = t(i-1) + k;
         if (t(i) > tf) {
@@ -90,7 +90,7 @@ void numerics::ode::am1::ode_solve(const std::function<arma::rowvec(double,const
     fsolver.tol = max_nonlin_err;
     fsolver.max_iterations = max_nonlin_iter;
 
-    unsigned short i = 1;
+    unsigned long long i = 1;
     while (t(i) <= tf) {
         t(i) = t(i-1) + k;
         if (t(i) > tf) {

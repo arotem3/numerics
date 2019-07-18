@@ -12,7 +12,7 @@ double numerics::simplex(arma::mat& A, arma::vec& x) {
         return arma::dot(-b.t(), x);
     };
 
-    short k = 0;
+    long long k = 0;
     while ( !arma::all(A.row(numRows-1) >= 0) ) {
         if (k > 100) { //simplex takes too long
             std::cerr << "simplex() failed: too many iterations needed to reduce system." << std::endl;

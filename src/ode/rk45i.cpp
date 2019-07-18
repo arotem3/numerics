@@ -28,7 +28,7 @@ void numerics::ode::rk45i::ode_solve(const std::function<arma::rowvec(double,con
 
     arma::vec v1,v2,v3,v4,v5,z;
     arma::rowvec u4,u5;
-    unsigned short i = 0;
+    unsigned long long i = 0;
     while (t(i) <= tf) {
         v1 = k*f(t(i), U.row(i)).t();
         fsolver.fsolve(
@@ -66,14 +66,6 @@ void numerics::ode::rk45i::ode_solve(const std::function<arma::rowvec(double,con
         );
 
         z = U.row(i).t() + 25*v1/24 - 49*v2/48 + 125*v3/16 - 85*v4/12;
-        arma::mat J = k*approx_jacobian(
-            [k,i,&f,&t](const arma::vec& u) -> arma::vec {
-                return f(t(i) + k, u.t()).t();
-            }, z, k*k
-        );
-        v5 = arma::solve( arma::eye(arma::size(J)) - J/4, k*f(t(i) + k, z.t()).t() );
-        u4 = (z + v5/4).t();
-        
         v5 = z;
         fsolver.fsolve(
             [k,i,&f,&t,&U,&z](const arma::vec& u)->arma::vec {
@@ -82,13 +74,14 @@ void numerics::ode::rk45i::ode_solve(const std::function<arma::rowvec(double,con
             }, v5
         );
 
+        u4 = U.row(i) + (59*v1/48 - 17*v2/96 + 225*v3/32 - 85*v4/12).t();
         u5 = (z + v5/4).t();
         double err = arma::norm(u4 - u5, "inf");
 
         double kk = 2*k;
         if (i > 0) kk = event_handle(t(i), U.row(i), t(i) + k,u5,k);
 
-        if (err < adaptive_max_err) {
+        if (err < adaptive_max_err*arma::norm(U.row(i),"inf")) {
             if (0 <  kk && kk < k) {
                 k = kk;
                 continue;
@@ -98,6 +91,7 @@ void numerics::ode::rk45i::ode_solve(const std::function<arma::rowvec(double,con
             U.row(i+1) = u5;
             i++;
             
+            if (k == 0) break;
             if (i+1 >= t.n_rows) {
                 t.resize(t.n_rows*2,1);
                 U.resize(U.n_rows*2,U.n_cols);
@@ -105,13 +99,13 @@ void numerics::ode::rk45i::ode_solve(const std::function<arma::rowvec(double,con
         }
 
         if (kk == 0) break;
-        k *= std::min(6.0, std::max(0.2, 0.9*std::pow(adaptive_max_err/err,0.2)));
-        if (t(i) + k > tf) k = tf - t(i);
+        k *= std::min(10.0, std::max(0.1, 0.9*std::pow(adaptive_max_err/err,0.25)));
         if (k < adaptive_step_min) {
             std::cerr << "rk45i() failed: method does not converge b/c minimum k exceeded." << std::endl;
             std::cerr << "\tfailed at t = " << t(i) << std::endl;
             break;
-        } else if (k > adaptive_step_max) k = adaptive_step_max;
+        }
+        if (t(i) + k > tf) k = tf - t(i);
     }
     t = t( arma::span(0,i) );
     U = U.rows( arma::span(0,i) );
@@ -148,7 +142,7 @@ void numerics::ode::rk45i::ode_solve(const std::function<arma::rowvec(double,con
 
     arma::vec v1,v2,v3,v4,v5,z;
     arma::rowvec u4,u5;
-    unsigned short i = 0;
+    unsigned long long i = 0;
     while (t(i) <= tf) {
         v1 = k*f(t(i), U.row(i)).t();
         fsolver.fsolve(
@@ -202,14 +196,6 @@ void numerics::ode::rk45i::ode_solve(const std::function<arma::rowvec(double,con
         );
 
         z = U.row(i).t() + 25*v1/24 - 49*v2/48 + 125*v3/16 - 85*v4/12;
-        arma::mat J = k*approx_jacobian(
-            [k,i,&f,&t](const arma::vec& u) -> arma::vec {
-                return f(t(i) + k, u.t()).t();
-            }, z, k*k
-        );
-        v5 = arma::solve( arma::eye(arma::size(J)) - J/4, k*f(t(i) + k, z.t()).t() );
-        u4 = (z + v5/4).t();
-        
         v5 = z;
         fsolver.fsolve(
             [k,i,&f,&t,&U,&z](const arma::vec& u)->arma::vec {
@@ -222,13 +208,14 @@ void numerics::ode::rk45i::ode_solve(const std::function<arma::rowvec(double,con
             }, v5
         );
 
+        u4 = U.row(i) + (59*v1/48 - 17*v2/96 + 225*v3/32 - 85*v4/12).t();
         u5 = (z + v5/4).t();
         double err = arma::norm(u4 - u5, "inf");
 
         double kk = 2*k;
         if (i > 0) kk = event_handle(t(i), U.row(i), t(i) + k,u5,k);
 
-        if (err < adaptive_max_err) {
+        if (err < adaptive_max_err*arma::norm(U.row(i),"inf")) {
             if (0 <  kk && kk < k) {
                 k = kk;
                 continue;
@@ -245,13 +232,13 @@ void numerics::ode::rk45i::ode_solve(const std::function<arma::rowvec(double,con
         }
 
         if (kk == 0) break;
-        k *= std::min(6.0, std::max(0.2, 0.9*std::pow(adaptive_max_err/err,0.2)));
-        if (t(i) + k > tf) k = tf - t(i);
+        k *= std::min(10.0, std::max(0.1, 0.9*std::pow(adaptive_max_err/err,0.25)));
         if (k < adaptive_step_min) {
             std::cerr << "rk45i() failed: method does not converge b/c minimum k exceeded." << std::endl;
             std::cerr << "\tfailed at t = " << t(i) << std::endl;
             break;
-        } else if (k > adaptive_step_max) k = adaptive_step_max;
+        }
+        if (t(i) + k > tf) k = tf - t(i);
     }
     t = t( arma::span(0,i) );
     U = U.rows( arma::span(0,i) );

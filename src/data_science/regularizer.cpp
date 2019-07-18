@@ -36,7 +36,7 @@ numerics::regularizer::regularizer(const arma::mat& regular_mat, double lambda) 
  * --- y : output data to predict.
  * --- lambda : regularizing parameter for L2-regularization. default lambda=nan, this default tells the object to select a regularization parameter by 10 fold cross validation.
  * --- use_conj_grad : use conjugate gradient to solve. */
-numerics::regularizer::regularizer(const arma::mat& x, const arma::mat& y, double lambda, bool use_conj_grad) {
+numerics::regularizer::regularizer(const arma::mat& x, const arma::mat& y, double lambda) {
     if (x.n_rows != y.n_rows) { // error
         std::cerr << "regularizer error: number of independent variable observations must equal the number of dependent variable observations." << std::endl
                   << "X.n_rows = " << x.n_rows << " != " << y.n_rows << " = Y.n_rows" << std::endl;
@@ -45,7 +45,6 @@ numerics::regularizer::regularizer(const arma::mat& x, const arma::mat& y, doubl
     this->lambda = lambda;
     use_L2 = true;
     regular_mat = arma::eye(x.n_cols, x.n_cols);
-    use_cgd = use_conj_grad;
 
     if (std::isnan(lambda)) cross_validate(x,y);
     fit_no_replace(x, y, this->lambda);
@@ -74,33 +73,39 @@ numerics::regularizer::regularizer(const arma::mat& x, const arma::mat& y, const
 
 /* cross_validate(X, Y) : *private* performs cross validation with respect to lambda. */
 void numerics::regularizer::cross_validate(const arma::mat& X, const arma::mat& Y) {
-    uint num_folds = 10;
+    uint num_folds = 5;
     if (X.n_rows / num_folds < 10) {
-        num_folds = 5;
+        num_folds = 3;
         if (X.n_rows / num_folds < 10) {
-            num_folds = 3;
+            num_folds = 2;
         }
     }
     k_folds split(X, Y, num_folds);
     
-    int N = 50;
+    int N = 30;
     arma::vec L = arma::logspace(-5,3,N);
 
     arma::vec cv_scores = arma::zeros(N);
-    #pragma omp parallel
-    #pragma omp for
-    for (int i=0; i < N; ++i) {
-        double score = 0;
-        for (uint j=0; j < num_folds; ++j) {
-            fit_no_replace(
-                split.not_fold_X(j),
-                split.not_fold_Y(j),
-                L(i)
-            );
-            score += cv;
+    for (uint j=0; j < num_folds; ++j) {
+        arma::mat V, R, xx = split.not_fold_X(j), yy = split.not_fold_Y(j);
+        arma::vec D;
+        if (use_L2) {
+            arma::eig_sym(D, V, xx.t()*xx);
+            arma::mat R = V.t() * regular_mat * V;
         }
-        #pragma omp critical
-        cv_scores(i) += score;
+        double score = 0;
+        #pragma omp parallel for
+        for (int i=0; i < N; ++i) {
+            arma::mat c;
+            if (use_L2) c = V * arma::diagmat(1/(D + L(i))) * V.t() * xx.t() * yy;
+            else {
+                arma::mat RHS = xx.t()*xx + L(i)*regular_mat, LHS = xx.t() * yy;
+                if (use_cgd) cgd(RHS, LHS, c);
+                else c = arma::solve(RHS, LHS);
+            }
+            score += arma::norm(split.fold_Y(j) - split.fold_X(j)*c);
+        }
+        cv_scores(j) = score/X.n_rows;
     }
     int indmin = arma::index_min(cv_scores);
     lambda = L(indmin);
@@ -125,12 +130,12 @@ void numerics::regularizer::fit_no_replace(const arma::mat& x, const arma::mat& 
  * --- y : output data to predict.
  * --- use_conj_grad : use conjugate gradient to solve. */
 arma::mat numerics::regularizer::fit(const arma::mat& x, const arma::mat& y, bool use_conj_grad) {
+    bool use_cgd = use_conj_grad;
     if (x.n_rows != y.n_rows) { // error
         std::cerr << "regularizer::fit() error: number of independent variable observations must equal the number of dependent variable observations." << std::endl
                     << "X.n_rows = " << x.n_rows << " != " << y.n_rows << " = Y.n_rows" << std::endl
                     << "object will not be fitted." << std::endl;
     } else {
-        use_cgd = use_conj_grad;
         if (use_L2) regular_mat = arma::eye(x.n_cols, x.n_cols);
         if (std::isnan(lambda)) cross_validate(x, y);
         fit_no_replace(x, y, lambda);

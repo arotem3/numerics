@@ -9,54 +9,49 @@ namespace plt = matplotlibcpp;
 typedef std::vector<double> ddvec;
 
 arma::mat f(arma::mat& X) {
-    arma::mat y = arma::zeros(arma::size(X));
-    for (int i=1; i < 10; ++i) {
-        y += arma::sin(i*X)/i;
-    }
-    return 0.5 - y/M_PI;
+    arma::mat y = arma::sign(X);
+    return y;
 }
 
-arma::mat gen_basis(arma::mat& X, arma::vec& centers) {
-    arma::mat basis = arma::ones(X.n_elem, centers.n_elem+2);
-    basis.col(1) = X;
-    double h = arma::range(centers) / centers.n_elem;
-    for (uint i=0; i < centers.n_elem; ++i) {
-        basis.col(i+2) = arma::exp(-arma::square(X-centers(i)/h));
+arma::mat gen_basis(arma::vec& X, arma::vec& xx) {
+    // radial basis
+    arma::mat basis(xx.n_elem, X.n_elem);
+    double h = arma::var(X)*2;
+    for (uint i=0; i < X.n_elem; ++i) {
+        basis.col(i) = arma::exp(-arma::square(xx-X(i))/h);
     }
     return basis;
 }
 
-arma::mat roughness_matrix(arma::mat& X, arma::vec& centers) {
-    arma::mat C = arma::zeros(X.n_elem, centers.n_elem+2);
-    C.col(1) += 1;
-    for (uint i=0; i < centers.n_elem; ++i) {
-        C.col(i+2) = 4*arma::square(X - centers(i)) - 2;
+arma::mat roughness_matrix(arma::vec& X, arma::vec& xx) {
+    arma::mat C = arma::zeros(xx.n_elem, X.n_elem);
+    for (uint i=0; i < X.n_elem; ++i) {
+        // C.col(i) = 4*arma::square(xx - X(i)) - 2; // second derivative --> fewer wiggles
+        C.col(i) = 2*(xx - X(i)); // first derivative --> flatter
     }
-    C %= gen_basis(X, centers);
+    C %= gen_basis(X,xx);
     return C.t() * C;
 }
 
 int main() {
     // arma::arma_rng::set_seed(123);
-    int n_obs = 30;
+    int n_obs = 100;
     arma::vec X = 5*arma::randu(n_obs) - 2.5;
     arma::mat Y = f(X) + 0.05*arma::randn(n_obs,1);
 
-    int N = 40;
-    arma::vec centers = arma::linspace(-2.5, 2.5, N-2);
-    arma::mat basis = gen_basis(X, centers);
+    arma::mat basis = gen_basis(X,X);
 
     arma::mat c_overfit = arma::solve(basis, Y);
     arma::vec xgrid = arma::linspace(-3, 3, 200);
-    arma::mat basis_grid = gen_basis(xgrid, centers);
+    arma::mat basis_grid = gen_basis(X,xgrid);
     arma::vec yhat_overfit = basis_grid * c_overfit;
 
-    // regularizer lm(roughness_matrix(X, centers)); std::cout << "...regularizing by regularization matrix, where we choose to use matrix measuring roughness." << std::endl << std::endl;
+    // regularizer lm(roughness_matrix(X,X)); std::cout << "...regularizing by regularization matrix, where we choose to use matrix measuring roughness." << std::endl << std::endl;
     // regularizer lm(0.01); std::cout << "...regularizing by explicit choice of lambda = 0.01 for L2 regularization." << std::endl << std::endl;
     regularizer lm; std::cout << "...regularizing by cross validation of lambdas for L2 regularization" << std::endl << std::endl;
     
-    bool use_conj_gradient = false;
-    arma::vec c = lm.fit(basis, Y, use_conj_gradient);
+    bool use_conjugate_gradiet = true;
+    arma::vec c = lm.fit(basis, Y, use_conjugate_gradiet);
     arma::vec yhat = basis_grid*c;
 
     std::cout << "regularizing param: " << lm.regularizing_param() << std::endl
@@ -72,7 +67,7 @@ int main() {
     plt::plot(xx,yy,"o");
     plt::named_plot("overfit", xxg, yoverfit);
     plt::named_plot("regularized fit", xxg, yyhat);
-    plt::ylim(-0.2, 1.2);
+    plt::ylim(-1.5, 1.5);
     plt::legend();
     plt::show();
 

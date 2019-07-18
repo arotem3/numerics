@@ -42,7 +42,9 @@ add_library(numerics SHARED
 
         src/ode/am1.cpp
         src/ode/am2.cpp
-        src/ode/bvp.cpp
+        src/ode/bvp_k.cpp
+        src/ode/bvp_cheb.cpp
+        src/ode/bvpIIIa.cpp
         src/ode/cheb.cpp
         src/ode/diffmat.cpp
         src/ode/ivp_events.cpp
