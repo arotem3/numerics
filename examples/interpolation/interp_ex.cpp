@@ -10,35 +10,35 @@ typedef std::vector<double> ddvec;
 
 arma::mat f(const arma::vec& x) {
     arma::mat y(x.n_elem, 2);
-    // y = arma::sign(x); // step function
-    // y = arma::round(arma::sin(x*M_PI)); // square wave
-    y.col(0) = 0.5*arma::sin(x%x)%arma::exp(x/3);
+    y.col(0) = 0.5*arma::sin(2*x)%arma::exp(x/3);
     y.col(1) = arma::exp(-x%x);
-    // y = arma::zeros(arma::size(x)); arma::uvec a = arma::find(arma::abs(x) <= 1); y(a) = 1 - arma::abs(x(a)); // hat function
     return y;
 }
 
 int main() {
     arma::arma_rng::set_seed_random();
-    double a = -3; double b = 3; double m = 25; double n = 150; bool normalize_lagrange_interp = false;
+    double a = -3; double b = 3; double m = 10; double n = 150; bool normalize_lagrange_interp = false;
 
     arma::vec x = (b-a)*arma::regspace<arma::vec>(0,m)/m + a;
     arma::mat y = f(x);
 
-    cubic_interp fSpline(x,y);
+    cubic_interp cspline(x,y);
     arma::vec u = arma::linspace(x.min(), x.max(), n);
     arma::mat v;
 
+    hspline_interp hspline(x,y);
+
     plt::suptitle("interpolation");
     
-    for (int i(0); i < 3; ++i) {
+    for (int i(0); i < 4; ++i) {
         std::string title;
-        if (i==0) {v = fSpline(u); title = "cubic spline";}
-        else if (i==1) {v = lagrange_interp(x,y,u, normalize_lagrange_interp); title = "lagrange";}
-        else if (i==2) {v = sinc_interp(x,y,u); title = "sinc";}
+        if (i==0) {v = cspline(u); title = "cubic spline";}
+        else if (i==1) {v = hspline(u); title = "Hermite spline";}
+        else if (i==2) {v = lagrange_interp(x,y,u, normalize_lagrange_interp); title = "lagrange";}
+        else if (i==3) {v = sinc_interp(x,y,u); title = "sinc";}
 
         std::cout << std::endl << title << std::endl;
-        std::cout << "max error : " << arma::norm(v - f(u), "inf") << std::endl;
+        std::cout << "||error|| : " << arma::norm(v - f(u), "fro") << std::endl;
 
         ddvec xx = arma::conv_to<ddvec>::from(x);
         ddvec y1 = arma::conv_to<ddvec>::from(y.col(0));

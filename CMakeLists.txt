@@ -35,6 +35,7 @@ add_library(numerics SHARED
         src/integrals/simpson_integral.cpp
 
         src/interpolation/cubic_interp.cpp
+        src/interpolation/hspline_interp.cpp
         src/interpolation/lagrange_interp.cpp
         src/interpolation/poly_interp.cpp
         src/interpolation/sinc_interp.cpp

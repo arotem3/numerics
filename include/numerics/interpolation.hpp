@@ -24,6 +24,28 @@ class cubic_interp {
     void load(std::istream&);
 };
 
+class hspline_interp {
+    private:
+    arma::mat a,b,y,dy;
+    std::map<double,int> x;
+
+    public:
+    hspline_interp();
+    hspline_interp(std::istream&);
+    hspline_interp(const arma::vec&, const arma::mat&, const arma::mat&);
+    hspline_interp(const arma::vec&, const arma::mat&);
+    hspline_interp& fit(const arma::vec&, const arma::mat&, const arma::mat&);
+    hspline_interp& fit(const arma::vec&, const arma::mat&);
+    arma::mat operator()(const arma::vec&);
+    arma::mat predict(const arma::vec&);
+    arma::mat predict_derivative(const arma::vec&);
+    arma::vec data_X();
+    arma::mat data_Y();
+    arma::mat data_dY();
+    void save(std::ostream&);
+    void load(std::istream&);
+};
+
 class poly_interp {
     private:
     arma::vec x;

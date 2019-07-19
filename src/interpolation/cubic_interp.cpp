@@ -89,16 +89,11 @@ numerics::cubic_interp::cubic_interp(std::istream& in) {
 void numerics::cubic_interp::save(std::ostream& out) {
     out << n << " " << y.n_cols << std::endl;
     out.precision(12);
-    arma::mat temp = b.t();
-    temp.raw_print(out);
-    temp = c.t();
-    temp.raw_print(out);
-    temp = d.t();
-    temp.raw_print(out);
-    temp = x.t();
-    temp.raw_print(out);
-    temp = y.t();
-    temp.raw_print(out);
+    b.t().raw_print(out);
+    c.t().raw_print(out);
+    d.t().raw_print(out);
+    x.t().raw_print(out);
+    y.t().raw_print(out);
 }
 
 /* load(in) : load data structure from file
