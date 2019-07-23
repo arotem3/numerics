@@ -26,10 +26,9 @@ void numerics::ode::bvp_k::ode_solve(arma::vec& x, arma::mat& U,
     int dim = U.n_cols;
     arma::sp_mat D;
     diffmat(D, x, 1, k);
-    D = D.rows(1,n-1); // toss first row
 
-    arma::sp_mat DD(n*dim,n*dim), J(n*dim,n*dim);
-    DD.rows(0,(n-1)*dim-1) = arma::kron(D, arma::speye(dim,dim));
+    arma::sp_mat DD, J;
+    DD = arma::kron(D, arma::speye(dim,dim));
     
     arma::mat F, du;
     uint j = 0;
@@ -53,27 +52,31 @@ void numerics::ode::bvp_k::ode_solve(arma::vec& x, arma::mat& U,
         arma::mat bcJac_L = numerics::approx_jacobian([&](const arma::vec& v)->arma::vec{return bc(v.t(),U.row(n-1));}, U.row(0).t());
         arma::mat bcJac_R = numerics::approx_jacobian([&](const arma::vec& v)->arma::vec{return bc(U.row(0),v.t());},U.row(n-1).t());
         
-        F.resize(n-1,dim);
-        for (int i(0); i < n-1; ++i) {
-            F.row(i) = f( x(i+1), U.row(i+1) );
+        F.resize(n,dim);
+        for (int i(0); i < n; ++i) {
+            F.row(i) = f( x(i), U.row(i) );
         }
 
         arma::mat A = (D*U - F).t();
         F = arma::join_cols( arma::vectorise(A), BC.rows(0,dim-1) );
 
         J.zeros();
-        for (int i=1; i < n; ++i) {
-            J.rows((i-1)*dim, (i)*dim-1).cols(i*dim, (i+1)*dim-1) = -approx_jacobian(
+        J.set_size((n+1)*dim,n*dim);
+        for (int i=0; i < n; ++i) {
+            J.rows((i)*dim, (i+1)*dim-1).cols(i*dim, (i+1)*dim-1) = -approx_jacobian(
                 [&](const arma::vec& v) -> arma::vec {
                     return f( x(i), v.t() ).t();
                 },
                 U.row(i).t()
             );
         }
-        J += DD;
+        J.rows(0,n*dim-1) += DD;
 
-        J.head_cols(dim).rows((n-1)*dim,n*dim-1) = bcJac_L.head_rows(dim);
-        J.tail_cols(dim).rows((n-1)*dim,n*dim-1) = bcJac_R.head_rows(dim);
+        J.head_cols(dim).rows((n)*dim,(n+1)*dim-1) = bcJac_L.head_rows(dim);
+        J.tail_cols(dim).rows((n)*dim,(n+1)*dim-1) = bcJac_R.head_rows(dim);
+
+        F = J.t()*F;
+        J = J.t()*J;
 
         // solve
         bool solve_success = arma::spsolve(du, J, -F);
@@ -115,10 +118,9 @@ void numerics::ode::bvp_k::ode_solve(arma::vec& x, arma::mat& U,
     int dim = U.n_cols;
     arma::sp_mat D;
     diffmat(D, x, 1, k);
-    D = D.rows(1,n-1); // toss first row
 
-    arma::sp_mat DD(n*dim,n*dim), J(n*dim,n*dim);
-    DD.rows(0,(n-1)*dim-1) = arma::kron(D, arma::speye(dim,dim));
+    arma::sp_mat DD, J;
+    DD = arma::kron(D, arma::speye(dim,dim));
     
     arma::mat F, du;
     uint j = 0;
@@ -142,22 +144,26 @@ void numerics::ode::bvp_k::ode_solve(arma::vec& x, arma::mat& U,
         arma::mat bcJac_L = numerics::approx_jacobian([&](const arma::vec& v)->arma::vec{return bc(v.t(),U.row(n-1));}, U.row(0).t());
         arma::mat bcJac_R = numerics::approx_jacobian([&](const arma::vec& v)->arma::vec{return bc(U.row(0),v.t());},U.row(n-1).t());
         
-        F.resize(n-1,dim);
-        for (int i(0); i < n-1; ++i) {
-            F.row(i) = f( x(i+1), U.row(i+1) );
+        F.resize(n,dim);
+        for (int i(0); i < n; ++i) {
+            F.row(i) = f( x(i), U.row(i) );
         }
 
         arma::mat A = (D*U - F).t();
         F = arma::join_cols( arma::vectorise(A), BC.rows(0,dim-1) );
 
         J.zeros();
-        for (int i(1); i < n; ++i) {
-            J.rows((i-1)*dim, (i)*dim-1).cols(i*dim, (i+1)*dim-1) = -jacobian(x(i),U.row(i));
+        J.set_size((n+1)*dim,n*dim);
+        for (int i=0; i < n; ++i) {
+            J.rows((i)*dim, (i+1)*dim-1).cols(i*dim, (i+1)*dim-1) = -jacobian(x(i),U.row(i));
         }
-        J += DD;
+        J.rows(0,n*dim-1) += DD;
 
-        J.head_cols(dim).rows((n-1)*dim,n*dim-1) = bcJac_L.head_rows(dim);
-        J.tail_cols(dim).rows((n-1)*dim,n*dim-1) = bcJac_R.head_rows(dim);
+        J.head_cols(dim).rows((n)*dim,(n+1)*dim-1) = bcJac_L.head_rows(dim);
+        J.tail_cols(dim).rows((n)*dim,(n+1)*dim-1) = bcJac_R.head_rows(dim);
+
+        F = J.t()*F;
+        J = J.t()*J;
 
         // solve
         bool solve_success = arma::spsolve(du, J, -F);

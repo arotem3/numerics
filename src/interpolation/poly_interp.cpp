@@ -9,32 +9,7 @@ numerics::poly_interp::poly_interp() {
  * --- X : domain
  * --- Y : values to interpolate, each col is a different set of values */
 numerics::poly_interp::poly_interp(const arma::vec& X, const arma::mat& Y) {
-    if ( X.n_rows != Y.n_rows ) { // error with input arguments
-        std::cerr << "poly_interp() error: interpolation could not be constructed. Input vectors must have the same length." << std::endl;
-        x = {0};
-        p = {0};
-        return;
-    }
-    
-    int n = X.n_elem - 1;
-    
-    for (int i(0); i < n; ++i) { // error with invalid x input
-        for (int j(i+1); j < n+1; ++j) {
-            if ( std::abs(X(i) - X(j)) < arma::eps(X(i)) ) {
-                std::cerr << "poly_interp() error: one or more x values are repeting, therefore no polynomial interpolation exists for this data." << std::endl;
-                x = {0};
-                p = {0};
-                return;
-            }
-        }
-    }
-
-    x = X;
-    y = Y;
-    p = arma::zeros(n+1,Y.n_cols);
-    for (int i(0); i < Y.n_cols; ++i) {
-        p.col(i) = arma::polyfit(X,Y.col(i),n);
-    }
+    fit(X,Y);
 }
 
 /* poly_interp(in) : load data structure from file
@@ -45,7 +20,34 @@ numerics::poly_interp::poly_interp(std::istream& in) {
 
 /* fit(x, y) : fit the object, same as initialization */
 numerics::poly_interp& numerics::poly_interp::fit(const arma::vec& X, const arma::mat& Y) {
-    poly_interp(X,Y);
+    if ( X.n_rows != Y.n_rows ) { // error with input arguments
+        std::cerr << "poly_interp() error: interpolation could not be constructed. Input vectors must have the same length." << std::endl;
+        x = {0};
+        p = {0};
+        return *this;
+    }
+    
+    int n = X.n_elem - 1;
+    
+    for (int i(0); i < n; ++i) { // error with invalid x input
+        for (int j(i+1); j < n+1; ++j) {
+            if ( std::abs(X(i) - X(j)) < arma::eps(X(i)) ) {
+                std::cerr << "poly_interp() error: one or more x values are repeting, therefore no polynomial interpolation exists for this data." << std::endl;
+                x = {0};
+                p = {0};
+                return *this;
+            }
+        }
+    }
+
+    x = X;
+    y = Y;
+    p = arma::zeros(n+1,Y.n_cols);
+    std::cout << arma::size(p) <<std::endl;
+    for (int i(0); i < Y.n_cols; ++i) {
+        p.col(i) = arma::polyfit(X,Y.col(i),n);
+    }
+    
     return *this;
 }
 

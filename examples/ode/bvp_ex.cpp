@@ -7,7 +7,7 @@ using namespace numerics::ode;
 typedef std::vector<double> ddvec;
 
 const double a = -M_PI, b = M_PI;
-const uint N = 64;
+const uint N = 32;
 
 int main() {
     std::cout << "Now we will solve the nonlinear boundary value problem:" << std::endl
@@ -74,19 +74,36 @@ int main() {
         bvp_solver.ode_solve(x,U,f,bc);
         // bvp_solver.ode_solve(x,U,f,J,bc); */
 
+    // an effective way to interpolate the numerical output of these bvp methods is via hermite splines
+    numerics::hspline_interp soln;
+    arma::mat dU(arma::size(U));
+    for (int i=0; i < N; ++i) dU.row(i) = f(x(i),U.row(i));
+    soln.fit(x,U,dU);
+
+    // if you are using bvp_cheb consider using a poly_interp object instead...
+    /* numerics::poly_interp soln;
+    soln.fit(x,U); */
+
+    arma::vec xx = arma::linspace(a,b,500);
+    arma::mat uu = soln(xx);
 
     std::cout << "Number of nonlinear iterations needed by solver: " << bvp_solver.num_iterations() << std::endl;
             ddvec x1 = arma::conv_to<ddvec>::from(x);
             ddvec u1 = arma::conv_to<ddvec>::from(U.col(0));
             ddvec v1 = arma::conv_to<ddvec>::from(U.col(1));
+            ddvec x2 = arma::conv_to<ddvec>::from(xx.col(0));
+            ddvec u2 = arma::conv_to<ddvec>::from(uu.col(0));
+            ddvec v2 = arma::conv_to<ddvec>::from(uu.col(1));
             
             matplotlibcpp::subplot(2,1,1);
-            std::map<std::string,std::string> ls = {{"marker","o"},{"label","u(x)"},{"ls","-"},{"color","blue"}};
+            std::map<std::string,std::string> ls = {{"marker","o"},{"label","u(x)"},{"ls","none"},{"color","purple"}};
             matplotlibcpp::plot(x1,u1,ls);
+            matplotlibcpp::plot(x2,u2,"-b");
             matplotlibcpp::legend();
             matplotlibcpp::subplot(2,1,2);
-            ls["label"] = "v(x)"; ls["color"] = "red";
+            ls["label"] = "v(x)"; ls["color"] = "orange"; ls["marker"] = "o"; ls["ls"] = "none";
             matplotlibcpp::plot(x1,v1,ls);
+            matplotlibcpp::plot(x2,v2,"-r");
             matplotlibcpp::legend();
             matplotlibcpp::show();
 

@@ -143,6 +143,10 @@ namespace ode {
         bvp_k(uint order = 4, double tolerance = 1e-5) {
             tol = tolerance;
             k = order;
+            if (order < 2) {
+                std::cerr << "bvp_k() warning: it is required that order > 1. setting order = 2 instead.\n";
+                k = 2;
+            }
             max_iterations = 100;
         }
 
@@ -193,13 +197,9 @@ namespace ode {
     };
 
     // --- PDEs -------------------- //
-    class boundary_conditions_2d {
-        public:
-        double lower_x, upper_x, lower_y, upper_y;
-        std::function<arma::mat(const arma::mat&, const arma::mat&)> dirichlet_condition;
-    };
-
-    void poisson2d(arma::mat& X, arma::mat& Y, arma::mat& U,
+    void poisson_helmholtz_2d(arma::mat& X, arma::mat& Y, arma::mat& U,
                    const std::function<arma::mat(const arma::mat&, const arma::mat&)>& f,
-                   const boundary_conditions_2d& bc, int m = 32);
+                   const std::function<arma::mat(const arma::mat&, const arma::mat&)>& bc,
+                   double k = 0,
+                   int m = 32);
 }
