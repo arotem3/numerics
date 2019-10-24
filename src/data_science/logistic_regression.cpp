@@ -138,9 +138,9 @@ void numerics::logistic_regression::fit(const arma::mat& X, const arma::mat& Y) 
             int r = 0;
             double score = 0;
             for (uint j=0; j < num_folds; ++j) {
-                if (beta > 0) fit_no_replace(split.not_fold_X(j),split.not_fold_Y(j),L(i));
+                if (beta > 0) fit_no_replace(split.train_set_X(j),split.train_set_Y(j),L(i));
                 else fit_linear(L(i));
-                double score_new = arma::accu( split.fold_Y(j) % predict_probabilities(split.fold_X(j)) );
+                double score_new = arma::accu( split.test_set_Y(j) % predict_probabilities(split.test_set_X(j)) );
                 if (std::isnan(score_new)) continue;
                 score += score_new;
                 r++;

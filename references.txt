@@ -30,4 +30,6 @@ algorithms:
 
 [10] E. Hairer, G. Wanner, "Solving Ordinary Differential Equations II"
 
+[11] Gramacki A. "Nonparametric Kernel Density Estimation and Its Computational Aspects"
+
 [*] a lot of Wikipedia...

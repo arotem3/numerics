@@ -96,7 +96,7 @@ inline int mod(int a, int b) {
 void meshgrid(arma::mat&, arma::mat&, const arma::vec&, const arma::vec&);
 void meshgrid(arma::mat&, const arma::vec&);
 
-arma::vec sample_from(int, const arma::vec&, const arma::vec& labels = arma::vec());
-double sample_from(const arma::vec&, const arma::vec& labels = arma::vec());
+arma::uvec sample_from(int, const arma::vec&, const arma::uvec& labels = arma::uvec());
+int sample_from(const arma::vec&, const arma::uvec& labels = arma::uvec());
 
 uint index_median(const arma::vec& x);

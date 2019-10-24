@@ -15,16 +15,20 @@ arma::vec f(arma::vec& X) {
 }
 
 int main() {
-    arma::vec x = 5*arma::randu(100)-2.5;
-    arma::vec y = f(x) + 0.05*arma::randn(arma::size(x));
+    arma::vec x = 5*arma::randu(200)-2.5;
+    arma::vec y = f(x) + 0.1*arma::randn(arma::size(x));
 
-    kernels k = RBF; // square, triangle, parabolic
-    kernel_smooth model(x,y,0,k);
+    kernels k = kernels::gaussian; // square, triangle, parabolic
+    bool data_to_bins = false;
+    kernel_smooth model(k, data_to_bins);
+    model.fit(x,y);
     arma::vec t = arma::linspace(-3,3,300);
     arma::vec yhat = model.predict(t);
 
-    std::cout << "bandwidth : " << model.bandwidth() << std::endl
-              << "MSE from cv : " << model.MSE() << std::endl;
+    std::cout << "bandwidth : " << model.bandwidth << std::endl;
+    double r2 = arma::norm(f(x) - model(x)) / arma::norm(f(x) - arma::mean(f(x)));
+    r2 = 1 - r2*r2;
+    std::cout << "'functional' r^2 : " << r2 << std::endl;
 
     ddvec xx = arma::conv_to<ddvec>::from(x);
     ddvec yy = arma::conv_to<ddvec>::from(y);

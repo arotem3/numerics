@@ -63,10 +63,10 @@ numerics::knn_regression& numerics::knn_regression::fit(const arma::mat& x, cons
             double score = 0;
             for (int j=0; j < 3; ++j) {
                 score += fit_no_replace(
-                    split.not_fold_X(j),
-                    split.not_fold_Y(j),
-                    split.fold_X(j),
-                    split.fold_Y(j),
+                    split.train_set_X(j),
+                    split.train_set_Y(j),
+                    split.test_set_X(j),
+                    split.test_set_Y(j),
                     kk(i)
                 );
             }

@@ -25,10 +25,10 @@ int main() {
         keys_B["ls"] = "none";
 
     for (int i=0; i < num_folds; ++i) {
-        ddvec xx = arma::conv_to<ddvec>::from( split[i] ); // or split.fold_X(i)
-        ddvec yy = arma::conv_to<ddvec>::from( split(i) ); // or split.fold_Y(i)
-        ddvec xexclude = arma::conv_to<ddvec>::from( split[-1-i] ); // or split.not_fold_X(i)
-        ddvec yexclude = arma::conv_to<ddvec>::from( split(-1-i) ); // or split.not_fold_Y(i)
+        ddvec xx = arma::conv_to<ddvec>::from( split.train_set_X(i) );
+        ddvec yy = arma::conv_to<ddvec>::from( split.train_set_Y(i) );
+        ddvec xexclude = arma::conv_to<ddvec>::from( split.test_set_X(i) );
+        ddvec yexclude = arma::conv_to<ddvec>::from( split.test_set_Y(i) );
         matplotlibcpp::subplot(2,2,i+1);
         matplotlibcpp::plot(xexclude, yexclude, keys_B);
         matplotlibcpp::plot(xx, yy, keys_A);

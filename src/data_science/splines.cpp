@@ -54,13 +54,13 @@ numerics::splines::splines(const arma::mat& X, const arma::mat& Y, int m) {
             k_folds split(X,Y,3);
             double cv = 0;
             for (int i=0; i < 3; ++i) {
-                arma::mat K0 = rbf(split.not_fold_X(i), split.not_fold_X(i));
-                arma::mat K0i = arma::pinv(K0); // shouldn't happen
-                arma::mat c_hat = K0i * split.not_fold_Y(i);
-                arma::mat yhat = rbf(split.not_fold_X(i),split.fold_X(i)) * c_hat;
+                arma::mat K0 = rbf(split.train_set_X(i), split.train_set_X(i));
+                arma::mat K0i = arma::pinv(K0);
+                arma::mat c_hat = K0i * split.train_set_Y(i);
+                arma::mat yhat = rbf(split.train_set_X(i),split.test_set_X(i)) * c_hat;
                 double dof = arma::trace(K0*K0i);
                 int nn = 2*n/3;
-                cv += std::pow(arma::norm(yhat - split.fold_Y(i)),2);
+                cv += std::pow(arma::norm(yhat - split.test_set_Y(i)),2);
             }
             cv_scores(i) += cv/n;
         } else if (std::isinf(lam)) {

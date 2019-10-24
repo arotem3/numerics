@@ -36,7 +36,7 @@ int main() {
     ddvec xx = arma::conv_to<ddvec>::from(arma::linspace(0,n));
     ddvec hist = arma::conv_to<ddvec>::from(sample);
     ddvec pdf0 = arma::conv_to<ddvec>::from(
-        CubicInterp(x,1000*pdf)(arma::linspace(0,n))
+        cubic_interp(x,1000*pdf)(arma::linspace(0,n))
         );
 
     matplotlibcpp::named_hist("sample", hist, 30);

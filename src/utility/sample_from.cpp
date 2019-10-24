@@ -1,6 +1,6 @@
 #include "numerics.hpp"
 
-double numerics::sample_from(const arma::vec& pdf, const arma::vec& labels) {
+int numerics::sample_from(const arma::vec& pdf, const arma::uvec& labels) {
     int n = pdf.n_elem;
     int i;
     double cdf = 0, rval = arma::randu();
@@ -12,10 +12,16 @@ double numerics::sample_from(const arma::vec& pdf, const arma::vec& labels) {
     else return labels(i);
 }
 
-arma::vec numerics::sample_from(int n, const arma::vec& pdf, const arma::vec& labels) {
-    arma::vec rvals = arma::zeros(n);
-    for (int i=0; i < n; ++i) {
-        rvals(i) = sample_from(pdf, labels);
+arma::uvec numerics::sample_from(int n, const arma::vec& pdf, const arma::uvec& labels) {
+    int m = pdf.n_elem;
+    arma::vec rvals = arma::randu(n);
+    arma::uvec samples = arma::zeros<arma::uvec>(n);
+    double cdf = 0;
+    double i;
+    for (i=0; i < m; ++i) {
+        samples(arma::find(cdf < rvals && rvals <= cdf + pdf(i))).fill(i);
+        cdf += pdf(i);
     }
-    return rvals;
+    if (labels.is_empty()) return samples;
+    else return labels(samples);
 }

@@ -23,7 +23,7 @@ numerics::k_folds::k_folds(const arma::mat& x, const arma::mat& y, uint k, uint 
 }
 
 /* fold_X(j) : return the x-values of the j^th fold */
-arma::mat numerics::k_folds::fold_X(uint j) {
+arma::mat numerics::k_folds::test_set_X(uint j) {
     if (j >= num_folds) {
         std::cerr << "k_folds element access index (=" << j << ") is out of range of the size - 1 (=" << num_folds << ")." << std::endl;
         return arma::mat();
@@ -33,7 +33,7 @@ arma::mat numerics::k_folds::fold_X(uint j) {
 }
 
 /* fold_Y(j) : return the y-values of the j^th fold */
-arma::mat numerics::k_folds::fold_Y(uint j) {
+arma::mat numerics::k_folds::test_set_Y(uint j) {
     if (j >= num_folds) {
         std::cerr << "k_folds element access index (=" << j << ") is out of range of the size - 1 (=" << num_folds << ")." << std::endl;
         return arma::mat();
@@ -43,7 +43,7 @@ arma::mat numerics::k_folds::fold_Y(uint j) {
 }
 
 /* not_fold_X(j) : return the x-values of all but j^th fold */
-arma::mat numerics::k_folds::not_fold_X(uint j) {
+arma::mat numerics::k_folds::train_set_X(uint j) {
     if (j >= num_folds) {
         std::cerr << "k_folds element access index (=" << j << ") is out of range of the size - 1 (=" << num_folds << ")." << std::endl;
         return arma::mat();
@@ -55,7 +55,7 @@ arma::mat numerics::k_folds::not_fold_X(uint j) {
 }
 
 /* not_fold_Y(j) : return the y-values of all but j^th fold */
-arma::mat numerics::k_folds::not_fold_Y(uint j) {
+arma::mat numerics::k_folds::train_set_Y(uint j) {
     if (j >= num_folds) {
         std::cerr << "k_folds element access index (=" << j << ") is out of range of the size - 1 (=" << num_folds << ")." << std::endl;
         return arma::mat();
@@ -66,14 +66,38 @@ arma::mat numerics::k_folds::not_fold_Y(uint j) {
     else return Y.cols(ii);
 }
 
-/* k_folds::[j] : return the x-values of the j^th fold, if j is negative, returns the x-values of all but |j| - 1 fold. */
-arma::mat numerics::k_folds::operator[](int k) {
-    if (k < 0) return not_fold_X(-1-k);
-    else return fold_X(k); 
+numerics::k_folds_1d::k_folds_1d(const arma::mat& x, uint k, uint dim) {
+    int m = x.n_rows, n = x.n_cols;
+    direction = dim;
+    num_folds = k;
+
+    X = x;
+    if (direction==0) {
+        range = arma::shuffle(arma::regspace<arma::uvec>(0,m-1));
+        I = arma::reshape(range, m/k, k);
+    } else {
+        range = arma::shuffle(arma::regspace<arma::uvec>(0,n-1));
+        I = arma::reshape(range, n/k, k);
+    }
+    range = arma::regspace<arma::uvec>(0,k-1);
 }
 
-/* k_folds::(j) : return the y-values of the j^th fold, if j is negative, returns the y-values of all but |j| - 1 fold. */
-arma::mat numerics::k_folds::operator()(int k) {
-    if (k < 0) return not_fold_Y(-1-k);
-    else return fold_Y(k);
+arma::mat numerics::k_folds_1d::test_set(uint j) {
+    if (j >= num_folds) {
+        std::cerr << "k_folds element access index (=" << j << ") is out of range of the size - 1 (=" << num_folds << ")." << std::endl;
+        return arma::mat();
+    }
+    if (direction==0) return X.rows( I.col(j) );
+    else return X.cols( I.col(j) );
+}
+
+arma::mat numerics::k_folds_1d::train_set(uint j) {
+    if (j >= num_folds) {
+        std::cerr << "k_folds element access index (=" << j << ") is out of range of the size - 1 (=" << num_folds << ")." << std::endl;
+        return arma::mat();
+    }
+    arma::umat ii = I.cols(arma::find(range != j));
+    ii = arma::vectorise(ii);
+    if (direction==0) return X.rows(ii);
+    else return X.cols(ii);
 }

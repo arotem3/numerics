@@ -18,7 +18,9 @@ add_library(numerics SHARED
         include/numerics/utility.hpp
 
         src/data_science/k_fold.cpp
+        src/data_science/bin_data.cpp
         src/data_science/kernel_smooth.cpp
+        src/data_science/kde.cpp
         src/data_science/kmeans.cpp
         src/data_science/regularizer.cpp
         src/data_science/splines.cpp

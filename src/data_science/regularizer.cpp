@@ -87,7 +87,7 @@ void numerics::regularizer::cross_validate(const arma::mat& X, const arma::mat& 
 
     arma::vec cv_scores = arma::zeros(N);
     for (uint j=0; j < num_folds; ++j) {
-        arma::mat V, R, xx = split.not_fold_X(j), yy = split.not_fold_Y(j);
+        arma::mat V, R, xx = split.train_set_X(j), yy = split.train_set_Y(j);
         arma::vec D;
         if (use_L2) {
             arma::eig_sym(D, V, xx.t()*xx);
@@ -103,7 +103,7 @@ void numerics::regularizer::cross_validate(const arma::mat& X, const arma::mat& 
                 if (use_cgd) cgd(RHS, LHS, c);
                 else c = arma::solve(RHS, LHS);
             }
-            score += arma::norm(split.fold_Y(j) - split.fold_X(j)*c);
+            score += arma::norm(split.test_set_Y(j) - split.test_set_X(j)*c);
         }
         cv_scores(j) = score/X.n_rows;
     }

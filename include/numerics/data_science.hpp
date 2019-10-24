@@ -1,9 +1,16 @@
 // --- data analysis ---------- //
 enum class kernels {
-    RBF,
+    gaussian,
     square,
     triangle,
     parabolic
+};
+
+enum class bandwidth_estimator {
+    rule_of_thumb_sd,
+    min_sd_iqr,
+    direct_plug_in,
+    grid_cv
 };
 
 class k_folds {
@@ -14,12 +21,47 @@ class k_folds {
 
     public:
     k_folds(const arma::mat&, const arma::mat&, uint k=2, uint dim=0);
-    arma::mat fold_X(uint);
-    arma::mat fold_Y(uint);
-    arma::mat not_fold_X(uint);
-    arma::mat not_fold_Y(uint);
-    arma::mat operator[](int);
-    arma::mat operator()(int);
+    arma::mat train_set_X(uint);
+    arma::mat train_set_Y(uint);
+    arma::mat test_set_X(uint);
+    arma::mat test_set_Y(uint);
+};
+
+class k_folds_1d {
+    private:
+    int direction, num_folds;
+    arma::mat X;
+    arma::umat I, range;
+
+    public:
+    k_folds_1d(const arma::mat&, uint k=2, uint dim=0);
+    arma::mat train_set(uint);
+    arma::mat test_set(uint);
+};
+
+class bin_data {
+    private:
+    int _n;
+    double _bin_width;
+    arma::vec _bins;
+    arma::vec _counts;
+
+    public:
+    const int& n_bins;
+    const double& bin_width;
+    const arma::vec& bins;
+    const arma::vec& counts;
+
+    bin_data(uint bins=0) : n_bins(_n), bin_width(_bin_width), bins(_bins), counts(_counts) {
+        _n = bins;
+    };
+    
+    void to_bins(const arma::vec& x, const arma::vec& y);
+    void to_bins(const arma::vec& x);
+};
+
+class bins_nd {
+
 };
 
 class kmeans {
@@ -96,21 +138,36 @@ class splines {
     void save(std::ostream&);
 };
 
+namespace bw {
+    arma::vec eval_kernel(const arma::vec& x, numerics::kernels K);
+    double dpi(const arma::vec& x, double s=0, numerics::kernels K=numerics::kernels::gaussian);
+    double dpi_binned(const numerics::bin_data& bins, double s=0, numerics::kernels K=numerics::kernels::gaussian);
+    double rot1(int n, double s);
+    double rot2(const arma::vec& x, double s = 0);
+    double grid_mse(const arma::vec& x, numerics::kernels K, double s=0, int grid_size=20, bool binning=false);
+};
+
 class kernel_smooth {
     private:
     arma::vec x, y;
+    bin_data bins;
     int n;
-    double bdw, cv;
+    double bdw;
     kernels kern;
-    arma::vec predict(const arma::vec&, const arma::vec&, const arma::vec&, double h);
+    bool binning;
+    // arma::vec predict(const arma::vec&, const arma::vec&, const arma::vec&, double h);
 
     public:
-    kernel_smooth(const arma::vec&, const arma::vec&, double bdw=0, kernels k=kernels::RBF);
-    kernel_smooth(double bdw=0, kernels k=kernels::RBF);
-    kernel_smooth(std::istream&);
+    const arma::vec& data_x;
+    const arma::vec& data_y;
+    const double& bandwidth;
 
-    void save(std::ostream&);
-    void load(std::istream&);
+    kernel_smooth(kernels k=kernels::gaussian, bool binning=false);
+    kernel_smooth(double bdw, kernels k=kernels::gaussian, bool binning=false);
+    kernel_smooth(const std::string&);
+
+    void save(const std::string& fname="kern_smooth.KS");
+    void load(const std::string&);
 
     kernel_smooth& fit(const arma::vec&, const arma::vec&);
     arma::vec fit_predict(const arma::vec&, const arma::vec&);
@@ -119,12 +176,37 @@ class kernel_smooth {
     arma::vec predict(const arma::vec&);
     double operator()(double);
     arma::vec operator()(const arma::vec&);
-    
-    arma::vec data_X();
-    arma::vec data_Y();
+};
 
-    double bandwidth() const;
-    double MSE() const;
+class kde {
+    private:
+    arma::vec x;
+    bin_data bins;
+    double bdw, stddev;
+    kernels kern;
+    bandwidth_estimator method;
+    bool binning;
+
+    public:
+    const double& bandwidth;
+    const arma::vec& data;
+
+
+    kde(kernels k=kernels::gaussian, bandwidth_estimator method = bandwidth_estimator::min_sd_iqr, bool binning = false);
+    kde(double bdw, kernels k=kernels::gaussian, bool binning = false);
+    kde(const std::string&);
+
+    void save(const std::string& fname="kde.kde");
+    void load(const std::string&);
+
+    kde& fit(const arma::vec&);
+
+    arma::vec sample(uint n=1);
+    
+    double predict(double);
+    arma::vec predict(const arma::vec&);
+    double operator()(double);
+    arma::vec operator()(const arma::vec&);
 };
 
 class regularizer {

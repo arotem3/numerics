@@ -1,6 +1,6 @@
 Author: Amit Rotem
 
-Last modified: 07/11/2019
+Last modified: 10/24/2019
 
 These headers take advantage of the armadillo linear algebra library and require it for both compiling and linking.
 All the functions can be found in the header file and in the documentation file.
@@ -36,6 +36,7 @@ The order is important because `libnumerics` also has to link against `libarmadi
     * regularized linear regression.
     * kernel linear basis regression and classification.
     * kernel based smoothing.
+    * kernel density estimation.
     * nearest neighbors regression and classification.
     * built in cross validation for automatic parameter selection for all models.
 

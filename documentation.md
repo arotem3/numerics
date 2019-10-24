@@ -4,7 +4,8 @@
 * [utitlity functions](#utility-methods)
     * [true modulus](#modulus-operation)
     * [meshgrid](#meshgrid)
-    * [Polynomial Derivatives and Integrals](#Polynomial-Derivatives-and-Integrals)
+    * [polynomial derivatives and integrals](#Polynomial-Derivatives-and-Integrals)
+    * [sample discrete distributions](#sample-discrete-distributions)
 * [integration](#integration)
 * [derivatives](#discrete-derivatives)
     * [finite difference methods](#finite-differences)
@@ -35,11 +36,13 @@
     * [sinc spline](#sinc-interpolation)
 * [Data Science](#data-science)
     * [k-fold train test split](#k-fold-train-test-split)
+    * [Data Binning](#data-binning)
     * [k-means clustering](#k-means-clustering)
     * [splines](#splines)
     * [logistic regression](#logistic-regression)
     * [k nearest neighbors](#k-nearest-neighbors-regression)
     * [kernel smoothing](#kernel-smoothing)
+    * [kernel density estimation](#kernel-density-estimation)
     * [Regularized Linear Least Squares Regression](#Regularized-Linear-Least-Squares-Regression)
 * [`ODE.hpp`](#`numerics::ode`-Documentation)
 
@@ -94,7 +97,18 @@ We can integrate the polynomial:
 ```cpp
 arma::vec polyint(const arma::vec& p, double c = 0);
 ```
-where `p` is the coefficient vector, and `c` is the constant of integration; by default `c = 0`. The output is also a polynomial coefficient vector. 
+where `p` is the coefficient vector, and `c` is the constant of integration; by default `c = 0`. The output is also a polynomial coefficient vector.
+
+### Sample Discrete Distributions
+
+Given a discrete probability mass function, we can produce a random sample.
+
+```cpp
+arma::uvec sample_from(int n, const arma::vec& pmf, const arma::uvec& labels=arma::uvec());
+
+int sample_from(const arma::vec& pmf, const arma::uvec& labels=arma::uvec());
+```
+The output is either a set of integers between 0 and n-1 refering to the index associated with the pmf, or a set of labels sampled from `labels` using the pmf for random indexing.
 
 ## Quadrature and Finite Differences
 
@@ -606,12 +620,17 @@ When performing cross validation we may want to split the data into training and
 class k_folds {
     public:
     k_folds(const arma::mat& x, const arma::mat& y, unsigned int k=2, unsigned int dim=0);
-    arma::mat fold_X(unsigned int j);
-    arma::mat fold_Y(unsigned int j);
-    arma::mat not_fold_X(unsigned int j);
-    arma::mat not_fold_Y(unsigned int j);
-    arma::mat operator[](int j); // X
-    arma::mat operator()(int j); // Y
+    arma::mat test_set_X(unsigned int j);
+    arma::mat test_set_Y(unsigned int j);
+    arma::mat train_set_X(unsigned int j);
+    arma::mat train_set_Y(unsigned int j);
+};
+
+class k_fold_1d {
+    public:
+    k_folds(const arma::mat& x, unsigned int k=2, unsigned int dim=0);
+    arma::mat test_set(unsigned int j);
+    arma::mat train_set(unsigned int j);
 };
 ```
 The parameter `dim` informs over which dimension of `x,y` to split over, if `dim` is 0, then we split up the columns, if `dim` is 1, then we split up the rows.
@@ -626,11 +645,82 @@ mat Y = 2*x;
 k_fold train_test(X,Y,3);
 
 int j = 0;
-mat train_X = train_test[j]; // == train_test.fold_X(j)
-mat test_X = train_test[-1 - j]; // == train_test.not_fold_X(j)
+mat train_X =  train_test.train_set_X(j);
+mat test_X = train_test.test_set_X(j);
 
-mat train_Y = train_test.fold_Y(j); // == train_test(j)
-mat test_Y = train_test.not_fold_Y(j); // == train_test(-1-j)
+mat train_Y = train_test.train_set_Y(j);
+mat test_Y = train_test.test_set_Y(j);
+```
+
+### Data Binning
+Whenever data is sampled from continuous features, it is sometimes useful (and easy) to bin the data into uniformly spaced bins. A primary benefit is reducing the complexity to $O(1)$ for any computation (number of bins is fixed by the user). In the univariate case, 500 bins is more than sufficient for large data.
+
+The following class produces bins for univariate data.
+
+```cpp
+class bin_data
+```
+
+we initialize the object:
+```cpp
+bin_data::bin_data(unsigned int num_bins=0);
+```
+
+When `num_bins` is not specified, it is selected during call to `to_bins()`. It will be set to 500 if the data size  $n>1000$, or $n/10$ if $n/10 > 30$, or $n/5$ in all other cases.
+
+The `bin_data` object can bin two varieties of data:
+```cpp
+void to_bins(const arma::vec& x);
+```
+In this case x is stratified into uniformly spaced bins in the range $[\min(x)-\epsilon, \max(x)+\epsilon]$ (for a small $\epsilon>0$) which has an associated spacing $\delta$. To each bin we associate a "count" which is computed by finding every point in x that is within $\pm\delta$ of that bin and weighing the count by 1 minus the normalized linear distance, i.e.:
+
+for each $x_i \in \text{bin}(j)\pm\delta$: $\text{bin}(j).count \mathrel{+}= 1 - \frac{|\text{bin}(j) - x_i|}{\delta}$
+
+note: most likely $\text{bin}(j).count$ is not an integer but it is guaranteed that $\sum_{j=1}^n\text{bin}(j).count = n$.
+
+We can also bin data with an associated univariate response variable:
+```cpp
+void to_bins(const arma::vec& x, const arma::vec& y);
+```
+
+In this case, x is similarly stratified, but the counts are computed by scaling the counts by the response variable y. i.e.:
+
+1. for each $x_i \in \text{bin}(j)\pm\delta$:
+
+    1. $w_i = 1 - \frac{|\text{bin}(j) - x_i|}{\delta}$
+    2. $\text{bin}(j).count \mathrel{+}= w_i * y_i$
+
+2. $\text{bin}(j).count \mathrel{/}= \sum_i w_i$
+
+Either way, we access our bins and counts by referencing the member variables:
+```cpp
+const vec& bins;
+const vec& counts;
+```
+
+we can also reference the variables:
+```cpp
+const int& n_bins;
+const double& bin_width;
+```
+
+example:
+```cpp
+vec x = randn(200);
+vec y = exp(-x);
+
+int n_bins = 20;
+bin_data distribution(n_bins);
+distribution.to_bins(x);
+vec x_bins = distribution.bins;
+vec x_counts = distribution.counts;
+// if we plot x_bins and x_counts we should expect a bell shape
+
+bin_data discretized_response(n_bins);
+discretized_response.to_bins(x,y);
+x_bins = discretized_response.bins;
+y_discrete = discretized_response.counts;
+// if we plot x_bins and y_discrete we should expect a decaying exponentional
 ```
 
 ### K-Means Clustering
@@ -750,7 +840,7 @@ splines::splines(istream& in); // load on construction
 ```
 
 ### Logistic Regression
-Fit linear or kernel logistic model to any dimensional data set. By default we fit gaussian kernel basis with radius 1 along side linear basis, but just an option exists to remove the radial basis. By default the regression is done via L2-regularization and the regularization parameter is determined by cross validation, the metric for the cross validation and for the optimization procedure is log-likelihood. The resulting model is a one vs. all probabilistic model, when the categories are predicted the maximum probability is selected. When fitting the full rbf model, `lbfgs` solver is used, but when fitting just the linear basis, `nelder_mead` is used instead.
+Fit linear or kernel logistic model to any dimensional data set (logistic or ridge classification). By default we fit gaussian kernel basis with radius 1 along side linear basis, but just an option exists to remove the radial basis. By default the regression is done via L2-regularization and the regularization parameter is determined by cross validation, the metric for the cross validation and for the optimization procedure is log-likelihood. The resulting model is a one vs. all probabilistic model, when the categories are predicted the maximum probability is selected. When fitting the full rbf model, `lbfgs` solver is used, but when fitting just the linear basis, `nelder_mead` is used instead.
 ```cpp
 class logistic_regression
 ```
@@ -855,14 +945,19 @@ arma::umat knn_classifier::predict_categories(const arma::mat& xx);
 Where `predict_probabilities()` is equivalent to `predict()`. Additionally cross validation is performed on the F1 score instead of MSE.
 
 ### Kernel Smoothing
-Kernel smoothing may be applied to quickly approximate a function at a point $x_0$ by weighted sum of samples within a bandwidth $\beta$ of $x_0$. The weights are determined by a symmetric kernel function $K(\cdot,\cdot)$ of which there are variety of options (we define $K(x,x_0)=f\left(\frac{||x-x_0||}{\beta}\right)$):
+Kernel smoothing may be applied to quickly approximate a function at a point $x_0$ by weighted sum of samples within a bandwidth $\beta$ of $x_0$. The weights are determined by a symmetric positive definite kernel function $K(\cdot,\cdot)$ of which there are variety of options (we define $K_\beta(x,x_0)=k\left(r=\frac{||x-x_0||}{\beta}\right)$):
 
-* `RBF`: $f(r) = \frac{1}{\sqrt{2\pi}}e^{-r^2/2}$
-* `square`: $f(r) =0.5I_{r\leq 1}(r)$
-* `triangle`: $f(r) = (1-r)I_{r\leq 1}(r)$
-* `parabolic`: $f(r) = \frac{3}{4}(1-r^2)I_{r\leq 1}(r)$
+* `RBF`: $k(r) = \frac{1}{\sqrt{2\pi}}e^{-r^2/2}$
+* `square`: $k(r) =0.5I_{r\leq 1}(r)$
+* `triangle`: $k(r) = (1-r)I_{r\leq 1}(r)$
+* `parabolic`: $k(r) = \frac{3}{4}(1-r^2)I_{r\leq 1}(r)$
 
-Choosing $\beta$ may be difficult, so, by default, the bandwidth will be determined by k-fold crossvalidation.
+Choosing $\beta$ may be difficult, so, by default, the bandwidth will be determined by cross-validation.
+
+The final estimate of the function looks like:
+$\hat y(x) = \frac{\sum_{i=1}^n y_i K_\beta(x,x_i)}{\sum_{i=1}^n K_\beta(x,x_i)}$
+
+We can make kernel smoothing more efficient (effectively $O(1)$) for large data by first binning the data (linear binning). We compute the kernels with respect to the bins rather than the observations without reducing the quality of fit significantly. For large data sets Gramacki (2018) argues that 400-500 bins is almost always sufficient for univariate distributions. By default, when binning is requested and $n>1000$ the number of bins defaults to 500 (otherwise, it is selected to be $n/10$ if $n/10 > 30$ or $n/5$ for all other cases).
 
 ```cpp
 class kernel_smooth
@@ -871,21 +966,16 @@ class kernel_smooth
 We construct a smoothing object via:
 ```cpp
 enum class kernels {
-    RBF,
+    gaussian,
     square,
     triangle,
     parabolic
 };
 
-kernel_smooth::kernel_smooth(double bdw=0, kernels k=RBF);
-
-// construct and fit
-kernel_smooth::kernel_smooth(const arma::vec& x,
-                             const arma::vec& y,
-                             double bdw=0,
-                             kernels k=RBF);
+kernel_smooth::kernel_smooth(kernels k=gaussian, bool binning=false);
+kernel_smooth::kernel_smooth(double bdw, kernels k=gaussian, bool binning=false);
 ```
-where `bdw` = $\beta$. Whenever `bdw=0`, we use cross validation.
+where `bdw` = $\beta$. Whenever `bdw` is not specified, we use cross validation.
 
 We fit the object:
 ```cpp
@@ -909,18 +999,82 @@ The functions, `predict` and the operator `()` are equivalent.
 
 The object retains additional information from fitting, 
 ```cpp
-arma::vec kernel_smooth::data_X(); // independent variable data matrix
-arma::vec kernel_smooth::data_Y(); // dependent variable data matrix
-double kernel_smooth::bandwidth() const; // return the bandwidth
-double kernel_smooth::MSE() const; // return the MSE from fit
+const arma::vec& data_x;
+const arma::vec& data_y;
+const double& bandwidth;
 ```
 
-The kernel smoothing object may be saved to a stream (such as a file), and loaded from one:
+The kernel smoothing object may be saved to a file, and loaded from one:
 ```cpp
-void kernel_smooth::save(std::ostream& out);
+void kernel_smooth::save(const std::string& fname);
 
-void kernel_smooth::load(std::istream& in);
-kernel_smooth::kernel_smooth(std::istream& in); // load on construction
+void kernel_smooth::load(const std::string& fname);
+kernel_smooth::kernel_smooth(const std::string& fname); // load on construction
+```
+
+### Kernel Density Estimation
+
+Smoothing kernels may be applied to density estimation as well. We define $K(\cdot,\cdot)$ same as for [`kernel_smooth`](#kernel-smoothing) only now we estimate the density for a single variable by: $\hat f(x) = \frac{1}{n\beta}\sum_{i=1}^n K_\beta(x,x_i)$.
+
+Note we defined the kernels above so that $\int_{-\infty}^\infty \hat f(x) dx = 1$ and $\hat f(x) \geq 0$ i.e. a valid density function.
+
+In this case, too, selecting a good bandwidth $\beta$ is not trivial, and since the true density at the sampled values is not known, performing cross-validation is not as straight forward. Consequently we have four well known methods for bandwidth selection:
+
+1. Rule of Thumb (1) : $\beta = 1.06s n^{-1/5}$, this method is optimal whenever the data is sampled from a normal distribution.
+2. Rule of Thumb (2) : $\beta = 0.9 \min(s,\frac{IQR}{1.34}) n^{-1/5}$, this method is similar to (1) but is better at handling non-symmetric and bi-model distributions. This method is the most commonly used default estimate, and ussually produces good results.
+3. Direct Plug-in : $\beta$ is computed to minimize the asymptotic expansion of the mean integrated squared error (MISE = $\int_{-\infty}^\infty (\hat f_\beta(x) - f(x))^2 dx$). The plug-in method is iterative, but for most applications 2 iterations are sufficient, and that is the version implemented here.
+4. Grid search cross validation : $\beta$ is sampled in the range $[0.05s, \text{range}(x)/4]$ using log-spacing. We compute an optimal $\beta$ by approximating the RMSE, where the true density is estimated by a pilot density. The pilot density is computed using the entire data set and the second rule of thumb for the bandwidth. Then an RMSE for each bandwidth is computed by comparing the pilot density to the new density in line using training and testing sets.
+
+The default method is (2) as it only requires computing descriptive statistics.
+
+```cpp
+class kde
+```
+We construct a kernel density object via:
+```cpp
+enum class bandwidth_estimator {
+    rule_of_thumb_sd,
+    min_sd_iqr,
+    direct_plug_in,
+    grid_cv
+};
+
+kde::kde(kernels k=gaussian, bandwidth_estimator method=min_sd_iqr, bool binning=false);
+kde::kde(double bdw, kernels k=gaussian, bool binning=false);
+```
+where `bdw` = $\beta$.
+
+we fit the density:
+```cpp
+kde& kde::fit(const arma::vec& x);
+```
+
+we can predict densities for new query points:
+```cpp
+arma::vec kde::predict(const arma::vec& xgrid);
+arma::vec kde::operator()(const arma::vec& xgrid);
+
+double kde::predict(double x);
+double kde::operator()(double x);
+```
+
+We can sample our density (bootstrapping):
+```cpp
+arma::vec kde::sample(unsigned int n=1);
+```
+
+The object retains additional information from fitting, 
+```cpp
+const arma::vec& data;
+const double& bandwidth;
+```
+
+The kde object may be saved to a file, and loaded from one:
+```cpp
+void kde::save(const std::string& fname);
+
+void kde::load(const std::string& fname);
+kde::kde(const std::string& fname); // load on construction
 ```
 
 ### Regularized Linear Least Squares Regression

@@ -16,14 +16,14 @@ arma::vec f(arma::vec& X) {
 
 int main() {
     arma::vec x = 5*arma::randu(100)-2.5;
-    arma::vec y = f(x) + 0.05*arma::randn(arma::size(x));
+    arma::vec y = f(x) + 0.1*arma::randn(arma::size(x));
 
     knn_algorithm alg;
-    alg = KD_TREE; // stores data in kd-tree allowing for O(log n) query time when x.n_cols << x.n_rows
+    alg = knn_algorithm::KD_TREE; // stores data in kd-tree allowing for O(log n) query time when x.n_cols << x.n_rows
     // alg = BRUTE; // stores data as is ==> O(n) query time
     knn_metric metr;
     // metr = CONSTANT; // takes the average of all the neighbors
-    metr = DISTANCE; // weighs the average accoriding to distance
+    metr = knn_metric::DISTANCE; // weighs the average accoriding to distance
     arma::uvec k_set = {1,2,4,8,16,32};
     numerics::knn_regression model(k_set,alg,metr);
     model.fit(x,y);
