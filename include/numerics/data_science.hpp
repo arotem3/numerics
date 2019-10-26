@@ -13,6 +13,27 @@ enum class bandwidth_estimator {
     grid_cv
 };
 
+enum class knn_algorithm {
+    AUTO,
+    KD_TREE,
+    BRUTE
+};
+
+enum class knn_metric {
+    CONSTANT,
+    L1_DISTANCE,
+    L2_DISTANCE
+};
+
+namespace bw { // a selection of bandwidth estimation methods
+    arma::vec eval_kernel(const arma::vec& x, numerics::kernels K);
+    double dpi(const arma::vec& x, double s=0, numerics::kernels K=numerics::kernels::gaussian);
+    double dpi_binned(const numerics::bin_data& bins, double s=0, numerics::kernels K=numerics::kernels::gaussian);
+    double rot1(int n, double s);
+    double rot2(const arma::vec& x, double s = 0);
+    double grid_mse(const arma::vec& x, numerics::kernels K, double s=0, int grid_size=20, bool binning=false);
+};
+
 class k_folds {
     private:
     int direction, num_folds;
@@ -136,15 +157,6 @@ class splines {
 
     void load(std::istream&);
     void save(std::ostream&);
-};
-
-namespace bw {
-    arma::vec eval_kernel(const arma::vec& x, numerics::kernels K);
-    double dpi(const arma::vec& x, double s=0, numerics::kernels K=numerics::kernels::gaussian);
-    double dpi_binned(const numerics::bin_data& bins, double s=0, numerics::kernels K=numerics::kernels::gaussian);
-    double rot1(int n, double s);
-    double rot2(const arma::vec& x, double s = 0);
-    double grid_mse(const arma::vec& x, numerics::kernels K, double s=0, int grid_size=20, bool binning=false);
 };
 
 class kernel_smooth {
@@ -281,68 +293,47 @@ class logistic_regression {
     }
 };
 
-enum class knn_algorithm {
-    AUTO,
-    KD_TREE,
-    BRUTE
-};
-
-enum class knn_metric {
-    CONSTANT,
-    DISTANCE
-};
-
 class knn_regression {
     protected:
     bool categorical_loss;
     numerics_private_utility::kd_tree_util::kd_tree X_tree;
-    arma::mat X_array;
-    arma::mat Y;
+    arma::mat X_array, Y;
     arma::uvec kk;
-    arma::vec cv_scores;
     int k;
     knn_algorithm alg;
     knn_metric metr;
-    double fit_no_replace(const arma::mat& train_X, const arma::mat& train_Y, const arma::mat& test_X, const arma::mat& test_Y, int K);
+    double score_regression(const arma::mat& train_X, const arma::mat& train_Y, const arma::mat& test_X, const arma::mat& test_Y, int K);
     arma::rowvec voting_func(const arma::rowvec& pt, const arma::mat& neighbors_X, const arma::mat& neighbors_Y);
     arma::uvec brute_knn(const arma::rowvec& pt, const arma::mat& X, int K);
 
     public:
+    const int& num_neighbors;
+    const arma::mat& data_X;
+    const numerics_private_utility::kd_tree_util::kd_tree& tree_X;
+    const arma::mat& data_Y;
+
     knn_regression(uint K, knn_algorithm algorithm = knn_algorithm::AUTO, knn_metric metric = knn_metric::CONSTANT);
     knn_regression(const arma::uvec K_set, knn_algorithm algorithm = knn_algorithm::AUTO, knn_metric metric = knn_metric::CONSTANT);
-    knn_regression& fit(const arma::mat& X, const arma::mat& Y);
+    void fit(const arma::mat& X, const arma::mat& Y);
     arma::mat predict(const arma::mat& xgrid);
-    arma::mat operator()(const arma::mat& xgrid) {
-        return predict(xgrid);
-    }
-    int num_neighbors() const {
-        return k;
-    }
-    arma::mat get_cv_results() const;
-    arma::mat data_X() {
-        if (alg == knn_algorithm::KD_TREE) return X_tree.data();
-        else return X_array;
-    }
-    arma::mat data_Y() {
-        return Y;
-    }
+    arma::mat operator()(const arma::mat& xgrid);
 };
 
-class knn_classifier : public knn_regression {
+class knn_classifier : private knn_regression {
+    private:
+    arma::uvec cats;
+
     public:
-    knn_classifier(uint K, knn_algorithm algorithm = knn_algorithm::AUTO, knn_metric metric = knn_metric::CONSTANT) : knn_regression(K,algorithm,metric) {
-        categorical_loss = true;
-    }
-    knn_classifier(const arma::uvec K_set, knn_algorithm algorithm = knn_algorithm::AUTO, knn_metric metric = knn_metric::CONSTANT) : knn_regression(K_set,algorithm,metric) {
-        categorical_loss = true;
-    }
-    arma::mat predict_probabilities(const arma::mat& xgrid) {
-        return predict(xgrid);
-    }
-    arma::umat predict_categories(const arma::mat& xgrid) {
-        arma::uvec ind = arma::index_max(predict_probabilities(xgrid),1);
-        arma::umat categories = arma::zeros<arma::umat>(ind.n_rows,Y.n_cols);
-        for (uint i=0; i < ind.n_rows; ++i) categories(i,ind(i)) = 1;
-        return categories;
-    }
+    const arma::uvec& categories;
+    using knn_regression::num_neighbors;
+    using knn_regression::data_X;
+    using knn_regression::tree_X;
+
+    knn_classifier(uint K, knn_algorithm algorithm = knn_algorithm::AUTO, knn_metric metric = knn_metric::CONSTANT);
+    knn_classifier(const arma::uvec K_set, knn_algorithm algorithm = knn_algorithm::AUTO, knn_metric metric = knn_metric::CONSTANT);
+    
+    void fit(const arma::mat& X, const arma::uvec& y);
+    
+    arma::mat predict_probabilities(const arma::mat& xgrid);
+    arma::uvec predict_categories(const arma::mat& xgrid);
 };

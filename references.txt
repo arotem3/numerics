@@ -1,5 +1,5 @@
 Author: Amit Rotem
-Last modified: 6/11/2019
+Last modified: 10/25/2019
 
 I used the following sources:
 Armadillo:
@@ -15,21 +15,22 @@ matplotlibcpp:
 [3] https://github.com/lava/matplotlib-cpp
 
 algorithms:
-[4] Many of the methods here were adapted from algorithms taught at various classes I took (or am currently taking)
-        at the Colorado School of Mines within the Computational and Applied Math department.
+[4] Many of the methods here were adapted from algorithms taught at various classes I took (or am currently taking) at the Colorado School of Mines within the Applied Mathematics and Statistics department.
 
-[5] LeVeque, Randall J. "Finite difference methods for ordinary and partial differential equations"
+[5] LeVeque, Randall J. "Finite difference methods for ordinary and partial differential equations". SIAM, 2007.
 
-[6] Lloyd N. Trefethen "Spectral Methods in MATLAB"
+[6] Lloyd N. Trefethen "Spectral Methods in MATLAB". SIAM, 2000.
 
-[7] Manolis I. A.Lourakis "A Brief Description of the Levenberg-Marquardt Algorithm Implemened by levmar"
+[7] Manolis I. A.Lourakis "A Brief Description of the Levenberg-Marquardt Algorithm Implemened by levmar", 2005.
 
-[8] http://www.scholarpedia.org/article/Nelder-Mead_algorithm
+[8] http://www.scholarpedia.org/article/Nelder-Mead_algorithm accessed Oct 2019
 
-[9] Fornberg, Bengt "Calculation of weights in finite difference formulas"
+[9] Fornberg, Bengt "Calculation of weights in finite difference formulas". SIAM, 1998
 
-[10] E. Hairer, G. Wanner, "Solving Ordinary Differential Equations II"
+[10] E. Hairer, G. Wanner, "Solving Ordinary Differential Equations II". Springer-Verlag, 1993.
 
-[11] Gramacki A. "Nonparametric Kernel Density Estimation and Its Computational Aspects"
+[11] Gramacki A. "Nonparametric Kernel Density Estimation and Its Computational Aspects". Springer International Publishing, 2018.
+
+[12] Brent, R. P. "Algorithms for Minimization Without Derivatives". Prentice-Hall, 1972.
 
 [*] a lot of Wikipedia...

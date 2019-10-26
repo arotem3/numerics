@@ -446,7 +446,9 @@ class mgd : public optimizer {
     double damping_param;
     double step_size;
     mgd(double tolerance = 1e-3);
-    void minimize(const std::function<arma::vec(const arma::vec&)>& grad_f, arma::vec& x, int max_iter = -1);
+    void minimize(const std::function<arma::vec(const arma::vec&)>& grad_f,
+                    arma::vec& x,
+                    int max_iter = -1);
 };
 ```
 The parameter `damping_param` is has a good explaination found in this [article](https://distill.pub/2017/momentum/). Setting this value to 0 is equivalent to traditional gradient descent.
@@ -460,7 +462,9 @@ class nlcgd : public optimizer {
     public:
     double step_size;
     nlcgd(double tolerance = 1e-3);
-    void minimize(const std::function<arma::vec(const arma::vec&)>& grad_f, arma::vec& x, int max_iter = -1);
+    void minimize(const std::function<arma::vec(const arma::vec&)>& grad_f,
+                    arma::vec& x,
+                    int max_iter = -1);
 };
 ```
 The step size can be specified by `step_size` this can improve performance over the adaptive line minimization when the gradient is easy to evaluate but the may require more itterations until convergence.
@@ -472,7 +476,9 @@ class adj_gd : public optimizer {
     public:
     double step_size;
     adj_gd(double tolerance = 1e-3);
-    void minimize(const std::function<arma::vec(const arma::vec&)>& grad_f, arma::vec& x, int max_iter = -1);
+    void minimize(const std::function<arma::vec(const arma::vec&)>& grad_f,
+                    arma::vec& x,
+                    int max_iter = -1);
 };
 ```
 The step size can be specified by `step_size` this can improve performance over the adaptive line minimization when the gradient is easy to evaluate but the may require more itterations until convergence.
@@ -743,7 +749,8 @@ Once our `kmeans` object is constructed we can get information about which data 
 ```cpp
 arma::vec kmeans::get_clusters() const; 
 /*
-the i^th elem corresponds to the i^th data point. The i^th element contains the cluster number which is an int ranging on [0,k-1]
+the i^th elem corresponds to the i^th data point.
+The i^th element contains the cluster number which is an int ranging on [0,k-1]
 */
 
 arma::mat kmeans::get_centroids() const;
@@ -757,7 +764,8 @@ We can test our clustering by predicting the cluster of data the `kmeans` was no
 arma::rowvec kmeans::operator()(const arma::mat& X);
 arma::rowvec kmeans::predict(const arma::mat& X);
 /*
-the i^th elem corresponds to the i^th data point. The i^th element contains the cluster number which is an int ranging on [0,k-1]
+the i^th elem corresponds to the i^th data point.
+The i^th element contains the cluster number which is an int ranging on [0,k-1]
 */
 
 int kmeans::operator()(const arma::rowvec& X);
@@ -827,8 +835,10 @@ arma::mat splines::rbf_coef() const; // return radial basis coefficients
 arma::mat splines::polyKern(const arma::mat&); // evaluate unscaled polynomial basis functions
 arma::mat splines::poly_coef() const; // return polynomial basis coefficients
 
-double splines::gcv_score() const; // return generalized cross validation score from fit (MSE scaled by eff_df)
-double splines::eff_df() const; // return approximate effective degrees of freedom determined from sensitivities of the system
+double splines::gcv_score() const;
+    // return generalized cross validation score from fit (MSE scaled by eff_df)
+double splines::eff_df() const;
+    // return approximate effective degrees of freedom determined from sensitivities of the system
 double splines::smoothing_param() const; // return lambda
 ```
 We can save and load a splines object to a stream (file):
@@ -930,8 +940,7 @@ arma::mat knn_regression::predict(const arma::mat& xx);
 ```
 We can also request additional information from the object:
 ```cpp
-int knn_regression::num_neighbors() const; // get k used to predict
-arma::mat knn_regression::get_cv_results() const; // first column is the set of k tested, second column is the corresponding MSE score.
+const int& knn_regression::num_neighbors; // get k used to predict
 ```
 We can use a modified version of `knn_regression` for (multi-)classification:
 ```cpp
@@ -1114,7 +1123,9 @@ Our object retains some extra information from fit:
 arma::mat regularizer::coef(); // returns the coefficient matrix
 
 double regularizer::MSE() const; // returns the MSE from fit
-double regularizer::eff_df() const; // returns the approximate effictive degrees of freedom in the system determined from the sensitivity of the system
+double regularizer::eff_df() const;
+    /* returns the approximate effictive degrees of freedom in the system
+     determined from the sensitivity of the system */
 double regularizer::regularizing_param() const; // returns the regularization parameter
 arma::mat regularizer::regularizing_mat() const; // returns the regualarizing matrix
 ```
@@ -1211,7 +1222,8 @@ class ivp {
     double max_nonlin_err;
     unsigned int stopping_event;
     
-    void add_stopping_event(const std::function<double(double,const arma::rowvec&)>& event, event_direction dir = ALL);
+    void add_stopping_event(const std::function<double(double,const arma::rowvec&)>& event,
+                            event_direction dir = ALL);
 };
 ```
 Events are defined in a [later section](#ivp-events).
@@ -1348,7 +1360,8 @@ enum class event_direction {
     ALL = 0,
     POSITIVE = 1
 };
-void add_stopping_event(const std::function<double(double,const arma::rowvec&)>& event, event_direction dir);
+void add_stopping_event(const std::function<double(double,const arma::rowvec&)>& event,
+                        event_direction dir);
 ```
 Allows the the user to add an event function which acts as a secondary stopping criterion for the solver. An event function specifies to the solver that whenever $\text{event}(t_k,u_k) = 0$ the solver should stop. We can further constrain the stopping event by controlling the sign of $\text{event}(t_{k-1},u_{k-1})$. e.g. if `dir = NEGATIVE`, the solver will stop iff: $\text{event}(t_k,u_k) = 0$ __*and*__ $\text{event}(t_{k-1},u_{k-1}) < 0$.
 

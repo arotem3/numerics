@@ -15,23 +15,24 @@ arma::vec f(arma::vec& X) {
 }
 
 int main() {
+    arma::arma_rng::set_seed(123);
     arma::vec x = 5*arma::randu(100)-2.5;
-    arma::vec y = f(x) + 0.1*arma::randn(arma::size(x));
+    arma::vec y = f(x) + 0.1*arma::randn(arma::size(x))%arma::round(arma::randu(arma::size(x))*1);
 
-    knn_algorithm alg;
-    alg = knn_algorithm::KD_TREE; // stores data in kd-tree allowing for O(log n) query time when x.n_cols << x.n_rows
-    // alg = BRUTE; // stores data as is ==> O(n) query time
-    knn_metric metr;
-    // metr = CONSTANT; // takes the average of all the neighbors
-    metr = knn_metric::DISTANCE; // weighs the average accoriding to distance
-    arma::uvec k_set = {1,2,4,8,16,32};
-    numerics::knn_regression model(k_set,alg,metr);
+    knn_algorithm alg = knn_algorithm::KD_TREE; // stores data in kd-tree allowing for O(log n) query time when x.n_cols << x.n_rows
+                                                // BRUTE stores data as is ==> O(n) query time
+    
+    knn_metric metr = knn_metric::L2_DISTANCE; // L1_DISTANCE, CONSTANT
+    arma::uvec k_set = arma::regspace<arma::uvec>(2,20);
+    
+    numerics::knn_regression model(k_set, alg, metr);
     model.fit(x,y);
+    
     arma::vec t = arma::linspace(-3,3,500);
     arma::vec yhat = model.predict(t);
 
-    std::cout << "optimal k: " << model.num_neighbors() << '\n'
-              << "RMSE : " << arma::norm(y - model.predict(x)) << '\n';
+    std::cout << "optimal k: " << model.num_neighbors << '\n'
+              << "RMSE : " << arma::norm(f(t) - yhat)/t.n_elem << '\n';
 
     ddvec xx = arma::conv_to<ddvec>::from(x);
     ddvec yy = arma::conv_to<ddvec>::from(y);

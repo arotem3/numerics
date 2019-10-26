@@ -49,7 +49,7 @@ void numerics::logistic_regression::save(std::ostream& out) {
 }
 
 arma::mat numerics::logistic_regression::softmax(const arma::mat& z) {
-    arma::mat p = arma::exp(z);
+    arma::mat p = arma::exp(z - arma::max(z,1));
     p.each_row([](arma::rowvec& r)->void{r /= arma::accu(r);});
     return p;
 }
