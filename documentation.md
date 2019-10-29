@@ -1,3 +1,4 @@
+[//]: # (pandoc -s documentation.md -o documentation.pdf -V geometry:margin=0.75in --highlight-style tango)
 # `numerics.hpp` Documentation
 
 ## Table of Contents
@@ -22,6 +23,9 @@
     * [secant method](#secant)
     * [bisection](#bisection-method)
 * [nonlinear optimization](#nonlinear-optimization)
+    * [bounded univariate minimization](#fminbnd)
+    * [unbounded univariate minimization](#fminsearch)
+    * [multivariate minimization](#multivariate-minimization)
     * [Newton's Method](#Newton's-Method-for-minimization)
     * [BFGS](#Broyden–Fletcher–Goldfarb–Shanno-algorithm)
     * [LBFGS](#Limited-Memory-BFGS)
@@ -369,6 +373,23 @@ double bisect(const function<double(double)>& f,
 ```
 
 ## Nonlinear Optimization
+
+### fminbnd
+provided a continuous function $f:(a,b)\rightarrow\mathbb{R}$ which is not necessarily continuous at the end points, we can find a local minimum of $f$ within a small number of steps (bounded by $\approx 2.88[\log_2 \frac{b-a}{\epsilon}]^2\approx 100$ function evaluations, when we select $\epsilon=10^{-8}\times(b-a)$). The method:
+```cpp
+double fminbnd(const function<double(double)>& f, double a, double b);
+```
+solves the problem: $\text{fminbnd}(f,a,b) = \mathrm{argmin}_{x\in(a,b)} f$ using the algorithm provided by Brent (1972).
+
+### fminsearch
+provided a continuous and finite function $f:\mathbb{R}\rightarrow\mathbb{R}$ which is not-necessarily continuous or finite at $\pm\infty$, we can attempt to find a local minimum of $f$ near $x_0$ ussually within a small number of iterations (and likely to converge quickly for strongly convex $f$). The method:
+```cpp
+double fminsearch(const function<double(double)>& f, double x0, double alpha=0);
+```
+solves the problem $\text{fminsearch}(f,x_0)=\mathrm{argmin}_{\text{near }x_0}f$ using the Nelder-Mead algorithm restricted to one dimension. The parameter `alpha` specifies an initial step size for the algorithm in the positive direction. If one is not provided (or a non-positive value is provided) then $\alpha=\max\{\epsilon,\epsilon\times\left|x_0\right|\}$.
+
+### Multivariate Minimization
+
 All of the nonlinear optimizers inherit from the class `optimizer`:
 ```cpp
 class optimizer {

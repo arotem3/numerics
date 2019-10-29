@@ -314,3 +314,7 @@ class gen_optim : public optimizer {
                     const arma::vec& upper_bound);
     void maximize(const std::function<double(const arma::vec&)>& f, arma::vec& x);
 };
+
+//--- univariate ---//
+double fminbnd(const std::function<double(double)>& f, double a, double b);
+double fminsearch(const std::function<double(double)>& f, double x0, double alpha=0);

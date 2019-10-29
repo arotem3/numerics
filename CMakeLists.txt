@@ -62,6 +62,7 @@ add_library(numerics SHARED
         src/optimization/broyd.cpp
         src/optimization/cgd.cpp
         src/optimization/fzero.cpp
+        src/optimization/fmin.cpp
         src/optimization/gen_optim.cpp
         src/optimization/lbfgs.cpp
         src/optimization/line_min.cpp

@@ -25,15 +25,6 @@ enum class knn_metric {
     L2_DISTANCE
 };
 
-namespace bw { // a selection of bandwidth estimation methods
-    arma::vec eval_kernel(const arma::vec& x, numerics::kernels K);
-    double dpi(const arma::vec& x, double s=0, numerics::kernels K=numerics::kernels::gaussian);
-    double dpi_binned(const numerics::bin_data& bins, double s=0, numerics::kernels K=numerics::kernels::gaussian);
-    double rot1(int n, double s);
-    double rot2(const arma::vec& x, double s = 0);
-    double grid_mse(const arma::vec& x, numerics::kernels K, double s=0, int grid_size=20, bool binning=false);
-};
-
 class k_folds {
     private:
     int direction, num_folds;
@@ -188,6 +179,15 @@ class kernel_smooth {
     arma::vec predict(const arma::vec&);
     double operator()(double);
     arma::vec operator()(const arma::vec&);
+};
+
+namespace bw { // a selection of bandwidth estimation methods
+    arma::vec eval_kernel(const arma::vec& x, numerics::kernels K);
+    double dpi(const arma::vec& x, double s=0, numerics::kernels K=numerics::kernels::gaussian);
+    double dpi_binned(const numerics::bin_data& bins, double s=0, numerics::kernels K=numerics::kernels::gaussian);
+    double rot1(int n, double s);
+    double rot2(const arma::vec& x, double s = 0);
+    double grid_mse(const arma::vec& x, numerics::kernels K, double s=0, int grid_size=20, bool binning=false);
 };
 
 class kde {
