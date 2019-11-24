@@ -1,239 +1,200 @@
 #include "numerics.hpp"
 
-/* splines(m) : initialize splines object.
- * --- m : supplement fit by (m-1) degree polynomial, this parameter should be taken so m is small and (2*m - dimension of x) >= 1 */
-numerics::splines::splines(int m) {
-    this->m = m;
+/* splines(poly_degree=1) : initialize splines object.
+ * --- poly_degree : degree polynomial used in fit, the default value results in a linear fit. This parameter should be taken so m is small, a good rule of thumb is: (2*poly_degree - x.n_cols) >= 1 */
+numerics::splines::splines(uint poly_degree) : smoothing_param(_lambda), eff_df(_df), RMSE(_rmse), residuals(_res), poly_coef(_d), rbf_coef(_c), data_X(_X), data_Y(_Y), rbf_eigenvals(_eigvals), rbf_eigenvecs(_eigvecs) {
+    _deg = poly_degree;
+    _lambda = -1;
+    _df = -1;
+    _fitted = false;
+    _use_df = false;
 }
 
-/* splines(lambda, m) : initialize splines object.
- * --- lambda : smoothing parameter.
- * --- m : supplement fit by (m-1) degree polynomial, this parameter should be taken so m is small and (2*m - dimension of x) >= 1 */
-numerics::splines::splines(double lambda, int m) {
-    this->m = m;
-    this->lambda = lambda;
-}
-
-/* splines(X, Y, m) : initialize and fit splines object.
- * --- X : array of indpendent variable data, where each row is data point.
- * --- Y : array of dependent variable data, where each row is a data point.
- * --- m : supplement fit by (m-1) degree polynomial, this parameter should be taken so m is small and (2*m - dimension of x) >= 1 */
-numerics::splines::splines(const arma::mat& X, const arma::mat& Y, int m) {
-    dim = X.n_cols;
-    n = X.n_rows;
-    if (2*m - dim < 1) {
-        std::cerr << "splines() warning: invalid parameter value." << std::endl
-                  << "It is required that m >= " << (dim + 1)/2 << std::endl
-                  << "setting m = " << std::ceil( (dim+1)/2.0) << std::endl;
-        m = std::ceil( (dim+1)/2.0);
-    }
-    this->m = m;
-    this->X = X;
-    this->Y = Y;
-
-    gen_monomials();
-    arma::mat P = polyKern(X);
-    arma::mat Pi = arma::pinv(P);
-
-    arma::mat K = rbf(X);
-
-
-    arma::mat V; arma::vec D;
-    arma::eig_sym(D, V, K);
-
-    
-    int N = 50;
-    arma::vec L = arma::logspace(-3,3,N-2);
-    L = arma::join_cols(arma::vec({0,arma::datum::inf}), L);
-
-    cv_scores = arma::zeros(N);
-
-    for (int i=0; i<N; ++i) {
-        double lam = L(i);
-        if (lam == 0) {
-            k_folds split(X,Y,3);
-            double cv = 0;
-            for (int i=0; i < 3; ++i) {
-                arma::mat K0 = rbf(split.train_set_X(i), split.train_set_X(i));
-                arma::mat K0i = arma::pinv(K0);
-                arma::mat c_hat = K0i * split.train_set_Y(i);
-                arma::mat yhat = rbf(split.train_set_X(i),split.test_set_X(i)) * c_hat;
-                double dof = arma::trace(K0*K0i);
-                int nn = 2*n/3;
-                cv += std::pow(arma::norm(yhat - split.test_set_Y(i)),2);
-            }
-            cv_scores(i) += cv/n;
-        } else if (std::isinf(lam)) {
-            arma::mat hatmat = P*Pi;
-            arma::mat yhat = hatmat*Y;
-            double dof = arma::trace(hatmat);
-            double cv = arma::norm(Y - yhat) / (1 - dof/n);
-            cv_scores(i) = cv*cv/n;
-        } else {
-            arma::mat Ki = V * arma::diagmat(1/(D + lam)) * V.t();
-            arma::mat c_hat = Ki * Y;
-            arma::mat d_hat = Pi * (Y - K*c_hat);
-            arma::mat yhat = K*c_hat + P*d_hat;
-            Ki = K*Ki;
-            double dof = arma::trace(P*Pi*(arma::eye(n,n) - Ki) + Ki);
-            double cv = arma::norm(Y - yhat) / (1 - dof/n);
-            cv_scores(i) = cv*cv/n;
-        }
-    }
-    int I = cv_scores.index_min();
-    this->lambda = L(I);
-    arma::mat Ki = V * arma::diagmat(1/(D + lambda)) * V.t();
-    c = Ki * Y;
-    d = Pi * (Y - K*c);
-    arma::mat yhat = K*c + P*d;
-    Ki = K*Ki;
-    df = arma::trace(P*Pi*(arma::eye(n,n) - Ki) + Ki);
-    gcv = arma::norm(Y - yhat) / (1 - df/n);
-    gcv *= gcv/n;
-}
-
-/* splines(X, Y, lambda, m) : initialize and fit splines object.
- * --- X : array of indpendent variable data, where each row is data point.
- * --- Y : array of dependent variable data, where each row is a data point.
- * --- lambda : smoothing parameter.
- * --- m : supplement fit by (m-1) degree polynomial, this parameter should be taken so m is small and (2*m - dimension of x) >= 1 */
-numerics::splines::splines(const arma::mat& X, const arma::mat& Y, double lambda, int m) {
-    if (X.n_rows != Y.n_rows) {
-        std::cerr << "splines() error: number of observations in x (" << X.n_rows << ") does not equal the number of observations in y (" << Y.n_rows << ").\n";
+/* set_smoothing_param(lambda) : set the smoothing parameter for performing ridge regression on the kernel. If one is never set, it will be determined by smoothed cross-validation. If the fit() function has been called, this function will raise an error.
+--- lambda : smoothing parameter >= 0 */
+void numerics::splines::set_smoothing_param(double lambda) {
+    if (_fitted) {
+        std::cerr << "splines::set_smoothing_param() error: object has already been fitted, the smoothing parameter is " << _lambda << "\n";
         return;
     }
-    dim = X.n_cols;
-    n = X.n_rows;
-    if (2*m - dim < 1) {
-        std::cerr << "splines() warning: invalid parameter value." << std::endl
-                  << "It is required that m >= " << (dim + 1)/2 << std::endl
-                  << "setting m = " << std::ceil( (dim+1)/2.0) << std::endl;
-        m = std::ceil( (dim+1)/2.0);
+    if (lambda < 0) {
+        std::cerr << "splines::set_smoothing_param() error: smoothing parameter must be non-negative, lambda provided = " << lambda << "\n";
+        return;
     }
-    this->m = m;
-    this->lambda = lambda;
-    this->X = X;
-    this->Y = Y;
+    _lambda = lambda;
+    _use_df = false;
+}
 
-    if (lambda == 0) {
-        arma::mat K = rbf(X);
-        arma::mat Ki = arma::pinv(K); // shouldn't happen
-        c = Ki*Y;
-        df = arma::trace(K*Ki);
-        gcv = 0;
-    } else if (std::isinf(lambda)) {
-        gen_monomials();
-        arma::mat P = polyKern(X);
-        arma::mat Pi = arma::pinv(P);
-        d = Pi*Y;
-        df = arma::trace(P*Pi);
-        gcv = arma::norm(Y - P*d,"fro");
-        gcv *= gcv/n;
-    } else {
-        gen_monomials();
-        arma::mat P = polyKern(X);
-        arma::mat Pi = arma::pinv(P);
-        arma::mat K = rbf(X);
-        arma::mat Ki;
-        bool chol_success = arma::inv_sympd(Ki,K + lambda*arma::eye(arma::size(K)));
-        if (!chol_success) Ki = arma::pinv(K + lambda*arma::eye(arma::size(K))); // shouldn't happen
-        c = Ki*Y;
-        d = Pi*(Y - K*c);
-        arma::mat yhat = K*c + P*d;
-        Ki = K*Ki;
-        df = arma::trace(P*Pi*(arma::eye(n,n) - Ki) + Ki);
-        gcv = arma::norm(Y - yhat) / (1 - df/n);
-        gcv *= gcv/n;
+/* set_degrees_of_freedom(df) : set the effective degrees of freedom for the spline object, must be in bounds: 1 < x < num_obs
+ * --- df : effective degrees of freedom. */
+void numerics::splines::set_degrees_of_freedom(double df) {
+    if (_fitted) {
+        std::cerr << "splines::set_degrees_of_freedom() error: object has already been fitted, the effective degrees of freedom are " << _df << "\n";
+        return;
     }
+    if (df < 1) {
+        std::cerr << "splines::set_degrees_of_freedom() error: effective degrees of freedom must be greater than 1, df provided = " << df << "\n";
+        return;
+    }
+    _df = df;
+    _use_df = true;
 }
 
 /* splines(in) : initialize spline object by loading object from a stream. */
-numerics::splines::splines(std::istream& in) {
+numerics::splines::splines(const std::string& in) : smoothing_param(_lambda), eff_df(_df), RMSE(_rmse), residuals(_res), poly_coef(_d), rbf_coef(_c), data_X(_X), data_Y(_Y), rbf_eigenvals(_eigvals), rbf_eigenvecs(_eigvecs) {
     load(in);
 }
 
-/* fit(X, Y) : fit splines object.
- * --- X : array of indpendent variable data, where each row is data point.
- * --- Y : array of dependent variable data, where each row is a data point. */
-numerics::splines& numerics::splines::fit(const arma::mat& X, const arma::mat& Y) {
-    if (lambda < 0) splines(X, Y, m);
-    else splines(X, Y, lambda, m);
-    return *this;
-}
+/* fit(x,y) : fit splines object.
+ * --- x : array of indpendent variable data, where each row is data point.
+ * --- y : array of dependent variable data, where each row is a data point. */
+void numerics::splines::fit(const arma::mat& x, const arma::mat& y) {
+    if (_fitted) {
+        std::cerr << "splines::fit() error: object has already been fitted.\n";
+        return;
+    }
+    if (x.n_rows != y.n_rows) {
+        std::cerr << "splines::fit() error: number of observations in x (" << x.n_rows << ") does not equal the number of observations in y (" << y.n_rows << ").\n";
+        return;
+    }
+    _dim = x.n_cols;
 
-/* fit_predict(X, Y) : fit splines object and predict on same data. same as this.fit(X,Y).predict(X) */
-arma::mat numerics::splines::fit_predict(const arma::mat& X, const arma::mat& Y) {
-    return fit(X,Y).predict(X);
+    uint n_obs = x.n_rows;
+    _X = x;
+    _Y = y;
+
+    // compute valuable polynomial terms with coefficients
+    gen_monomials();
+    arma::mat P = eval_poly(_X);
+    numerics::lasso_cv Lasso;
+
+    Lasso.fit(P, _Y, true);
+    arma::mat d = Lasso.coef;
+    
+    // keep only nonzero coefficient terms
+    std::vector<std::vector<uint>> mons;
+    arma::uvec nnzi = arma::zeros<arma::uvec>(d.n_rows);
+    nnzi(0) = 1; // always keep the intercept
+    for (uint i=0; i < d.n_rows-1; ++i) {
+        if (arma::any(arma::abs(d.row(i+1)) > 1e-5)) {
+            mons.push_back(std::move(_monomials.at(i)));
+            nnzi(i+1) = 1;
+        }
+    }
+    _monomials = std::move(mons);
+    nnzi = arma::find(nnzi==1);
+    _d = d.rows(nnzi);
+    P = P.cols(nnzi);
+    uint nnz = nnzi.n_elem;
+
+    if (2*nnz > n_obs) {
+        std::cerr << "splines::fit() warning: too many significant polynomial terms, solution system may be ill-conditioned, consider reducing the degree.\n";
+    }
+
+    // produce RBF kernel
+    arma::mat K = eval_rbf();
+    arma::eig_sym(_eigvals, _eigvecs, K);
+    arma::vec D2 = arma::pow(_eigvals, 2);
+    
+    if (_use_df) { // need to solve for lambda
+        if (_df > n_obs) {
+            std::cerr << "splines::fit() warning: requested degrees of freedom exceed the feasible range, setting _df ~ " << n_obs << "\n";
+            _lambda = 0;
+        } else if (_df == n_obs) {
+            _lambda = 0;
+        } else {
+            auto g = [&](double L) -> double {
+                return _df - arma::sum(D2 / (D2 + L));
+            };
+            double Dmin = D2.min();
+            _lambda = numerics::bisect(g, Dmin, D2.max(), Dmin/2); // solution is guaranteed to be bounded in the range of eigenvalues
+        }
+    }
+
+    if (_lambda >= 0) { // valid lambda provided
+        if (_lambda == 0) { // interpolation
+            _c = _eigvecs * arma::diagmat(1 / _eigvals) * _eigvecs.t() * _Y;
+            if (!_use_df) _df = n_obs;
+        } else {
+            _c = _eigvecs * arma::diagmat(_eigvals / (D2 + _lambda)) * _eigvecs.t() * (_Y - P*_d);
+            if (!_use_df) _df = arma::sum(D2 / (D2 + _lambda));
+        }
+    } else { // cross-validation
+        arma::mat er = (_Y - P*_d);
+        arma::mat Ver = _eigvecs.t() * er;
+        auto GCV = [&](double lam) -> double {
+            _c = _eigvecs * arma::diagmat(_eigvals / (D2 + lam)) * Ver;
+            _df = arma::sum(D2 / (D2 + lam));
+            double rmse = arma::norm(er - K*_c,"fro");
+            return std::pow(rmse / (n_obs-_df), 2) * n_obs;
+        };
+        _lambda = numerics::fminbnd(GCV, 0, 1e4);
+    }
+    _res = _Y - predict(_X);
+    _rmse = arma::norm(_res, "fro") / _res.n_elem;
 }
 
 /* rbf(xgrid) : build radial basis kernel matrix from fitted data evaluated at a new set of points.
  * --- xgrid : set of points to evaluate RBFs on. */
-arma::mat numerics::splines::rbf(const arma::mat& xgrid) {
-    int n = X.n_rows;
-    int ngrid = xgrid.n_rows;
+arma::mat numerics::splines::eval_rbf(const arma::mat& xgrid) {
+    uint n = _X.n_rows;
+    uint ngrid = xgrid.n_rows;
+    uint k_order = 2*(_deg+1) - _Y.n_cols;
     arma::mat K = arma::zeros(ngrid, n);
-    for (int i=0; i < ngrid; ++i) {
-        for (int j=0; j < n; ++j) {
-            double z = arma::norm(xgrid.row(i) - X.row(j));
-            K(i,j) = std::pow(z, 2*m-dim);
-            if (dim%2 == 0) K(i,j) *= std::log(z);
-            if (std::isnan(K(i,j)) || std::isinf(K(i,j))) K(i,j) = 0;
+    for (uint i=0; i < ngrid; ++i) {
+        for (uint j=0; j < n; ++j) {
+            double z = arma::norm(xgrid.row(i) - _X.row(j));
+            if (_dim%2 == 0) {
+                if (z < 1) K(i,j) = std::pow(z, k_order-1) * std::log(std::pow(z,z));
+                else K(i,j) = std::pow(z, k_order) * std::log(z);
+            } else K(i,j) = std::pow(z, k_order);
         }
     }
     return K;
 }
 
-/* rbf(x,xgrid) : *private* build radial basis kernel from arbitrary data matrix x evaluated at xgrid. */
-arma::mat numerics::splines::rbf(const arma::mat& x, const arma::mat& xgrid) {
-    int n = x.n_rows;
-    int ngrid = xgrid.n_rows;
-    arma::mat K = arma::zeros(ngrid, n);
-    for (int i=0; i < ngrid; ++i) {
-        for (int j=0; j < n; ++j) {
-            double z = arma::norm(xgrid.row(i) - x.row(j));
-            K(i,j) = std::pow(z, 2*m-dim);
-            if (dim%2 == 0) K(i,j) *= std::log(z);
-            if (std::isnan(K(i,j)) || std::isinf(K(i,j))) K(i,j) = 0;
+/* eval_rbf() : build radial basis kernel matrix from fitted data evaluated on the original data, since the matrix is symmetric we only need to compute half as many values. */
+arma::mat numerics::splines::eval_rbf() {
+    uint n = _X.n_rows;
+    uint k_order = 2*(_deg+1) - _Y.n_cols;
+    arma::mat K = arma::zeros(n, n);
+    for (uint i=0; i < n; ++i) {
+        for (uint j=0; j < i; ++j) {
+            double z = arma::norm(_X.row(i) - _X.row(j));
+            if (_dim%2 == 0) {
+                if (z < 1) K(i,j) = std::pow(z, k_order-1) * std::log(std::pow(z,z));
+                else K(i,j) = std::pow(z, k_order) * std::log(z);
+            } else K(i,j) = std::pow(z, k_order);
         }
     }
-    return K;
+    return arma::symmatl(K);
 }
 
-/* polyKern(xgrid) : build polynomial basis matrix evaluated at a set of points.
+/* eval_poly(xgrid) : build polynomial basis matrix evaluated at a set of points.
  * --- xgrid : set of points to evaluate polynomial basis on. */
-arma::mat numerics::splines::polyKern(const arma::mat& xgrid) {
-    int n = xgrid.n_rows;
-    int num_mons = monomials.size() + 1;
-    arma::mat P = arma::ones(n, num_mons);
-    for (int i=0; i < num_mons-1; ++i) {
-        for (int r : monomials.at(i) ) {
-            P.col(i+1) %= xgrid.col(r);
+arma::mat numerics::splines::eval_poly(const arma::mat& xgrid) {
+    uint n = xgrid.n_rows;
+    uint num_mons = _monomials.size() + 1;
+    arma::mat P = arma::ones(n, num_mons); // first column is an intercept i.e. [1, ..., 1].t()
+    for (uint i=1; i < num_mons; ++i) {
+        for (uint r : _monomials.at(i-1) ) {
+            P.col(i) %= xgrid.col(r);
         }
     }
     return P;
 }
 
-/* poly_coef() : returns coefficients for polynomial basis matrix from fit. */
-arma::mat numerics::splines::poly_coef() const {
-    return d;
-}
-
-/* rbf_coef() : returns coefficients for RBF kernel matrix from fit. */
-arma::mat numerics::splines::rbf_coef() const {
-    return c;
-}
-
-/* gen_monomials() : private member function. constructs list of all monomials of requested order and dimension. */
+/* gen_monomials() : __private__ constructs list of all monomials of requested order and dimension. */
 void numerics::splines::gen_monomials() {
-    std::queue<std::vector<int>> Q;
-    std::set<std::vector<int>> S;
-    for (int i=0; i < dim; ++i) {
-        std::vector<int> str = {i};
+    std::queue<std::vector<uint>> Q;
+    std::set<std::vector<uint>> S;
+    for (uint i=0; i < _dim; ++i) {
+        std::vector<uint> str = {i};
         Q.push(str);
     }
     while ( !Q.empty() ) {
-        std::vector<int> str = Q.front();
-        if (str.size() > m-1) { // invalid monomial
+        std::vector<uint> str = Q.front();
+        if (str.size() > _deg) { // invalid monomial
             Q.pop();
             continue;
         }
@@ -242,8 +203,8 @@ void numerics::splines::gen_monomials() {
             continue;
         } else { // new node
             S.insert(str);
-            for (int i=0; i < dim; ++i) {
-                std::vector<int> str2 = str;
+            for (uint i=0; i < _dim; ++i) {
+                std::vector<uint> str2 = str;
                 str2.push_back(i);
                 std::sort( str2.begin(), str2.end() );
                 Q.push(str2);
@@ -251,24 +212,22 @@ void numerics::splines::gen_monomials() {
             Q.pop();
         }
     }
-    monomials.clear();
-    for (const std::vector<int>& str : S) monomials.push_back(str);
+    _monomials.clear();
+    for (const std::vector<uint>& str : S) _monomials.push_back(str);
 }
 
 /* predict(xgrid) : evaluate spline fit on a set of new points.
  * --- xgrid : set of points to evaluate spline fit on. */
 arma::mat numerics::splines::predict(const arma::mat& xgrid) {
-    if (xgrid.n_cols != dim) {
+    if (xgrid.n_cols != _dim) {
         std::cerr << "splines::predict() error: dimension of new data do not match fitted data dimenstion." << std::endl
-                  << "dim(fitted data) = " << dim << " =/= " << xgrid.n_cols << " = dim(new data)" << std::endl;
+                  << "dim(fitted data) = " << _dim << " =/= " << xgrid.n_cols << " = dim(new data)" << std::endl;
         return arma::mat();
     }
-    if (lambda == 0) {
-        return rbf(xgrid)*c;
-    } else if (std::isinf(lambda)) {
-        return polyKern(xgrid)*d;
+    if (_lambda == 0) {
+        return eval_rbf(xgrid)*_c;
     } else {
-        return rbf(xgrid)*c + polyKern(xgrid)*d;
+        return eval_rbf(xgrid)*_c + eval_poly(xgrid)*_d;
     }
 }
 
@@ -277,100 +236,90 @@ arma::mat numerics::splines::operator()(const arma::mat& xgrid) {
     return predict(xgrid);
 }
 
-/* data_X() : return independent variable data matrix. */
-arma::mat numerics::splines::data_X() {
-    return X;
-}
-
-/* data_Y() : return dependent variable data matrix. */
-arma::mat numerics::splines::data_Y() {
-    return Y;
-}
-
-/* gcv_score() : return generalized MSE estimate from leave one out cross validation. */
-double numerics::splines::gcv_score() const {
-    return gcv;
-}
-
-/* eff_df() : return effective degrees of freedom of spline fit. */
-double numerics::splines::eff_df() const {
-    return df;
-}
-
-/* smoothing_param() : returns smoothing parameter, either from initialization or from cross validation. */
-double numerics::splines::smoothing_param() const {
-    return lambda;
-}
-
 /* load(in) : load in object from file. */
-void numerics::splines::load(std::istream& in) {
-    int c_rows, c_cols, d_rows, d_cols, nm;
-    in >> n >> dim >> m >> lambda >> df >> gcv;
-    if (lambda = -1) lambda = arma::datum::inf;
-
-    in >> c_rows >> c_cols;
-    c = arma::zeros(c_rows,c_cols);
-    for (int i=0; i < c_rows; ++i) {
-        for (int j=0; j < c_cols; ++j) in >> c(i,j);
+void numerics::splines::load(const std::string& fname) {
+    std::ifstream in(fname);
+    if (in.fail()) {
+        std::cerr << "splines::load() error: failed to open file.\n";
+        return; 
     }
+    uint c_rows, d_rows, nx, ny, nm;
+    in >> nx >> ny >> _dim >> _deg >> _lambda >> _df >> _rmse;
 
-    in >> d_rows >> d_cols;
-    d = arma::zeros(d_rows, d_cols);
-    for (int i=0; i < d_rows; ++i) {
-        for (int j=0; j < d_cols; ++j) in >> d(i,j);
+    in >> c_rows;
+    _c = arma::zeros(ny, c_rows);
+    for (uint i=0; i < ny; ++i) {
+        for (uint j=0; j < c_rows; ++j) in >> _c(i,j);
     }
+    _c = _c.t();
 
-    X = arma::zeros(n,dim);
-    for (int i=0; i < n; ++i) {
-        for (int j=0; j < dim; ++j) in >> X(i,j);
+    in >> d_rows;
+    _d = arma::zeros(ny, d_rows);
+    for (uint i=0; i < ny; ++i) {
+        for (uint j=0; j < d_rows; ++j) in >> _d(i,j);
     }
+    _d = _d.t();
 
-    monomials.clear();
+    _X = arma::zeros(_dim,nx);
+    for (uint i=0; i < _dim; ++i) {
+        for (uint j=0; j < nx; ++j) in >> _X(i,j);
+    }
+    _X = _X.t();
+
+    _Y = arma::zeros(ny,nx);
+    for (uint i=0; i < ny; ++i) {
+        for (uint j=0; j < nx; ++j) in >> _Y(i,j);
+    }
+    _Y = _Y.t();
+
+    _eigvecs = arma::zeros(nx,nx);
+    _eigvals = arma::zeros(nx);
+    for (uint i=0; i < nx; ++i) {
+        for (uint j=0; j < nx; ++j) in >> _eigvecs(i,j);
+    }
+    _eigvecs = _eigvecs.t();
+
+    for (uint i=0; i < nx; ++i) in >> _eigvals(i);
+
+    _monomials.clear();
     while (true) {
         in >> nm;
         if (in.eof()) break;
-        std::vector<int> str(nm);
-        for (int i=0; i < nm; ++i) {
+        std::vector<uint> str(nm);
+        for (uint i=0; i < nm; ++i) {
             in >> str.at(i);
         }
-        monomials.push_back(str);
+        _monomials.push_back(str);
     }
+    in.close();
 }
 
 /* save(out) : save object to file. */
-void numerics::splines::save(std::ostream& out) {
+void numerics::splines::save(const std::string& fname) {
+    std::ofstream out(fname);
+    if (out.fail()) {
+        std::cerr << "splines::save() error: failed to save instance to file.\n";
+        return;
+    }
     out << std::setprecision(10);
-    // parameters in order : n, dim, m, lambda, df, gcv
-    out << n << " " << dim << " "
-        << m << " ";
-    if (std::isinf(lambda)) out << -1 << " ";
-    else out << lambda << " ";
-    out << df << " " << gcv << std::endl << std::endl;
+    out << _X.n_rows << " " << _Y.n_cols << " " << _dim << " "
+        << _deg << " " << _lambda << " " << _df << " " << _rmse << "\n\n";
 
-    // c_rows, c_cols, c
-    out << c.n_rows << " " << c.n_cols;
-    for (int i=0; i < c.n_rows; ++i) {
-        for (int j=0; j < c.n_cols; ++j) out << " " << c(i,j);
-        out << std::endl;
-    }
+    out << _c.n_rows << "\n";
+    _c.t().raw_print(out);
 
-    // d_rows, d_cols, d
-    out << d.n_rows << " " << d.n_cols;
-    for (int i=0; i < d.n_rows; ++i) {
-        for (int j=0; j < d.n_cols; ++j) out << " " << d(i,j);
-        out << std::endl;
-    }
+    out << _d.n_rows << "\n";
+    _d.t().raw_print(out);
 
-    // X
-    for (int i=0; i < n; ++i) {
-        for (int j=0; j < dim; ++j) out << " " << X(i,j);
-        out << std::endl;
-    }
+    _X.t().raw_print(out);
+    _Y.t().raw_print(out);
+    _eigvecs.raw_print(out);
+    _eigvals.t().raw_print(out);
 
-    // monomials
-    for (std::vector<int>& str : monomials) {
+    for (std::vector<uint>& str : _monomials) {
         out << str.size() << " ";
-        for (int i : str) out << " " << i;
-        out << std::endl;
+        for (uint i : str) out << " " << i;
+        out << "\n";
     }
+    out.close();
 }

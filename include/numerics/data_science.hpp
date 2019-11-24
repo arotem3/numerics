@@ -111,43 +111,47 @@ class kmeans {
 
 class splines {
     private:
-    arma::mat c, d;
-    arma::mat X, Y;
-    arma::vec cv_scores;
-    std::vector<std::vector<int>> monomials;
-    int n, m, dim;
-    double lambda, df, gcv;
+    arma::mat _c, _d;
+    arma::mat _X, _Y;
+    arma::mat _res;
+    arma::mat _eigvecs;
+    arma::vec _eigvals;
+    std::vector<std::vector<uint>> _monomials;
+    uint _deg, _dim;
+    double _lambda, _df, _rmse;
+    bool _fitted, _use_df;
     
     void gen_monomials();
-    arma::mat rbf(const arma::mat& x, const arma::mat& xgrid);
+    arma::mat eval_rbf();
 
     public:
-    splines(int m);
-    splines(double lambda = -1, int m = 1);
-    splines(const arma::mat&, const arma::mat&, int m = 1);
-    splines(const arma::mat&, const arma::mat&, double, int m);
-    splines(std::istream&);
+    const double& smoothing_param;
+    const double& eff_df;
+    const double& RMSE;
+    const arma::mat& residuals;
+    const arma::mat& poly_coef;
+    const arma::mat& rbf_coef;
+    const arma::mat& data_X;
+    const arma::mat& data_Y;
+    const arma::vec& rbf_eigenvals;
+    const arma::mat& rbf_eigenvecs;
 
-    splines& fit(const arma::mat&, const arma::mat&);
-    arma::mat fit_predict(const arma::mat&, const arma::mat&);
+    splines(uint poly_degree=1);
+    splines(const std::string& s);
+
+    void set_smoothing_param(double);
+    void set_degrees_of_freedom(double);
+
+    void fit(const arma::mat&, const arma::mat&);
 
     arma::mat predict(const arma::mat&);
     arma::mat operator()(const arma::mat&);
 
-    arma::mat data_X();
-    arma::mat data_Y();
+    arma::mat eval_rbf(const arma::mat&);
+    arma::mat eval_poly(const arma::mat&);
 
-    arma::mat rbf(const arma::mat&);
-    arma::mat polyKern(const arma::mat&);
-    arma::mat poly_coef() const;
-    arma::mat rbf_coef() const;
-
-    double gcv_score() const;
-    double eff_df() const;
-    double smoothing_param() const;
-
-    void load(std::istream&);
-    void save(std::ostream&);
+    void load(const std::string& s);
+    void save(const std::string& s="model.splines");
 };
 
 class kernel_smooth {
@@ -158,7 +162,6 @@ class kernel_smooth {
     double bdw;
     kernels kern;
     bool binning;
-    // arma::vec predict(const arma::vec&, const arma::vec&, const arma::vec&, double h);
 
     public:
     const arma::vec& data_x;
@@ -221,28 +224,45 @@ class kde {
     arma::vec operator()(const arma::vec&);
 };
 
-class regularizer {
-    private:
-    arma::mat coefs, regular_mat;
-    double lambda, cv, df;
-    bool use_L2, use_cgd;
-    void cross_validate(const arma::mat&, const arma::mat&);
-    void fit_no_replace(const arma::mat&, const arma::mat&, double);
+int coordinate_lasso(const arma::mat& y, const arma::mat& X, arma::mat& w, double lambda, bool first_term_intercept, double tol, uint max_iter, bool verbose=false);
+
+class lasso_cv {
+    double _lambda, _tol, _rmse;
+    uint _max_iter, _df;
+    arma::mat _w;
+    arma::mat _res;
 
     public:
-    regularizer(double lambda = arma::datum::nan);
-    regularizer(const arma::mat&, double lambda = arma::datum::nan);
-    regularizer(const arma::mat&, const arma::mat&, double lambda = arma::datum::nan);
-    regularizer(const arma::mat&, const arma::mat&, const arma::mat&, double lambda = arma::datum::nan, bool use_conj_grad = true);
+    const double& regularizing_param;
+    const double& RMSE;
+    const arma::mat& coef;
+    const arma::mat& residuals;
+    const uint& eff_df;
 
-    arma::mat fit(const arma::mat&, const arma::mat&, bool use_conj_grad = true);
+    lasso_cv(double tol=1e-5, uint max_iter=1000);
+    void fit(const arma::mat& X, const arma::mat& y, bool first_term_intercept=false);
+};
 
-    arma::mat regularizing_mat() const;
-    arma::mat coef();
+class ridge_cv {
+    private:
+    arma::mat _w;
+    arma::mat _res;
+    arma::mat _eigvecs;
+    arma::vec _eigvals;
+    double _lambda, _rmse, _df;
 
-    double MSE() const;
-    double eff_df() const;
-    double regularizing_param() const;
+    public:
+    const arma::mat& coef;
+    const arma::mat& residuals;
+    const arma::mat& cov_eigvecs;
+    const arma::vec& cov_eigvals;
+    const double& regularizing_param;
+    const double& RMSE;
+    const double& eff_df;
+
+    ridge_cv();
+
+    void fit(const arma::mat&, const arma::mat&);
 };
 
 class logistic_regression {

@@ -47,7 +47,8 @@
     * [k nearest neighbors](#k-nearest-neighbors-regression)
     * [kernel smoothing](#kernel-smoothing)
     * [kernel density estimation](#kernel-density-estimation)
-    * [Regularized Linear Least Squares Regression](#Regularized-Linear-Least-Squares-Regression)
+    * [Ridge Regression](#Ridge-Regression)
+    * [LASSO Regression](#LASSO-Regression)
 * [`ODE.hpp`](#`numerics::ode`-Documentation)
 
 all definitions are members of namespace `numerics`, all examples assume:
@@ -809,35 +810,30 @@ ostream& kmeans::summary(ostream& out = cout);
 We can also retrieve basic documentation for the class using the `kmeans::help(ostream& out = cout)` member function.
 
 ### Splines
-Fit radial basis splines to any dimensional data set. The construction is based on both multivariate polynomial terms and a radial basis kernel (polyharmonic). We regularize the fit by constraining the magnitude of the polyharmonic basis. Essentially we are solving the quadratic optimization problem: $\min_{c,d}(y - Kc - Pd)^T (y - Kc - Pd) + \lambda c^T K c$. The parameter $\lambda \geq 0$ can be provided during construction, or can be determined automatically by cross validation (when $\lambda=0$, the resulting function interpolates. When $\lambda\rightarrow\infty$ the resulting function tends toward the polynomial fit). The cross validation is done efficiently by computing the eigenvalue decomposition of $K$ once and solving each regularized problem using matrix multiplication which improves the overall complexity from $\mathcal O(kN^3)$ (i.e. $k$ Cholesky decompositions) to $\mathcal O(N^3 + kN^2)$ (i.e. $k$ matrix multiplications). Spline fitting is based on [ridge regression](https://en.wikipedia.org/wiki/Tikhonov_regularization) with regularization matrix $\Gamma_{i,j}=\phi_j(x_i)$. Where $\phi$ is the radial basis function.
+Fit radial basis splines to any dimensional data set. The construction is based on both multivariate polynomial terms and a radial basis kernel (polyharmonic). We regularize the fit by constraining the magnitude of the polyharmonic basis. Essentially we are solving the quadratic optimization problem: $\min_{c,d}||y - Kc - Pd||_2^2 + \lambda||c||_2^2 + \gamma||d||_1$. The parameter $\gamma\geq 0$ is always determined by cross-validation, the intention is to reduce the total number of polynomial terms. The parameter $\lambda \geq 0$ can be provided before fitting, or can be determined automatically by cross validation (when $\lambda=0$, the resulting function interpolates. When $\lambda\rightarrow\infty$ the resulting function tends toward the polynomial fit). The cross validation is done efficiently by computing the eigenvalue decomposition of $K$ once and solving each regularized problem using matrix multiplication which improves the overall complexity from $\mathcal O(kN^3)$ (i.e. $k$ Cholesky decompositions) to $\mathcal O(N^3 + kN^2)$ (i.e. $k$ matrix-vector multiplications).
 
 ```cpp
 class splines
 ```
 We construct the object via any of the following:
 ```cpp
-splines::splines(int m);
-splines::splines(double lambda = -1, int m = 1);
-
-// construct and fit
-splines::splines(const arma::mat& X,
-                 const arma::mat& Y,
-                 int m = 1);
-splines::splines(const arma::mat& X,
-                 const arma::mat& Y,
-                 double lambda,
-                 int m);
+splines::splines(int poly_degree=1);
 ```
-Where `m` is the degree of the polynomial, and it should be noted, that the size of the system grows exponentially with `m` and becomes extremely ill conditioned for large `m`. It is recomended that `1 <= m <= 3`. Where `m=1` (linear) minimizes bias.
+Where `poly_degree` is the degree of the polynomial, and it should be noted, that the size of the system grows exponentially with `poly_degree` and becomes extremely ill conditioned for large values. It is recomended that `1 <= poly_degree <= 3`.
 
-The parameter `lambda` $=\lambda$. When `lambda = -1` or `nan` we determine its value by cross validation.
-
-We can fit after construction using:
+The functions:
 ```cpp
-splines& fit(const arma::mat& X, const arma::mat& Y);
-arma::mat fit_predict(const arma::mat& X, const arma::mat& Y);
+splines::set_smoothing_param(double lambda);
+splines::set_degrees_of_freedom(double df);
 ```
-Where `fit_predict` is equivalent to calling `obj.fit(X,Y).predict(X)`.
+are used to set the smoothing parameter before fitting. The function `set_smoothing_parameter` sets this value directly, while `set_degrees_of_freedom` controls the value by root-finding using the relationship: $df(\lambda) = \sum_i \frac{d_i^2}{d_i^2 + \lambda}$ where $d_i$ are the eigenvalues of $K$ the smoothing kernel matrix.
+
+If neither functions are called, the smoothing parameter will be determined from cross validation.
+
+We fit the splines object using:
+```cpp
+void fit(const arma::mat& X, const arma::mat& Y);
+```
 
 We can predict based on our fit using the following functions:
 ```cpp
@@ -847,20 +843,19 @@ arma::mat splines::operator()(const arma::mat& X);
 
 We can extract a variety of additional information from our fit:
 ```cpp
-arma::mat splines::data_X(); // independent variable data matrix
-arma::mat splines::data_Y(); // dependent variable data matrix
+const double& smoothing_param; // lambda
+const double& eff_df; // effective degrees of freedom
+const double& RMSE; // root mean squared error
+const arma::mat& residuals;
+const arma::mat& poly_coef; // coefficients for polynomials
+const arma::mat& rbf_coef; // coefficients for splines
+const arma::mat& data_X; // independent variables
+const arma::mat& data_Y; // dependent variables
+const arma::vec& rbf_eigenvals; // eigenvalues of K
+const arma::mat& rbf_eigenvecs; // eigenvectors of K
 
-arma::mat splines::rbf(const arma::mat&); // evaluate unscaled radial basis function
-arma::mat splines::rbf_coef() const; // return radial basis coefficients
-
-arma::mat splines::polyKern(const arma::mat&); // evaluate unscaled polynomial basis functions
-arma::mat splines::poly_coef() const; // return polynomial basis coefficients
-
-double splines::gcv_score() const;
-    // return generalized cross validation score from fit (MSE scaled by eff_df)
-double splines::eff_df() const;
-    // return approximate effective degrees of freedom determined from sensitivities of the system
-double splines::smoothing_param() const; // return lambda
+arma::mat splines::eval_rbf(const arma::mat&);
+arma::mat splines::eval_poly(const arma::mat&);
 ```
 We can save and load a splines object to a stream (file):
 ```cpp
@@ -1107,49 +1102,72 @@ void kde::load(const std::string& fname);
 kde::kde(const std::string& fname); // load on construction
 ```
 
-### Regularized Linear Least Squares Regression
-When fitting a large basis set to data (often the case in non-parametric modeling), overfitting becomes a significant problem. To combat this problem we can regularize our parameters during the fit. Essentially we are solving the minimization problem: $\min_c||y - \Phi c||^2 + \lambda c^T R c$. Where $\lambda \geq 0$ is the regularization parameter which can be determined from cross validation. When $\lambda =0$, the fit tends toward high variance. When $\lambda\rightarrow\infty$, the fit tends toward high bias. Determining $\lambda$ may be achieved by cross validation, like the spline class we take advantage of the (symmetric) eigenvalue decomposition (of $\Phi^T\Phi$) to speed up computations of the regularized solution. By default $R = I$.
+### Ridge Regression
+When fitting a large basis set to data (often the case in non-parametric modeling), overfitting becomes a significant problem. To combat this problem we can regularize our parameters during the fit. Essentially we are solving the minimization problem: $\min_c||y - X c||^2 + \lambda ||c||_2^2$. Where $\lambda \geq 0$ is the regularization parameter and is determined from cross validation. When $\lambda =0$, the fit tends toward high variance. When $\lambda\rightarrow\infty$, the fit tends toward high bias. Determining $\lambda$ may be achieved by cross validation, like the spline class we take advantage of the (symmetric) eigenvalue decomposition (of $X^T X$) to speed up computations of the regularized solution. Cross-validation is performed using the generalized cross-validation score which approximates LOOCV.
 
 ```cpp
-class regularizer
+class ridge_cv
 ```
 With constructor:
 ```cpp
-regularizer::regularizer(double lambda = nan);
-regularizer::regularizer(const arma::mat& R, double lambda = nan);
-
-// construct and fit
-regularizer::regularizer(const arma::mat& X,
-                         const arma::mat& Y,
-                         double lambda = nan,
-                         bool use_conj_grad = true);
-regularizer::regularizer(const arma::mat& X,
-                         const arma::mat& Y,
-                         const arma::mat& R,
-                         double lambda = nan,
-                         bool use_conj_grad = true);
+ridge_cv::ridge_cv();
 ```
-where `R` is the regularizer matrix, if one is not provided, `R` will be set to the identity matrix (i.e. $L^2$ regularization). The parameter `lambda` is the regularization parameter; when `lambda=nan`, its value will be determined by cross validation (recommended). The parameter `use_conj_grad` tells the object whether to solve the least squares problem directly or iteratively using conjugate gradient method.
 
-We fit the object and return the coefficient matrix $c$ such that $\hat Y = X c$:
+The object is fitted using:
 ```cpp
-arma::mat regularizer::fit(const arma::mat& X,
-                              const arma::mat& Y,
-                              bool use_conj_grad = true);
+void ridge_cv::fit(const arma::mat& X, const arma::mat& Y);
 ```
-where `obj.fit_predict(x,y)` is equivalent to `obj.fit(x,y).predict()`.
 
-Our object retains some extra information from fit:
+We get the result from fitting and some extra information:
 ```cpp
-arma::mat regularizer::coef(); // returns the coefficient matrix
-
-double regularizer::MSE() const; // returns the MSE from fit
-double regularizer::eff_df() const;
-    /* returns the approximate effictive degrees of freedom in the system
-     determined from the sensitivity of the system */
-double regularizer::regularizing_param() const; // returns the regularization parameter
-arma::mat regularizer::regularizing_mat() const; // returns the regualarizing matrix
+const arma::mat& coef; // solution
+const arma::mat& residuals;
+const arma::mat& cov_eigvecs; // eigenvectors of X'*X
+const arma::vec& cov_eigvals; // eigenvalues of X'*x
+const double& regularizing_param; // optimal lambda
+const double& RMSE; // root mean squared error
+const double& eff_df; // effective degrees of freedom
 ```
+
+### LASSO Regression
+Like Ridge regression, LASSO attempts to account for overfitting by computing penalizing large values of the coefficients. The objective is to solve the minimization problem $\min_c||y - X c||^2 + \lambda ||c||_1$. Where $\lambda\geq0$ is the regularization parameter and is determined by cross-validation. When $\lambda =0$, the fit tends toward high variance. When $\lambda\rightarrow\infty$, the fit tends toward high bias. LASSO has the additional benefit of encoding sparsity, i.e. as $\lambda$ increases, parameters tend to attain zero values; as such LASSO is often used for model reduction, where coefficients below a certain threshold are dropped from the model. The cross-validation performed to determine $\lambda$ uses 2-Fold cross-validation, the coefficient vector $c$ from one value of $\lambda$ is used to initialize $c$ for the next value of $\lambda$ which leads to faster convergence of the optimization procedure.
+
+```cpp
+class lasso_cv
+```
+With constructor:
+```cpp
+lasso_cv::lasso_cv(double tol=1e-5, uint max_iter=1000);
+```
+where `tol` is the relative tolerance for the optimization procedure and `max_iter` is the maximum number of iterations for the procedure, this is applied to every call of the optimization function (`coordinate_lasso`). The number times the optimization is performed is bounded by $\mathcal{O}([\log_2\text(\frac{1}{tol})]^2)$ relying on the continuity of the $MSE(\lambda)$ of the fit. 
+
+The object is fitted using:
+```cpp
+void lasso_cv::fit(const arma::mat& X, const arma::mat& Y, bool first_term_intercept=false);
+```
+Where `first_term_intercept` is used to specify whether the first column of `X` is an intercept term (i.e. [1,1,...,1]). If `first_term_intercept==true` then shrinkage will not be applied to $c[0]$.
+
+We get the result from fitting and some extra information:
+```cpp
+const arma::mat& coef; // solution
+const arma::mat& residuals;
+const double& regularizing_param; // optimal lambda
+const double& RMSE; // root mean squared error
+const double& eff_df; // effective degrees of freedom
+```
+
+This class is essentially just a wrapper for the function:
+```cpp
+int coordinate_lasso(const arma::mat& y,
+                const arma::mat& X,
+                arma::mat& c,
+                double lambda,
+                bool first_term_intercept,
+                double tol,
+                uint max_iter,
+                bool verbose=false);
+```
+which solves $min_c ||y - Xc||_2^2 + \lambda||c||_1$ for a specific $\lambda$. All the parameters are as above. The parameter `verbose`, when set to `true`, prints the optimization results per iteration. The function modifies `c` inplace, and returns `0` if it converged successfully, or `1` if the number of iterations reached `max_iter` before $||\Delta c||_\infty$ could fall below $\text{tol}\times ||c||_\infty$ .
 
 # `numerics::ode` Documentation
 ## Table of Contents

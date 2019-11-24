@@ -22,7 +22,8 @@ add_library(numerics SHARED
         src/data_science/kernel_smooth.cpp
         src/data_science/kde.cpp
         src/data_science/kmeans.cpp
-        src/data_science/regularizer.cpp
+        src/data_science/ridge.cpp
+        src/data_science/lasso.cpp
         src/data_science/splines.cpp
         src/data_science/logistic_regression.cpp
         src/data_science/knn_regression.cpp

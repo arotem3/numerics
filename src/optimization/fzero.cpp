@@ -75,7 +75,7 @@ double numerics::secant(const std::function<double(double)>& f, double a, double
  * --- a,b : bracket for root.
  * --- tol : approximate error and stopping criteria. */
 double numerics::bisect(const std::function<double(double)>& f, double a, double b, double tol) {
-    tol = std::abs(tol); int max_iter = 100;
+    tol = std::abs(tol);
     long long k = 2;
 
     double fa = f(a), fb = f(b);
@@ -94,13 +94,6 @@ double numerics::bisect(const std::function<double(double)>& f, double a, double
     double c, fc;
 
     do {
-        if (k >= max_iter) { // too many iterations
-            std::cerr << "bisect() error: could not converge within " << max_iter << " function evaluations." << std::endl
-                      << "returing current best estimate."
-                      << "!!!---not necessarily a good estimate---!!!" << std::endl
-                      << "|f(x)| = " << std::abs(fc) << " > tolerance" << std::endl << std::endl;
-            break;
-        }
         c = (a+b)/2;
         fc = f(c); k++;
         if (std::abs(fc) < tol) break;

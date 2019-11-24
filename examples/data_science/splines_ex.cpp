@@ -19,15 +19,15 @@ int main() {
     arma::mat X = 5*arma::randu(100,1) - 2.5;
     arma::mat Y = f(X) + 0.05*arma::randn(100,1);
 
-    int m = 2;
+    int m = 3;
 
-    splines model(X, Y, m);
-    std::cout << "lambda : " << model.smoothing_param() << std::endl
-              << "gcv : " << model.gcv_score() << std::endl
-              << "df : " << model.eff_df() << std::endl;
+    splines model(m);
+    model.fit(X,Y);
+    std::cout << "lambda : " << model.smoothing_param << std::endl
+              << "df : " << model.eff_df << std::endl;
 
     int N = 200;
-    arma::mat xgrid = arma::linspace(-3,3,N);
+    arma::mat xgrid = arma::linspace(-2.5,2.5,N);
     arma::mat yHat = model(xgrid);
 
     ddvec X1 = arma::conv_to<ddvec>::from(X);
