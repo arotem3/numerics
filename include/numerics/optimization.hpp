@@ -116,10 +116,10 @@ class mix_fpi : public nlsolver {
 };
 
 //--- univariate ---//
-double fzero(const std::function<double(double)>& f, double a, double b, double tol = 1e-5);
-double newton_1d(const std::function<double(double)>& f, const std::function<double(double)>& df, double x, double err = 1e-5);
-double secant(const std::function<double(double)>& f, double a, double b, double tol = 1e-5);
-double bisect(const std::function<double(double)>& f, double a, double b, double tol = 1e-2);
+double fzero(const std::function<double(double)>& f, double a, double b, double tol = 1e-8);
+double newton_1d(const std::function<double(double)>& f, const std::function<double(double)>& df, double x, double err = 1e-8);
+double secant(const std::function<double(double)>& f, double a, double b, double tol = 1e-8);
+double bisect(const std::function<double(double)>& f, double a, double b, double tol = 1e-8);
 // --- optimization ----------- //
 double wolfe_step(const std::function<double(const arma::vec&)>& f,
                     const std::function<arma::vec(const arma::vec&)>& grad_f,

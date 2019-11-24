@@ -21,7 +21,9 @@ int main() {
 
     int m = 3;
 
-    splines model(m);
+    numerics::splines model(m);
+    // model.set_degrees_of_freedom(15);
+    // model.set_smoothing_param(1);
     model.fit(X,Y);
     std::cout << "lambda : " << model.smoothing_param << std::endl
               << "df : " << model.eff_df << std::endl;

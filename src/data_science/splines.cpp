@@ -107,7 +107,7 @@ void numerics::splines::fit(const arma::mat& x, const arma::mat& y) {
                 return _df - arma::sum(D2 / (D2 + L));
             };
             double Dmin = D2.min();
-            _lambda = numerics::bisect(g, Dmin, D2.max(), Dmin/2); // solution is guaranteed to be bounded in the range of eigenvalues
+            _lambda = numerics::fzero(g, Dmin, D2.max(), Dmin/2); // solution is guaranteed to be bounded in the range of eigenvalues
         }
     }
 
