@@ -752,62 +752,59 @@ y_discrete = discretized_response.counts;
 ```
 
 ### K-Means Clustering
+we can cluster unlabled data using Lloyd's algorithm accelerated by both kmeans++ for initialization and the triangle inequality for accelerating updates between iterations. Further speed-up can be attained using stochastic gradient descent (i.e. mini-batch kmeans) for very large data.
 ```cpp
-class kmeans
+class kmeans {};
+class kmeans_sgd : public kmeans {};
 ```
-we can cluster unlabled data using the kmeans algorithm. On construction, we must specify our data and the number of clusters; our data is provided as an `arma::mat` where each row is a data entry.
+On construction, we must specify the number of clusters, the distance measure, and the maximum number of iterations the algorithm is permitted to run.
 ```cpp
-kmeans::kmeans(arma::mat& data, int num_clusters);
+kmeans::kmeans(unsigned int k,
+               unsigned int p_norm=2,
+               unsigned int max_iter=100);
+
+kmeans_sgd::kmeans_sgd(unsigned int k,
+                       unsigned int p_norm=2);
 ```
-We can save and load a `kmeans` object to file using stream objects (note, the data matrix will be stored to the stream as part of the object and can be recovered when the object is loaded).
+Where `k` is the number of clusters. The parameter `p_norm` specifies the distance metric i.e.
+
+$$ d(x,y) = \bigg(\sum_i (x_i - y_i)^p\bigg)^{1/p}. $$
+
+So `p_norm == 1` is the manhattan distance, `p_norm == 2` is the euclidean distance, and `p_norm == inf` is the Chebyshev distance.
+
+We fit the kmeans object as follows:
 ```cpp
-kmeans::save(ostream& out);
+uvec kmeans::fit(const arma::mat& data, double tol=1e-2);
 
-kmeans::load(istream& in);
-kmeans::kmeans(istream& in); // can be loaded in on construction
+uvec kmeans_sgd::fit(const arma::mat& data,
+    unsigned int batch_size=100,
+    unsigned int max_iter=100);
 ```
+The function `fit` returns the assigned cluster labels of each data point. One could also produce these labels by calling `predict` on the original data, but this is less efficient.
 
-Once our `kmeans` object is constructed we can get information about which data went to which cluster with `get_clusters()` and we can get the cluster means themselves using `get_centroids()`:
-```cpp
-arma::vec kmeans::get_clusters() const; 
-/*
-the i^th elem corresponds to the i^th data point.
-The i^th element contains the cluster number which is an int ranging on [0,k-1]
-*/
-
-arma::mat kmeans::get_centroids() const;
-/*
-the i^th row is the i^th cluster where i is ranging on [0, k-1]
-/*
-```
-
-We can test our clustering by predicting the cluster of data the `kmeans` was not trained on, we can use either the `()` operator or `predict()`:
+The function `predict` is used to predict cluster labels for data not observed during fitting:
 ```cpp
 arma::rowvec kmeans::operator()(const arma::mat& X);
 arma::rowvec kmeans::predict(const arma::mat& X);
-/*
-the i^th elem corresponds to the i^th data point.
-The i^th element contains the cluster number which is an int ranging on [0,k-1]
-*/
-
-int kmeans::operator()(const arma::rowvec& X);
-int kmeans::predict(const arma::rowvec& X);
-/*
-output in [0,k-1]
-*/
 ```
+The labels are in the range {0, 1, ..., k-1}.
 
-We can also ask `kmeans` to give us all the data from our original data belonging to a specific cluster. We can do this with the `[]` operator or `all_from_cluster()`:
+To get the actual clusters we compute have the constant member variable:
 ```cpp
-arma::mat operator[](int i);
-arma::mat all_from_cluster(int i);
+const mat& clusters;
+const mat& cluster_distances;
+const mat& points_nearest_centers;
+const uvec& index_nearest_centers;
 ```
+Where the ith row of `clusters` is the centroid of cluster i.
 
-We can print a summary of our `kmeans` clustering to a stream:
-```cpp
-ostream& kmeans::summary(ostream& out = cout);
-```
-We can also retrieve basic documentation for the class using the `kmeans::help(ostream& out = cout)` member function.
+The (i,j) element of the matrix `cluster_distances` is the distance between the ith and jth cluster centroids.
+
+The ith row of `points_nearest_centers` is the point from the fitted data that is closest to cluster centroid i.
+
+The ith value of `index_nearest_centers` is the index of the point from the fitted data that is clostes to cluster centroid i.
+
+These points may be valuable in the context of data mining, where a very large data set (e.g. >100k) can be reduced to a modest sized set (e.g. 500) which hopefully retains sufficient information for inference (by means of nearest neighbors, kernel models, etc.) but much more scalable.
 
 ### Splines
 Fit radial basis splines to any dimensional data set. The construction is based on both multivariate polynomial terms and a radial basis kernel (polyharmonic). We regularize the fit by constraining the magnitude of the polyharmonic basis. Essentially we are solving the quadratic optimization problem: $\min_{c,d}||y - Kc - Pd||_2^2 + \lambda||c||_2^2 + \gamma||d||_1$. The parameter $\gamma\geq 0$ is always determined by cross-validation, the intention is to reduce the total number of polynomial terms. The parameter $\lambda \geq 0$ can be provided before fitting, or can be determined automatically by cross validation (when $\lambda=0$, the resulting function interpolates. When $\lambda\rightarrow\infty$ the resulting function tends toward the polynomial fit). The cross validation is done efficiently by computing the eigenvalue decomposition of $K$ once and solving each regularized problem using matrix multiplication which improves the overall complexity from $\mathcal O(kN^3)$ (i.e. $k$ Cholesky decompositions) to $\mathcal O(N^3 + kN^2)$ (i.e. $k$ matrix-vector multiplications).

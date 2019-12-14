@@ -33,4 +33,8 @@ algorithms:
 
 [12] Brent, R. P. "Algorithms for Minimization Without Derivatives". Prentice-Hall, 1972.
 
+[13] Phillips, Steven J. "Acceleration of K-Means and Related Clustering Algorithms". Springer, 2002.
+
+[14] D. Sculley. "Web-scale k-means clustering". ACM, 2010.
+
 [*] a lot of Wikipedia...

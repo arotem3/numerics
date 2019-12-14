@@ -77,36 +77,39 @@ class bins_nd {
 };
 
 class kmeans {
-    private:
-    int k;              // number of clusters
-    uint dim;           // dimension of problem space
-    uint num_iters;     // number of iterations needed to converge
-    arma::mat C;        // each column is a cluster mean
-    arma::mat data;     // the data set ~ this is a pointer to the data set, so it will not be deleted when kmeans is deleted!
-    arma::vec dataCluster;       // the i^th elem of dataCluster is the cluster number for the i^th data input. 
-    int closest_cluster(const arma::rowvec&); // find closest cluster to a data pt
-    arma::mat init_clusters();
+    protected:
+    arma::mat _clusters, _intra_dist, _nearest_point;
+    arma::uvec _nearest_idx;
+    uint _k, _max_iter, _p, _dim;
+    void _update_labels(arma::uvec& labels, arma::vec& nearest_dist, double& sum_p, const arma::mat& data, uint m);
+    void _update_labels(arma::uvec& labels, const arma::mat& data);
+    void _update_labels_nearest(arma::uvec& labels, const arma::mat& data);
+    void _init_clusters(arma::uvec& labels, const arma::mat& data);
+    void _update_intra_dist();
+    double _d(const arma::rowvec& a, const arma::rowvec& b);
 
     public:
-    uint max_iterations;
-    kmeans(arma::mat& x, int k, int max_iter = 100);
-    kmeans(std::istream&);
-    void load(std::istream&);
-    void save(std::ostream&);
+    const arma::mat& clusters;
+    const arma::mat& cluster_distances;
+    const arma::mat& points_nearest_centers;
+    const arma::uvec& index_nearest_centers;
+    kmeans(uint k, uint p_norm=2, uint max_iter=100);
 
-    arma::vec get_clusters() const;
-    arma::mat get_centroids() const;
+    arma::uvec fit(const arma::mat& data, double tol=1e-2);
 
-    arma::vec operator()(const arma::mat&);
-    arma::vec predict(const arma::mat&);
-    int operator()(const arma::rowvec&);
-    int predict(const arma::rowvec&);
+    arma::uvec predict(const arma::mat& data);
+    arma::uvec operator()(const arma::mat& data);
+};
 
-    arma::mat operator[](uint);
-    arma::mat all_from_cluster(uint);
+class kmeans_sgd : public kmeans {
+    private:
+    void _update_batch_labels(arma::uvec& labels, const arma::mat& data, const arma::uvec& p, uint i, uint f);
+    void _sgd_steps(arma::uvec& labels, const arma::mat& data, uint batch_size, uint max_iter);
 
-    std::ostream& summary(std::ostream& out = std::cout);
-    std::ostream& help(std::ostream& out = std::cout);
+    public:
+    kmeans_sgd(uint k, uint p_norm=2);
+
+    arma::uvec fit(const arma::mat& data, uint batch_size=100, uint max_iter=100);
 };
 
 class splines {
