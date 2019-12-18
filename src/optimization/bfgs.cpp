@@ -41,7 +41,7 @@ void numerics::bfgs::minimize(const std::function<double(const arma::vec&)>& f,
             } else H = arma::eye(n,n);
             p = -(H*g);
         }
-        alpha = numerics::wolfe_step(f,grad_f,x,p,wolfe_c1,wolfe_c2,wolfe_scale);
+        alpha = numerics::wolfe_step(f,grad_f,x,p,wolfe_c1,wolfe_c2);
         s = alpha*p;
 
         if (s.has_nan() || s.has_inf()) {
@@ -103,7 +103,7 @@ void numerics::bfgs::minimize(const std::function<double(const arma::vec&)>& f,
             if (!chol_success) H = arma::pinv(H);
             p = -(H*g);
         }
-        alpha = numerics::wolfe_step(f,grad_f,x,p,wolfe_c1,wolfe_c2,wolfe_scale);
+        alpha = numerics::wolfe_step(f,grad_f,x,p,wolfe_c1,wolfe_c2);
         s = alpha*p;
 
         if (s.has_nan() || s.has_inf()) {

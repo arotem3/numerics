@@ -125,9 +125,7 @@ double wolfe_step(const std::function<double(const arma::vec&)>& f,
                     const std::function<arma::vec(const arma::vec&)>& grad_f,
                     const arma::vec& x,
                     const arma::vec& p,
-                    double c1, double c2, double b);
-
-double line_min(const std::function<double(double)>& line_f);
+                    double c1, double c2);
 
 class optimizer {
     protected:
@@ -162,7 +160,7 @@ class optimizer {
 
 class bfgs : public optimizer {
     public:
-    double wolfe_c1, wolfe_c2, wolfe_scale;
+    double wolfe_c1, wolfe_c2;
     bool use_finite_difference_hessian;
 
     bfgs(double tolerance = 1e-3) {
@@ -171,7 +169,6 @@ class bfgs : public optimizer {
         max_iterations = 100;
         wolfe_c1 = 1e-4;
         wolfe_c2 = 0.9;
-        wolfe_scale = 0.5;
         use_finite_difference_hessian = false;
     }
 
@@ -190,7 +187,7 @@ class lbfgs : public optimizer {
 
     public:
     uint steps_to_remember;
-    double wolfe_c1, wolfe_c2, wolfe_scale;
+    double wolfe_c1, wolfe_c2;
 
     lbfgs(double tolerance = 1e-3, uint num_steps = 5) {
         tol = tolerance;
@@ -200,7 +197,6 @@ class lbfgs : public optimizer {
         max_iterations = 100;
         wolfe_c1 = 1e-4;
         wolfe_c2 = 0.9;
-        wolfe_scale = 0.5;
     }
 
     void minimize(const std::function<double(const arma::vec&)>& f,

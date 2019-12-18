@@ -66,7 +66,6 @@ add_library(numerics SHARED
         src/optimization/fmin.cpp
         src/optimization/gen_optim.cpp
         src/optimization/lbfgs.cpp
-        src/optimization/line_min.cpp
         src/optimization/lmlsqr.cpp
         src/optimization/mgd.cpp
         src/optimization/mix_fpi.cpp

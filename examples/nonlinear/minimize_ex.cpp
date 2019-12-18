@@ -61,9 +61,9 @@ int main() {
         } else return arma::diagmat(6*x%x - 16);
     };
 
-    numerics::nelder_mead fmin; std::cout << "using Nelder-Mead method..." << std::endl;
-    // numerics::bfgs fmin; std::cout << "using BFGS..." << std::endl;
-    // numerics::lbfgs fmin; std::cout << "using limited memory BFGS..." << std::endl;
+    // numerics::nelder_mead fmin; std::cout << "using Nelder-Mead method..." << std::endl;
+    numerics::bfgs fmin; std::cout << "using BFGS..." << std::endl;
+    // numerics::lbfgs fmin(1e-6); std::cout << "using limited memory BFGS..." << std::endl;
     // numerics::mgd fmin; std::cout << "using momentum gradient descent..." << std::endl;
     // numerics::nlcgd fmin; std::cout << "using conjugate gradient method..." << std::endl;
     // numerics::adj_gd fmin; std::cout << "using adjusted gradient descent..." << std::endl;
@@ -73,8 +73,8 @@ int main() {
     // fmin.step_size = ; // mgd, nlcgd, adj_gd
 
     clock_t tt = clock();
-    fmin.minimize(g,x); // nelder_mead
-    // fmin.minimize(g, dg, x); // bfgs, lbfgs
+    // fmin.minimize(g,x); // nelder_mead
+    fmin.minimize(g, dg, x); // bfgs, lbfgs
     // fmin.minimize(g, dg, H, x); // bfgs, lbfgs
     // fmin.minimize(dg,x); // mgd, nlcgd, adj_gd
     tt = clock() - tt;

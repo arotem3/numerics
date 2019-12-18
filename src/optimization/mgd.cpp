@@ -14,12 +14,15 @@ void numerics::mgd::minimize(const std::function<arma::vec(const arma::vec&)>& g
     p = grad_f(x);
     double r = arma::norm(p,"inf");
     double alpha = step_size;
-    if (minimize_line) alpha = numerics::line_min(
+    if (minimize_line) {
+        alpha = numerics::fminsearch(
         [&p,&x,&grad_f,r](double a) -> double {
+            a *= a;
             arma::vec q = (-1.0/r)*p;
             return arma::dot( q, grad_f(x+a*q) );
-        }
-    );
+        }, 1.0);
+        alpha *= alpha;
+    }
     x += (-alpha/r)*p;
 
     uint k = 1;
@@ -39,12 +42,15 @@ void numerics::mgd::minimize(const std::function<arma::vec(const arma::vec&)>& g
 
         p = damping_param*p + g;
         r = arma::norm(p,"inf");
-        if (minimize_line) alpha = numerics::line_min(
+        if (minimize_line) {
+            alpha = numerics::fminsearch(
             [&p,&x,&grad_f,r](double a) -> double {
+                a *= a;
                 arma::vec q = (-1.0/r)*p;
                 return arma::dot( q, grad_f(x+a*q) );
-            }
-        );
+            }, std::sqrt(alpha));
+            alpha *= alpha;
+        }
         x += (-alpha/r)*p;
         k++;
     } while (arma::norm(g,"inf") > tol);

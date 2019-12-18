@@ -51,7 +51,7 @@ void numerics::lbfgs::minimize(const std::function<double(const arma::vec&)>& f,
     p = -grad_f(x);
     arma::vec hdiag = 1/jacobian_diag(grad_f, x);
     hdiag(arma::find_nonfinite(hdiag)).zeros();
-    alpha = wolfe_step(f,grad_f,x,p,wolfe_c1,wolfe_c2,wolfe_scale);
+    alpha = wolfe_step(f,grad_f,x,p,wolfe_c1,wolfe_c2);
     s = alpha*p;
     x += s;
     p1 = -grad_f(x);
@@ -78,7 +78,7 @@ void numerics::lbfgs::minimize(const std::function<double(const arma::vec&)>& f,
             hdiag = 1/jacobian_diag(grad_f, x);
             hdiag(arma::find_nonfinite(hdiag)).zeros();
         }
-        alpha = wolfe_step(f,grad_f,x,p,wolfe_c1,wolfe_c2,wolfe_scale);
+        alpha = wolfe_step(f,grad_f,x,p,wolfe_c1,wolfe_c2);
         s = alpha*p;
 
         if (s.has_nan() || s.has_inf()) {
@@ -96,7 +96,7 @@ void numerics::lbfgs::minimize(const std::function<double(const arma::vec&)>& f,
         Y_historic.push(y);
 
         k++;
-    } while (arma::norm(s,"inf") > tol);
+    } while (arma::norm(p,"inf") > tol);
     num_iter += k;
     exit_flag = 0;
 }

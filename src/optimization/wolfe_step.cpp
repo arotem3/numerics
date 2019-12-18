@@ -1,26 +1,67 @@
 #include "numerics.hpp"
 
-/* wolfe_step(f, grad_f, x, p, c1, c2, b) : rough step size approximator for quasi-newton methods based on strong wolfe conditions.
+/* wolfe_step(f, grad_f, x, p, c1, c2, b) : step size approximator for quasi-newton methods based on strong wolfe conditions using the one dimensional nelder mead method.
  * --- f : objective function.
  * --- grad_f : gradient function.
  * --- x : current guess.
  * --- p : search direction.
  * --- c1 : wolfe constant 1.
- * --- c2 : wolfe constant 2.
- * --- b : line minimization constant. */
+ * --- c2 : wolfe constant 2. */
 double numerics::wolfe_step(const std::function<double(const arma::vec&)>& f,
                             const std::function<arma::vec(const arma::vec&)>& grad_f,
                             const arma::vec& x,
                             const arma::vec& p,
-                            double c1, double c2, double b) {
-    double alpha = 1;
+                            double c1, double c2) {
+    auto g = [&](double a) -> double {
+        return arma::dot(p, grad_f(x + (a*a)*p)); // square a to ensure positive direction
+    };
+    uint best, worst, n_iter=0;
+    double R=1.0, E=2.0, Co=0.5, Ci=0.5;
+    double ar, fr, ae, fe, ac, fc;
+    double a[2], fa[2];
+
+    a[0]=0;
+    a[1]=1;
+    fa[0]=g(a[0]);
+    fa[1]=g(a[1]);
+
     while (true) {
-        if (alpha < 0.01) break;
-        double pfa = arma::dot(p, grad_f(x + alpha*x));
-        bool cond1 = f(x + alpha*p) <= f(x) + c1*alpha*pfa;
-        bool cond2 = std::abs(arma::dot(p, grad_f(x + alpha*p))) <= c2*std::abs(arma::dot(p, grad_f(x)));
-        if (cond1 && cond2) break;
-        else alpha *= b;
+        best = (fa[0] < fa[1]) ? (0) : (1);
+        worst = not best;
+
+        bool cond1 = f(x + a[best]*p) <= f(x) + c1*a[best]*fa[best];
+        bool cond2 = std::abs(arma::dot(p, grad_f(x + a[best]*p))) <= c2*std::abs(arma::dot(p, grad_f(x)));
+        if ((cond1 && cond2) || n_iter >= 100) break;
+
+        // attempt reflection step
+        ar = (1+R)*a[best] - R*a[worst];
+        fr = g(ar);
+        if (fa[best] < fr && fr < fa[worst]) { // the reflection is better that worst but not as good as best, so we replace worst with the reflection
+            a[worst] = ar;
+            fa[worst] = fr;
+        } else if (fr < fa[best]) { // the reflection is better than the best, so we try an even bigger step size
+            ae = (1+E)*a[best] - E*a[worst];
+            fe = g(ae);
+            if (fe < fr) { // the expansion was successful
+                a[worst] = ae;
+                fa[worst] = fe;
+            } else { // the expansion was not successful
+                a[worst] = ar;
+                fa[worst] = fr;
+            }
+        } else { // the reflection step was worse than the worst, so we take a smaller step size
+            ac = (1+Co)*a[best] - Co*a[worst];
+            fc = g(ac);
+            if (fc < fr) { // contraction is better than the reflection so we keep it.
+                a[worst] = ac;
+                fa[worst] = fc;
+            } else { // the contraction is worse so we replace worst with a point closer to best
+                a[worst] = (1-Ci)*a[best] + Ci*a[worst];
+                fa[worst] = g(a[worst]);
+            }
+        }
+        n_iter++;
     }
-    return alpha;
+    if (fa[0] < fa[1]) return a[0]*a[0];
+    else return a[1]*a[1];
 }

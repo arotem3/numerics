@@ -122,12 +122,15 @@ void numerics::adj_gd::minimize(const std::function<arma::vec(const arma::vec&)>
         }
 
         r = arma::norm(p,"inf");
-        if (minimize_line) alpha = numerics::line_min(
+        if (minimize_line) {
+            alpha = numerics::fminsearch(
             [&p,&x,&grad_f,r](double a) -> double {
+                a *= a; // square a to ensure positive step size
                 arma::vec z = x + (a/r)*p;
                 return arma::dot(p,grad_f(z))/r;
-            }
-        );
+            }, std::sqrt(alpha));
+            alpha *= alpha;
+        }
         if (k%3==0 && alpha/r > -0.5) {
             k++;
             continue;

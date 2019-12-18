@@ -107,12 +107,15 @@ void numerics::nlcgd::minimize(const std::function<arma::vec(const arma::vec&)>&
         }
         s = p;
         r = 1/arma::norm(p,"inf");
-        if (minimize_line) alpha = numerics::line_min(
+        if (minimize_line) {
+            alpha = numerics::fminsearch(
             [&p,&x,&grad_f,r](double a) -> double {
+                a *= a;
                 arma::vec z = x + (a*r)*p;
                 return r*arma::dot( p, grad_f(z) );
-            }
-        );
+            }, std::sqrt(alpha));
+            alpha *= alpha;
+        }
         arma::vec ds = (alpha*r)*p - s;
         s = (alpha*r)*p;
         double ss = arma::dot(s,s);

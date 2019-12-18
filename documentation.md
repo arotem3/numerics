@@ -420,7 +420,6 @@ class bfgs : public optimizer {
     public:
     double wolfe_c1;
     double wolfe_c2;
-    double wolfe_scale;
     bool use_finite_difference_hessian;
     bfgs(double tolerance = 1e-3);
     void minimize(const std::function<double(const arma::vec&)>& f,
@@ -439,8 +438,6 @@ The parameter `use_finite_difference_hessian` allows the user to specify whether
 The parameters `wolfe_c1`, `wolfe_c2` are the traditional paramters of the strong wolfe conditions:
 $f(x_k + \alpha_k p_k) \leq f(x_k) + c_1 \alpha_k p_k^T\nabla f(x_k)$ and $-p_k^T\nabla f(x_k + \alpha_k p_k) \leq -c_2 p_k^T\nabla f(x_k)$. The default values are `wolfe_c1 = 1e-4` and `wolfe_c2 = 0.9`.
 
-The parameter `wolfe_scale` is used in the line minimization step to determing $\alpha_k$ satisfying the Wolfe conditions. We constrain `0 <= wolfe_scale <= 1`, a value closer to 1 allows for slower but potentially more accurate line minimization. The default value is 0.5.
-
 **note:** like Broyden's method, `bfgs()` stores the inverse hessian in memory, this may become inneficient in space and time when the problem is sufficiently large.
 
 ### Limited Memory BFGS
@@ -452,7 +449,6 @@ class lbfgs : public optimizer {
     unsigned int steps_to_remember;
     double wolfe_c1;
     double wolfe_c2;
-    double wolfe_scale;
     lbfgs(double tolerance = 1e-3, uint num_steps = 5);
     void minimize(const std::function<double(const arma::vec&)>& f,
             const std::function<arma::vec(const arma::vec&)>& grad_f,
