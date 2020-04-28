@@ -61,30 +61,82 @@ int main() {
         } else return arma::diagmat(6*x%x - 16);
     };
 
-    // numerics::nelder_mead fmin; std::cout << "using Nelder-Mead method..." << std::endl;
-    numerics::bfgs fmin; std::cout << "using BFGS..." << std::endl;
-    // numerics::lbfgs fmin(1e-6); std::cout << "using limited memory BFGS..." << std::endl;
-    // numerics::mgd fmin; std::cout << "using momentum gradient descent..." << std::endl;
-    // numerics::nlcgd fmin; std::cout << "using conjugate gradient method..." << std::endl;
-    // numerics::adj_gd fmin; std::cout << "using adjusted gradient descent..." << std::endl;
-    
-    // fmin.tol = ;
-    // fmin.max_iterations = ;
-    // fmin.step_size = ; // mgd, nlcgd, adj_gd
-
+    std::cout << "optimization method:\n"
+              << "\t(1) nelder_mead\n\t\trequires only objective function. also known as simplex method.\n"
+              << "\t(2) bfgs\n\t\tquasi-newton, requires gradient info\n"
+              << "\t(3) lbfgs\n\t\tquasi-newton, requires gradient info. more efficient that BFGS per step, may require more function step.\n"
+              << "\t(4) mgd\n\t\tmomentum gradient descent, requires gradient info. more efficient than quasi-newton per step, requires many steps.\n"
+              << "\t(5) nlgcd\n\t\tnon-linear conjugate gradient descent, requires gradient info. requires fewer function evaluations than most methods.\n"
+              << "\t(6) adj_gd\n\t\tadjusted gradient descent, requires gradient info. More function evals than nlgdc.\n";
+    std::cin >> choice;
     clock_t tt = clock();
-    // fmin.minimize(g,x); // nelder_mead
-    fmin.minimize(g, dg, x); // bfgs, lbfgs
-    // fmin.minimize(g, dg, H, x); // bfgs, lbfgs
-    // fmin.minimize(dg,x); // mgd, nlcgd, adj_gd
-    tt = clock() - tt;
+    if (choice < 1 || choice > 6) {
+        choice = 1;
+        std::cout << "invalid choice for optimization.\n";
+    }
+    std::string flag;
+    int n_iter=0;
+    if (choice == 1) {
+        std::cout << "using Nelder-Mead method..." << std::endl;
+        numerics::nelder_mead fmin;
+        // fmin.tol = ;
+        // fmin.max_iterations = ;
+        fmin.minimize(g,x);
+        fmin.get_exit_flag(flag);
+        n_iter = fmin.num_iterations();
+    } else if (choice == 2) {
+        std::cout << "using BFGS..." << std::endl;
+        numerics::bfgs fmin;
+        // fmin.tol = ;
+        // fmin.max_iterations = ;
+        fmin.minimize(g, dg, x);
+        // fmin.minimize(g, dg, H, x); // use Hessian information to improve results
+        fmin.get_exit_flag(flag);
+        n_iter = fmin.num_iterations();
+    } else if (choice == 3) {
+        std::cout << "using limited memory BFGS..." << std::endl;
+        numerics::lbfgs fmin;
+        // fmin.tol = ;
+        // fmin.max_iterations = ;
+        fmin.minimize(g, dg, x);
+        // fmin.minimize(g, dg, H, x); // use Hessian information to improve results
+        fmin.get_exit_flag(flag);
+        n_iter = fmin.num_iterations();
+    } else if (choice == 4) {
+        std::cout << "using momentum gradient descent..." << std::endl;
+        numerics::mgd fmin;
+        // fmin.step_size = ;
+        // fmin.tol = ;
+        // fmin.max_iterations = ;
+        fmin.minimize(dg,x);
+        fmin.get_exit_flag(flag);
+        n_iter = fmin.num_iterations();
+    } else if (choice == 5) {
+        std::cout << "using conjugate gradient method..." << std::endl;
+        numerics::nlcgd fmin;
+        // fmin.step_size = ;
+        // fmin.tol = ;
+        // fmin.max_iterations = ;
+        fmin.minimize(dg,x);
+        fmin.get_exit_flag(flag);
+        n_iter = fmin.num_iterations();
+    } else { // choice == 6
+        std::cout << "using adjusted gradient descent..." << std::endl;
+        numerics::adj_gd fmin;
+        // fmin.step_size = ;
+        // fmin.tol = ;
+        // fmin.max_iterations = ;
+        fmin.minimize(dg,x);
+        fmin.get_exit_flag(flag);
+        n_iter = fmin.num_iterations();
+    }
+    tt = clock() - tt;    
 
-    std::string flag; fmin.get_exit_flag(flag);
     std::cout << "\noptimization results:\t\t" << g(x) << std::endl
               << "true min:\t\t\t" << g(tru_min) << std::endl;
     if (n <= 5) std::cout << "final x: " << x.t() << "true argmin: " << tru_min.t();
     std::cout << "minimize_unc() took " << (float)tt/CLOCKS_PER_SEC << " seconds" << std::endl
-              << "num iterations needed: " << fmin.num_iterations() << std::endl
+              << "num iterations needed: " << n_iter << std::endl
               << "exit flag: " << flag << std::endl;
     return 0;
 }

@@ -13,7 +13,7 @@ double numerics::wolfe_step(const std::function<double(const arma::vec&)>& f,
                             const arma::vec& p,
                             double c1, double c2) {
     auto g = [&](double a) -> double {
-        return arma::dot(p, grad_f(x + (a*a)*p)); // square a to ensure positive direction
+        return f(x + a*a*p);
     };
     uint best, worst, n_iter=0;
     double R=1.0, E=2.0, Co=0.5, Ci=0.5;
@@ -29,7 +29,7 @@ double numerics::wolfe_step(const std::function<double(const arma::vec&)>& f,
         best = (fa[0] < fa[1]) ? (0) : (1);
         worst = not best;
 
-        bool cond1 = f(x + a[best]*p) <= f(x) + c1*a[best]*fa[best];
+        bool cond1 = g(a[best]) <= f(x) + c1*a[best]*fa[best];
         bool cond2 = std::abs(arma::dot(p, grad_f(x + a[best]*p))) <= c2*std::abs(arma::dot(p, grad_f(x)));
         if ((cond1 && cond2) || n_iter >= 100) break;
 
