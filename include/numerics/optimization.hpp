@@ -125,7 +125,7 @@ double wolfe_step(const std::function<double(const arma::vec&)>& f,
                     const std::function<arma::vec(const arma::vec&)>& grad_f,
                     const arma::vec& x,
                     const arma::vec& p,
-                    double c1, double c2);
+                    double c1=1e-4, double c2=0.9);
 
 class optimizer {
     protected:
@@ -183,7 +183,7 @@ class bfgs : public optimizer {
 
 class lbfgs : public optimizer {
     private:
-    void lbfgs_update(arma::vec& p, numerics_private_utility::cyc_queue& S, numerics_private_utility::cyc_queue& Y, const arma::vec& hdiag);
+    void lbfgs_update(arma::vec& p, numerics_private_utility::cyc_queue& S, numerics_private_utility::cyc_queue& Y, const double& hdiag);
 
     public:
     uint steps_to_remember;

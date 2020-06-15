@@ -79,7 +79,7 @@ int main() {
     if (choice == 1) {
         std::cout << "using Nelder-Mead method..." << std::endl;
         numerics::nelder_mead fmin;
-        // fmin.tol = ;
+        fmin.tol = 1e-8;
         // fmin.max_iterations = ;
         fmin.minimize(g,x);
         fmin.get_exit_flag(flag);
@@ -96,8 +96,8 @@ int main() {
     } else if (choice == 3) {
         std::cout << "using limited memory BFGS..." << std::endl;
         numerics::lbfgs fmin;
-        // fmin.tol = ;
-        // fmin.max_iterations = ;
+        // fmin.tol = 1e-6;
+        // fmin.max_iterations = 200;
         fmin.minimize(g, dg, x);
         // fmin.minimize(g, dg, H, x); // use Hessian information to improve results
         fmin.get_exit_flag(flag);
@@ -105,9 +105,10 @@ int main() {
     } else if (choice == 4) {
         std::cout << "using momentum gradient descent..." << std::endl;
         numerics::mgd fmin;
-        // fmin.step_size = ;
+        // fmin.step_size = 1e-1;
         // fmin.tol = ;
-        // fmin.max_iterations = ;
+        // fmin.damping_param = 0;
+        // fmin.max_iterations = 1000;
         fmin.minimize(dg,x);
         fmin.get_exit_flag(flag);
         n_iter = fmin.num_iterations();
