@@ -49,7 +49,9 @@ void numerics::logistic_regression::save(std::ostream& out) {
 }
 
 arma::mat numerics::logistic_regression::softmax(const arma::mat& z) {
-    arma::mat p = arma::exp(z - arma::max(z,1));
+    arma::mat p = z;
+    p.each_row([](arma::rowvec& r)->void{r -= r.max();});
+    p = arma::exp(p);
     p.each_row([](arma::rowvec& r)->void{r /= arma::accu(r);});
     return p;
 }
@@ -72,7 +74,7 @@ void numerics::logistic_regression::fit_linear(double lam) {
     auto f = [lam,&Phi,this](const arma::vec& cc) -> double {
         arma::mat p = Phi*arma::reshape(cc, Phi.n_cols, y.n_cols);
         p = softmax(p);
-        return 0.5*lam*arma::dot(c,c) -arma::accu(p % y);
+        return 0.5*lam*arma::dot(c,c) - arma::accu(p % y);
     };
     
     arma::vec cc = arma::zeros(Phi.n_cols*y.n_cols);
@@ -115,7 +117,6 @@ void numerics::logistic_regression::fit(const arma::mat& X, const arma::mat& Y) 
     x = X;
     n_obs = x.n_rows;
     y = Y;
-
 
     if (std::isnan(lambda) || lambda < 0) { // lambda to be determined by cross validation
         uint num_folds = 10;

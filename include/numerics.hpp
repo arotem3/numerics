@@ -1,4 +1,5 @@
-#pragma once
+#ifndef NUMERICS_HPP
+#define NUMERICS_HPP
 
 #include <functional>
 #include <cmath>
@@ -36,3 +37,5 @@ namespace numerics {
     #include "numerics/data_science.hpp"
     #include "numerics/ode.hpp"
 };
+
+#endif

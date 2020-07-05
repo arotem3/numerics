@@ -1,4 +1,3 @@
-// --- data analysis ---------- //
 enum class kernels {
     gaussian,
     square,
