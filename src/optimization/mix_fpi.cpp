@@ -1,41 +1,37 @@
 #include <numerics.hpp>
 
-/* find_fixed_point(f, x, max_iter) : anderson mixing fixed point iteration. Finds solutions of the problem x = f(x).
- * --- f : vector function of x = f(x).
- * --- x : initial guess and solution output.
- * --- max_iter : maximum number of iterations allowed. */
-void numerics::mix_fpi::find_fixed_point(const std::function<arma::vec(const arma::vec&)>& f,
-                              arma::vec& x,
-                              int max_iter) {
-    if (max_iter <= 0) {
-        if (max_iterations <= 0) max_iterations = 100;
-    } else max_iterations = max_iter;
+void numerics::optimization::MixFPI::fix(arma::vec& x, const VecFunc& f) {
+    _check_loop_parameters();
+    u_long n = x.n_elem;
 
-    int n = x.n_elem;
-    numerics::numerics_private_utility::cyc_queue F(n, steps_to_remember), X(n, steps_to_remember);
-    arma::mat FF;
-    arma::vec v, b = arma::zeros(n+1);
+    arma::mat F = arma::zeros(n, _steps_to_remember);
+    arma::mat X = arma::zeros(n, _steps_to_remember);
+    
+    arma::mat FF = arma::ones(n+1, _steps_to_remember);
+    
+    arma::vec b = arma::zeros(n+1);
     b(n) = 1;
 
-    uint k = 0;
+    u_long k = 0;
+    u_long head;
     do {
-        if (k >= max_iterations) {
-            exit_flag = 1;
-            num_iter += k;
+        if (k >= _max_iter) {
+            _exit_flag = 1;
+            _n_iter += k;
             return;
         }
 
-        v = f(x);
-        F.push(v);
-        X.push(x);
-        int m = std::min(k+1, steps_to_remember);
-        FF = arma::ones(n+1,m);
-        FF.rows(0,n-1) = X.data() - F.data();
+        head = k % _steps_to_remember;
+        
+        F.col(head) = f(x);
+        X.col(head) = x;
 
-        x = F.data() * arma::solve(FF,b);
+        FF.submat(0,n-1,head,head) = F.col(head) - X.col(head);
+        if (k < _steps_to_remember) x = F.cols(0,k) * arma::solve(FF.cols(0,k), b);
+        else x = F * arma::solve(FF, b);
+
         k++;
-    } while (arma::norm(v - x,"inf") > tol);
-    num_iter += k;
-
-    exit_flag = 0;
+    } while (arma::norm(F.col(head) - x,"inf") > _tol);
+    _n_iter += k;
+    _exit_flag = 0;
 }

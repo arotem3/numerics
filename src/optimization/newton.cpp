@@ -1,36 +1,23 @@
 #include <numerics.hpp>
 
-/* fsolve(f, jacobian, x, max_iter) : finds a local root of a multivariate nonlinear system of equations using newton's method.
- * --- f  : f(x) == 0, system of equations.
- * --- jacobian  : J(x) jacobian of system.
- * --- x : initial guess as to where the root, also where the root will be returned to.
- * --- max_iter : maximum number of iterations allowed. */
-void numerics::newton::fsolve(const std::function<arma::vec(const arma::vec&)>& f,
-                             const std::function<arma::mat(const arma::vec&)>& jacobian,
-                             arma::vec& x,
-                             int max_iter) {
-    if (max_iter <= 0) {
-        if (max_iterations <= 0) max_iterations = 100;
-    } else max_iterations = max_iter;
-    
-    arma::vec F,dx;
-    arma::mat J;
-    uint k = 0;
+void numerics::optimization::Newton::fsolve(arma::vec& x, const VecFunc& f, const MatFunc& jacobian) {
+    _check_loop_parameters();
 
+    arma::vec dx;
+    u_long k = 0;
     do {
-        if (k >= max_iterations) {
-            exit_flag = 1;
-            num_iter += k;
+        if (k >= _max_iter) {
+            _exit_flag = 1;
+            _n_iter += k;
             return;
         }
-        F = -f(x);
-        J = jacobian(x);
-        if (use_cgd) cgd(J,F,dx);
-        else dx = arma::solve(J,F);
+        _F = -f(x);
+        _J = jacobian(x);
+        if (_use_cgd) cgd(_J,_F,dx);
+        else dx = arma::solve(_J,_F);
         x += dx;
         k++;
-    } while ( arma::norm(dx, "inf") > tol );
-
-    num_iter += k;
-    exit_flag = 0;
+    } while ( arma::norm(dx, "inf") > _tol );
+    _n_iter += k;
+    _exit_flag = 0;
 }

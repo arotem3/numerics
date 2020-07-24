@@ -17,16 +17,18 @@ add_library(numerics SHARED
         include/numerics/optimization.hpp
         include/numerics/utility.hpp
 
-        src/data_science/k_fold.cpp
+        src/data_science/kd_tree.cpp
         src/data_science/bin_data.cpp
+        src/data_science/kmeans.cpp
+        src/data_science/polyfeat.cpp
+        src/data_science/lasso.cpp
+        src/data_science/ridge.cpp
+        src/data_science/splines.cpp
+        src/data_science/bw.cpp
         src/data_science/kernel_smooth.cpp
         src/data_science/kde.cpp
-        src/data_science/kmeans.cpp
-        src/data_science/ridge.cpp
-        src/data_science/lasso.cpp
-        src/data_science/splines.cpp
         src/data_science/logistic_regression.cpp
-        src/data_science/knn_regression.cpp
+        src/data_science/pairwise_kernel.cpp
 
         src/derivatives/approx_jacobian.cpp
         src/derivatives/deriv.cpp
@@ -58,7 +60,6 @@ add_library(numerics SHARED
         src/ode/rk45i.cpp
         src/ode/poisson2d.cpp
 
-        src/optimization/adj_gd.cpp
         src/optimization/bfgs.cpp
         src/optimization/broyd.cpp
         src/optimization/cgd.cpp
@@ -74,11 +75,8 @@ add_library(numerics SHARED
         src/optimization/simplex.cpp
         src/optimization/wolfe_step.cpp
         
-        src/utility/cyc_queue.cpp
         src/utility/meshgrid.cpp
         src/utility/sample_from.cpp
-        src/utility/index_median.cpp
-        src/utility/kd_tree.cpp
 )
 
 if(OpenMP_FOUND)

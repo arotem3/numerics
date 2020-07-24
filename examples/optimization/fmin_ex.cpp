@@ -8,11 +8,11 @@ double f(double x) {
 
 int main() {
     double a=0, b=1; // bounds, appropriate to this function
-    double x0=0, alpha=0.1;
+    double x0=0;
 
     std::cout << "f(x) = 1 + exp(-100x) + (0.99-x)/(x-1)\n"
               << "\ttrue minimum: x = " << 0.0902125 << "\n"
-              << "\tusing fminbnd: x = " << numerics::fminbnd(f,a,b) << "\n"
-              << "\tusing fminsearch: x = " << numerics::fminsearch(f,x0,alpha) << "\n";
+              << "\tusing fminbnd: x = " << numerics::optimization::fminbnd(f,a,b) << "\n"
+              << "\tusing fminsearch: x = " << numerics::optimization::fminsearch(f,x0) << "\n";
     return 0;
 }

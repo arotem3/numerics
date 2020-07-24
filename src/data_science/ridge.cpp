@@ -1,24 +1,47 @@
 #include <numerics.hpp>
 
-/* ridge_cv(use_cgd=false, tol=1e-5) : initializes ridge_cv object. */
-numerics::ridge_cv::ridge_cv() : coef(_w), residuals(_res), cov_eigvecs(_eigvecs), cov_eigvals(_eigvals), regularizing_param(_lambda), RMSE(_rmse), eff_df(_df) {}
-
-/* fit(X,y) : fit a ridge regression model using the generalized formula for LOOCV.
- * --- X : array of indpendent variable data, where each row is data point.
- * --- y : array of dependent variable data, where each row is a data point. */
-void numerics::ridge_cv::fit(const arma::mat& X, const arma::mat& y) {
+void numerics::RidgeCV::fit(const arma::mat& X, const arma::vec& y) {
+    _check_xy(X,y);
+    _dim = X.n_cols;
     uint n_obs = X.n_rows;
-    arma::mat covariance = X.t() * X;
-    arma::mat yp = X.t() * y;
+
+    arma::mat covariance;
+    arma::vec yp;
+    arma::mat P;
+
+    if (_fit_intercept) {
+        P = _add_intercept(X);
+        covariance = P.t() * P;
+        yp = P.t() * y;
+    } else {
+        covariance = X.t() * X;
+        yp = X.t() * y;
+    }
     arma::eig_sym(_eigvals, _eigvecs, covariance);
     yp = _eigvecs.t() * yp;
-    auto GCV = [&](double lam) -> double { //
-        _w = _eigvecs * arma::diagmat(1 / (_eigvals + lam)) * yp;
+    auto GCV = [&](double lam) -> double {
+        lam = std::pow(10.0, lam);
+        _w = _eigvecs * (yp / (_eigvals + lam));
+
         _df = arma::sum(_eigvals / (_eigvals + lam));
-        _res = y - X*_w;
-        _rmse = arma::norm(_res,"fro");
-        return std::pow(_rmse / (n_obs-_df), 2) * n_obs;
+
+        double mse;
+        if (_fit_intercept) mse = mse_score(y, P*_w);
+        else mse = mse_score(y, X*_w);
+
+        return mse * std::pow(n_obs / (n_obs-_df), 2);
     };
-    _lambda = numerics::fminbnd(GCV, 0, 1e4);
-    _rmse /= _res.n_elem;
+    _lambda = optimization::fminbnd(GCV, -8, 4);
+    _lambda = std::pow(10.0, _lambda);
+    _split_weights();
+}
+
+arma::vec numerics::RidgeCV::predict(const arma::mat& X) const {
+    _check_x(X);
+    return _b + X * _w;
+}
+
+double numerics::RidgeCV::score(const arma::mat& x, const arma::vec& y) const {
+    _check_xy(x, y);
+    return r2_score(y, predict(x));
 }

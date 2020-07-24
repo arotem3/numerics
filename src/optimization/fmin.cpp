@@ -1,17 +1,12 @@
 #include <numerics.hpp>
 
-/* fminbnd(f,a,b) : implementation of Brent's method for local minimization of a univariate function bounded on the interval (a,b) with f(a) and f(b) not necessarily defined. This method relys on the superlinear convergence rates of successive parabolic interpolation and the reliability of golden section search to find a minimum within O(log2(tol^-1)) iterations; where tol~O(1e-8)~O(sqrt(machine epsilon)).
- * --- f : objective function.
- * --- a : lower bound of interval.
- * --- b : upper bound of interval. */
-double numerics::fminbnd(const std::function<double(double)>& f, double a, double b) {
+double numerics::optimization::fminbnd(const std::function<double(double)>& f, double a, double b, double tol) {
     if (b <= a) {
-        std::cout << "minimize() error: invalid interval; a must be less than b but (a=" << a << ", b=" << b << "). Returning a.";
-        return a;
+        throw std::invalid_argument("invalid interval; a must be less than b but (a=" + std::to_string(a) + ", b=" + std::to_string(b) + ").");
     }
+    if (tol <= 0) throw std::invalid_argument("fminbnd(): require tol (=" + std::to_string(tol) + ") > 0");
     double x,u,v,w,fu,fv,fw,fx;
-    double c,d,e,m,p,q,r,tol;
-    tol = (1e-8)*(b-a);
+    double c,d,e,m,p,q,r;
 
     c = (3 - std::sqrt(5))/2;
     x = a+c*(b-a); e=0; v = x; w = x;
@@ -73,18 +68,14 @@ double numerics::fminbnd(const std::function<double(double)>& f, double a, doubl
     return x;
 }
 
-/* fminsearch(f, x0, alpha=0) : implementation of the Nelder-Mead method in one dimension for unconstrained minimization.
- * --- f : objective function.
- * --- x0 : initial guess.
- * --- alpha : initial step size, if one isn't provided alpha will be set to 2*tol where tol~O(1e-8). */
-double numerics::fminsearch(const std::function<double(double)>& f, double x0, double alpha) {
+double numerics::optimization::fminsearch(const std::function<double(double)>& f, double x0, double alpha) {
     uint best, worst;
     double tol = (std::abs(x0)<2e-8) ? (1e-8) : ((1e-8)*std::abs(x0));
     double R=1.0, E=2.0, Co=0.5, Ci=0.5;
     double xr, fr, xe, fe, xc, fc;
     double x[2], fx[2];
 
-    if (alpha <= 0) alpha = 2*tol;
+    if (alpha <= 0) alpha = 5*tol;
 
     x[0]=x0;
     x[1]=x0+alpha;

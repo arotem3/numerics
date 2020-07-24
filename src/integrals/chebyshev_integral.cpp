@@ -1,9 +1,5 @@
 #include <numerics.hpp>
 
-/* chebyshev_integral(f, a, b, m) : spectral method for integrating continuous functions 
- * --- f : function to integrate.
- * --- a,b : interval [a,b] to evaluate integral over
- * --- m : exact number of function evaluations. method is O(m log m) in time (via the fft).  */
 double numerics::chebyshev_integral(const std::function<double(double)>& f, double a, double b, uint m) {
     arma::vec x = arma::regspace(0,m-1)/(m-1);
     x = 0.5*(1+arma::cos(M_PI * x))*(b-a) + a;

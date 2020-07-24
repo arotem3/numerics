@@ -1,7 +1,7 @@
 #include "numerics.hpp"
 #include "matplotlibcpp.h"
 
-// g++ -g -Wall -o knn_classifier knn_classifier_ex.cpp -O3 -lnumerics -larmadillo -I/usr/include/python2.7 -lpython2.7
+// g++ -g -Wall -o knn_classifier knn_classifier_ex.cpp -O3 -lnumerics -larmadillo -I/usr/include/python3.8 -lpython3.8
 
 std::vector<double> conv(const arma::mat& u) {
     return arma::conv_to<std::vector<double>>::from(u);
@@ -18,23 +18,17 @@ int main() {
     arma::uvec Y = arma::zeros<arma::uvec>(sample_size);
     Y.rows(sample_size/2,sample_size-1) += 1;
 
-    numerics::knn_algorithm alg = numerics::knn_algorithm::KD_TREE; // stores data in kd-tree allowing for O(log n) query time when x.n_cols << x.n_rows
-                                                                    // BRUTE stores data as is ==> O(n) query time
-    numerics::knn_metric metr = numerics::knn_metric::CONSTANT; // takes the average of all the neighbors
-                                                    // L1_DISTANCE, L2_DISTANCE weighs the average accoriding to distance
+    bool distance_weights = false;
     arma::uvec k_set = arma::regspace<arma::uvec>(2,20);
-    numerics::knn_classifier model(k_set,alg,metr);
+    numerics::KNeighborsClassifier model(k_set, 2, distance_weights);
     model.fit(X,Y);
 
     arma::vec xgrid = arma::linspace(-M_PI,M_PI,1000);
-    arma::mat p = model.predict_probabilities(xgrid);
-    arma::uvec pred_categories = model.predict_categories(X);
+    arma::mat p = model.predict_proba(xgrid);
+    arma::uvec pred_categories = model.predict(X);
 
-    arma::uvec yhat = model.predict_categories(X);
-    double prec = arma::sum(yhat == Y && yhat) / (double)arma::sum(yhat);
-
-    std::cout << "optimal k: " << model.num_neighbors << '\n'
-              << "Precision : " << prec << '\n';
+    std::cout << "optimal k: " << model.k << '\n'
+              << "accuracy : " << model.score(X, Y) << '\n';
 
     auto xx = conv(X);
     auto y1 = conv(Y);

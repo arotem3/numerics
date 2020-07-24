@@ -33,23 +33,23 @@ int main() {
               << "\t[0,0,0]\n\t[-0.707,-1.414,-0.707]\n\t[-0.707,1.414,-0.707]\n\t[0.707,-1.414,0.707]\n\t[0.707,1.414,0.707]" << std::endl;
     arma::vec x = arma::randn(3);
 
-    // numerics::newton fsolver; std::cout << "using Newton's method..." << std::endl;
-    numerics::broyd fsolver; std::cout << std::endl << "using Broyden's method..." << std::endl;
-    // numerics::lmlsqr fsolver; std::cout << "using Levenberg-Marquardt least squares..." << std::endl;
+    // numerics::optimization::Newton fsolver; std::cout << "using Newton's method..." << std::endl;
+    numerics::optimization::Broyd fsolver; std::cout << std::endl << "using Broyden's method..." << std::endl;
+    // numerics::optimization::LmLSQR fsolver; std::cout << "using Levenberg-Marquardt least squares..." << std::endl;
 
     clock_t t = clock();
-    fsolver.fsolve(f,J,x);
+    fsolver.fsolve(x,f,J);
     // fsolver.fsolve(f,x); // broyd and lmlsqr do not need a jacobian function
     t = clock() - t;
 
     arma::vec F = f(x);
-    std::string flag; fsolver.get_exit_flag(flag);
+    std::string flag = fsolver.get_exit_flag();
 
     std::cout << "results:" << std::endl << std::fixed << std::setprecision(4)
               << "\troot:       [" << x(0) << ",   " << x(1) << ",   " << x(2) << "]" << std::endl
               << "\tf(root):    [" << F(0) << ",   " << F(1) << ",   " << F(2) << "]" << std::endl
               << "\ttime: " << (float)t/CLOCKS_PER_SEC << " secs" << std::endl
-              << "\ttotal iterations needed: " << fsolver.num_iterations() << std::endl
+              << "\ttotal iterations needed: " << fsolver.n_iter << std::endl
               << "\texit flag: " << flag << std::endl;
     
     return 0;

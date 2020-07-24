@@ -6,7 +6,7 @@
 * --- t : current t value.
 * --- V : current solution value.
 * --- k : current step size. */
-double numerics::ode::ivp::event_handle(double prev_t, const arma::rowvec& prev_U, double t, const arma::rowvec& V, double k) {
+double numerics::ode::InitialValueProblem::event_handle(double prev_t, const arma::vec& prev_U, double t, const arma::vec& V, double k) {
     if (  events.empty()  ) return k;
     int num_events = events.size();
     
@@ -18,7 +18,7 @@ double numerics::ode::ivp::event_handle(double prev_t, const arma::rowvec& prev_
             if (result - prev_result < 0) {
                 if (event_dirs.at(i) == event_direction::NEGATIVE || event_dirs.at(i) == event_direction::ALL) { // negative event
                     if (std::abs(result) < 1e-4) { // we stop!
-                        stopping_event = i;
+                        _stopping_event = i;
                         return 0;
                     } else { // update k
                         return k/10; // take a smaller step
@@ -27,7 +27,7 @@ double numerics::ode::ivp::event_handle(double prev_t, const arma::rowvec& prev_
             } else {
                 if (event_dirs.at(i) == event_direction::POSITIVE || event_dirs.at(i) == event_direction::ALL) { // positive event
                     if (std::abs(result) < 1e-4) { // we stop!
-                        stopping_event = i;
+                        _stopping_event = i;
                         return 0;
                     } else { // update k
                         return k/10;

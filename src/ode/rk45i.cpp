@@ -1,245 +1,219 @@
 #include <numerics.hpp>
 
-/* ode_solve(f, t, U) : adaptive diagonally implicit runge kutta O(K^4) method for any explicit first order system of ODEs.
- * our equations are of the form u' = f(t,u) [u must be a row vector].
- * --- f  : f(t,u) [t must be the first variable, u the second].
- * --- t  : vector to store t-values initialized at {t_initial, t_final}.
- * --- U  : vector to store the solution first row must be u(t0). */
-void numerics::ode::rk45i::ode_solve(const std::function<arma::rowvec(double,const arma::rowvec&)>& f, arma::vec& t, arma::mat& U) {
-    arma::rowvec U0 = arma::vectorise(U).t();
-    int m = U0.n_cols; // dimension of solution space
-    if (m == 0) { // no initial conditions err
-        std::cerr << "rk45i() failed: no initial condition input." << std::endl;
-        return;
-    }
+numerics::ode::ODESolution numerics::ode::rk45i::ode_solve(const odefunc& f, double t0, double tf, const arma::vec& U0) {
+    _check_range(t0, tf);
+    double k = (tf - t0) / 100;
 
-    double t0 = t(0);
-    double tf = t(1);
-    t = arma::zeros(20);
-    t(0) = t0;
+    u_long m = U0.n_elem;
+    ODESolution sol(m);
 
-    U = arma::zeros(20,m);
-    U.row(0) = U0;
-    double k = std::max(0.01, (tf - t0)/100);
+    std::vector<double>& t = sol._tvec;
+    std::vector<arma::vec>& U = sol._Uvec;
+    t.push_back(t0);
+    U.push_back(U0);
 
-    broyd fsolver;
-    fsolver.tol = max_nonlin_err;
-    fsolver.max_iterations = max_nonlin_iter;
+    optimization::Broyd fsolver(_max_solver_err, _max_solver_iter);
 
     arma::vec v1,v2,v3,v4,v5,z;
-    arma::rowvec u4,u5;
+    arma::vec u4,u5;
     unsigned long long i = 0;
-    while (t(i) <= tf) {
-        v1 = k*f(t(i), U.row(i)).t();
+    while (t.at(i) < tf) {
+        v1 = k*f(t.at(i), U.at(i));
         fsolver.fsolve(
+            v1,
             [k,i,&f,&t,&U](const arma::vec& u) -> arma::vec {
-                arma::rowvec r = k*f(t(i) + k/4, U.row(i) + u.t()/4);
-                return r.t() - u;
-            }, v1
+                arma::vec r = k*f(t.at(i) + k/4, U.at(i) + u/4);
+                return r - u;
+            }
         );
 
-        z = U.row(i).t() + v1/2;
+        z = U.at(i) + v1/2;
         v2 = z;
         fsolver.fsolve(
+            v2,
             [k,i,&f,&t,&U,&z](const arma::vec& u) -> arma::vec {
-                arma::rowvec r = k*f(t(i) + 3*k/4, z.t() + u.t()/4);
-                return r.t() - u;
-            }, v2
+                arma::vec r = k*f(t.at(i) + 3*k/4, z + u/4);
+                return r - u;
+            }
         );
 
-        z = U.row(i).t() + 17*v1/50 - v2/25;
+        z = U.at(i) + 17*v1/50 - v2/25;
         v3 = z;
         fsolver.fsolve(
+            v3,
             [k,i,&f,&t,&U,&z](const arma::vec& u) -> arma::vec {
-                arma::rowvec r = k*f(t(i) + 11*k/20, z.t() + u.t()/4);
-                return r.t() - u;
-            }, v3
+                arma::vec r = k*f(t.at(i) + 11*k/20, z + u/4);
+                return r - u;
+            }
         );
 
-        z = U.row(i).t() + 371*v1/1360 - 137*v2/2720 + 15*v3/544;
+        z = U.at(i) + 371*v1/1360 - 137*v2/2720 + 15*v3/544;
         v4 = z;
         fsolver.fsolve(
+            v4,
             [k,i,&f,&t,&U,&z](const arma::vec& u) -> arma::vec {
-                arma::rowvec r = k*f(t(i) + k/2, z.t() + u.t()/4);
-                return r.t() - u;
-            }, v4
+                arma::vec r = k*f(t.at(i) + k/2, z + u/4);
+                return r - u;
+            }
         );
 
-        z = U.row(i).t() + 25*v1/24 - 49*v2/48 + 125*v3/16 - 85*v4/12;
+        z = U.at(i) + 25*v1/24 - 49*v2/48 + 125*v3/16 - 85*v4/12;
         v5 = z;
         fsolver.fsolve(
+            v5,
             [k,i,&f,&t,&U,&z](const arma::vec& u)->arma::vec {
-                arma::rowvec r = k*f(t(i) + k, z.t() + u.t()/4);
-                return r.t() - u;
-            }, v5
+                arma::vec r = k*f(t.at(i) + k, z + u/4);
+                return r - u;
+            }
         );
 
-        u4 = U.row(i) + (59*v1/48 - 17*v2/96 + 225*v3/32 - 85*v4/12).t();
-        u5 = (z + v5/4).t();
+        u4 = U.at(i) + (59*v1/48 - 17*v2/96 + 225*v3/32 - 85*v4/12);
+        u5 = (z + v5/4);
         double err = arma::norm(u4 - u5, "inf");
 
-        double kk = 2*k;
-        if (i > 0) kk = event_handle(t(i), U.row(i), t(i) + k,u5,k);
+        double kk;
+        if (i > 0) kk = event_handle(t.at(i), U.at(i), t.at(i) + k,u5,k);
+        else kk = 2*k; // dummy initialization to ensure kk > k for the first iter
 
-        if (err < adaptive_max_err*arma::norm(U.row(i),"inf")) {
+        if (err < _max_err*arma::norm(U.at(i),"inf")) {
             if (0 <  kk && kk < k) {
                 k = kk;
                 continue;
             }
 
-            t(i+1) = t(i) + k;
-            U.row(i+1) = u5;
+            t.push_back(t.at(i) + k);
+            U.push_back(u5);
             i++;
-            
-            if (k == 0) break;
-            if (i+1 >= t.n_rows) {
-                t.resize(t.n_rows*2,1);
-                U.resize(U.n_rows*2,U.n_cols);
-            }
         }
 
         if (kk == 0) break;
-        k *= std::min(10.0, std::max(0.1, 0.9*std::pow(adaptive_max_err/err,0.25)));
-        if (k < adaptive_step_min) {
-            std::cerr << "rk45i() failed: method does not converge b/c minimum k exceeded." << std::endl;
-            std::cerr << "\tfailed at t = " << t(i) << std::endl;
+        k *= std::min(10.0, std::max(0.1, 0.9*std::pow(_max_err/err,0.25)));
+        if (k < _step_min) {
+            std::cerr << "rk45i failed: method could not converge b/c current step-size (=" << k << ") < minimum step size (=" << _step_min << ")\n";
+            std::cerr << "\tfailed at t = " << t.at(i) << "\n";
             break;
         }
-        if (t(i) + k > tf) k = tf - t(i);
+        if (t.at(i) + k > tf) k = tf - t.at(i);
     }
-    t = t( arma::span(0,i) );
-    U = U.rows( arma::span(0,i) );
+    sol._convert();
+    return sol;
 }
 
-/* ode_solve(f, jacobian, t, U) : adaptive diagonally implicit runge kutta O(K^4) method for any explicit first order system of ODEs.
- * our equations are of the form u' = f(t,u) [u must be a row vector].
- * --- f  : f(t,u) [t must be the first variable, u the second].
- * --- jacobian : J(t,u) jacobian of f(t,u) with respect to u.
- * --- t  : vector to store t-values initialized at {t_initial, t_final}.
- * --- U  : vector to store the solution first row must be u(t0). */
-void numerics::ode::rk45i::ode_solve(const std::function<arma::rowvec(double,const arma::rowvec&)>& f,
-                                    const std::function<arma::mat(double,const arma::rowvec&)>& jacobian,
-                                    arma::vec& t, arma::mat& U) {
-    arma::rowvec U0 = arma::vectorise(U).t();
-    int m = U0.n_cols; // dimension of solution space
-    if (m == 0) { // no initial conditions err
-        std::cerr << "rk45i() failed: no initial condition input." << std::endl;
-        return;
-    }
+numerics::ode::ODESolution numerics::ode::rk45i::ode_solve(const odefunc& f, const odejacobian& jacobian, double t0, double tf, const arma::vec& U0) {
+    _check_range(t0, tf);
+    double k = (tf - t0) / 100;
 
-    double t0 = t(0);
-    double tf = t(1);
-    t = arma::zeros(20);
-    t(0) = t0;
+    u_long m = U0.n_elem;
+    ODESolution sol(m);
 
-    U = arma::zeros(20,m);
-    U.row(0) = U0;
-    double k = std::max(0.01, (tf - t0)/100);
+    std::vector<double>& t = sol._tvec;
+    std::vector<arma::vec>& U = sol._Uvec;
+    t.push_back(t0);
+    U.push_back(U0);
 
-    broyd fsolver;
-    fsolver.tol = max_nonlin_err;
-    fsolver.max_iterations = max_nonlin_iter;
+    optimization::Newton fsolver(_max_solver_err, _max_solver_iter);
 
     arma::vec v1,v2,v3,v4,v5,z;
-    arma::rowvec u4,u5;
+    arma::vec u4,u5;
     unsigned long long i = 0;
-    while (t(i) <= tf) {
-        v1 = k*f(t(i), U.row(i)).t();
+    while (t.at(i) < tf) {
+        v1 = k*f(t.at(i), U.at(i));
         fsolver.fsolve(
+            v1,
             [k,i,&f,&t,&U](const arma::vec& u) -> arma::vec {
-                arma::rowvec r = k*f(t(i) + k/4, U.row(i) + u.t()/4);
-                return r.t() - u;
+                arma::vec r = k*f(t.at(i) + k/4, U.at(i) + u/4);
+                return r - u;
             },
             [k,i,&f,&jacobian,&t,&U](const arma::vec& u) -> arma::mat {
-                arma::mat J = jacobian(t(i) + k/4, U.row(i) + u.t()/4);
+                arma::mat J = jacobian(t.at(i) + k/4, U.at(i) + u/4);
                 return arma::eye(arma::size(J)) - k/4*J;
-            }, v1
+            }
         );
 
-        z = U.row(i).t() + v1/2;
+        z = U.at(i) + v1/2;
         v2 = z;
         fsolver.fsolve(
+            v2,
             [k,i,&f,&t,&U,&z](const arma::vec& u) -> arma::vec {
-                arma::rowvec r = k*f(t(i) + 3*k/4, z.t() + u.t()/4);
-                return r.t() - u;
+                arma::vec r = k*f(t.at(i) + 3*k/4, z + u/4);
+                return r - u;
             },
             [k,i,&f,&jacobian,&t,&U,&z](const arma::vec& u) -> arma::mat {
-                arma::mat J = jacobian(t(i) + 3*k/4, z.t() + u.t()/4);
+                arma::mat J = jacobian(t.at(i) + 3*k/4, z + u/4);
                 return arma::eye(arma::size(J)) - k/4*J;
-            }, v2
+            }
         );
 
-        z = U.row(i).t() + 17*v1/50 - v2/25;
+        z = U.at(i) + 17*v1/50 - v2/25;
         v3 = z;
         fsolver.fsolve(
+            v3,
             [k,i,&f,&t,&U,&z](const arma::vec& u) -> arma::vec {
-                arma::rowvec r = k*f(t(i) + 11*k/20, z.t() + u.t()/4);
-                return r.t() - u;
+                arma::vec r = k*f(t.at(i) + 11*k/20, z + u/4);
+                return r - u;
             },
             [k,i,&f,&jacobian,&t,&U,&z](const arma::vec& u) -> arma::mat {
-                arma::mat J = jacobian(t(i) + 11*k/20, z.t() + u.t()/4);
+                arma::mat J = jacobian(t.at(i) + 11*k/20, z + u/4);
                 return arma::eye(arma::size(J)) - k/4*J;
-            }, v3
+            }
         );
 
-        z = U.row(i).t() + 371*v1/1360 - 137*v2/2720 + 15*v3/544;
+        z = U.at(i) + 371*v1/1360 - 137*v2/2720 + 15*v3/544;
         v4 = z;
         fsolver.fsolve(
+            v4,
             [k,i,&f,&t,&U,&z](const arma::vec& u) -> arma::vec {
-                arma::rowvec r = k*f(t(i) + k/2, z.t() + u.t()/4);
-                return r.t() - u;
+                arma::vec r = k*f(t.at(i) + k/2, z + u/4);
+                return r - u;
             },
             [k,i,&f,&jacobian,&t,&U,&z](const arma::vec& u) -> arma::mat {
-                arma::mat J = jacobian(t(i) + k/2, z.t() + u.t()/4);
+                arma::mat J = jacobian(t.at(i) + k/2, z + u/4);
                 return arma::eye(arma::size(J)) - k/4*J;
-            }, v4
+            }
         );
 
-        z = U.row(i).t() + 25*v1/24 - 49*v2/48 + 125*v3/16 - 85*v4/12;
+        z = U.at(i) + 25*v1/24 - 49*v2/48 + 125*v3/16 - 85*v4/12;
         v5 = z;
         fsolver.fsolve(
+            v5,
             [k,i,&f,&t,&U,&z](const arma::vec& u)->arma::vec {
-                arma::rowvec r = k*f(t(i) + k, z.t() + u.t()/4);
-                return r.t() - u;
+                arma::vec r = k*f(t.at(i) + k, z + u/4);
+                return r - u;
             },
             [k,i,&f,&jacobian,&t,&U,&z](const arma::vec& u) -> arma::mat {
-                arma::mat J = jacobian(t(i) + k, z.t() + u.t()/4);
+                arma::mat J = jacobian(t.at(i) + k, z + u/4);
                 return arma::eye(arma::size(J)) - k/4*J;
-            }, v5
+            }
         );
 
-        u4 = U.row(i) + (59*v1/48 - 17*v2/96 + 225*v3/32 - 85*v4/12).t();
-        u5 = (z + v5/4).t();
+        u4 = U.at(i) + (59*v1/48 - 17*v2/96 + 225*v3/32 - 85*v4/12);
+        u5 = (z + v5/4);
         double err = arma::norm(u4 - u5, "inf");
 
-        double kk = 2*k;
-        if (i > 0) kk = event_handle(t(i), U.row(i), t(i) + k,u5,k);
+        double kk;
+        if (i > 0) kk = event_handle(t.at(i), U.at(i), t.at(i) + k,u5,k);
+        else kk = 2*k; // dummy initialization to ensure kk > k for the first iter
 
-        if (err < adaptive_max_err*arma::norm(U.row(i),"inf")) {
+        if (err < _max_err*arma::norm(U.at(i),"inf")) {
             if (0 <  kk && kk < k) {
                 k = kk;
                 continue;
             }
 
-            t(i+1) = t(i) + k;
-            U.row(i+1) = u5;
+            t.push_back(t.at(i) + k);
+            U.push_back(u5);
             i++;
-            
-            if (i+1 >= t.n_rows) {
-                t.resize(t.n_rows*2,1);
-                U.resize(U.n_rows*2,U.n_cols);
-            }
         }
 
         if (kk == 0) break;
-        k *= std::min(10.0, std::max(0.1, 0.9*std::pow(adaptive_max_err/err,0.25)));
-        if (k < adaptive_step_min) {
-            std::cerr << "rk45i() failed: method does not converge b/c minimum k exceeded." << std::endl;
-            std::cerr << "\tfailed at t = " << t(i) << std::endl;
+        k *= std::min(10.0, std::max(0.1, 0.9*std::pow(_max_err/err,0.25)));
+        if (k < _step_min) {
+            std::cerr << "rk45i failed: method could not converge b/c current step-size (=" << k << ") < minimum step size (=" << _step_min << ")\n";
+            std::cerr << "\tfailed at t = " << t.at(i) << "\n";
             break;
         }
-        if (t(i) + k > tf) k = tf - t(i);
+        if (t.at(i) + k > tf) k = tf - t.at(i);
     }
-    t = t( arma::span(0,i) );
-    U = U.rows( arma::span(0,i) );
+    sol._convert();
+    return sol;
 }

@@ -2,8 +2,6 @@
 
 // g++ -Wall -g -o integrate integrate_ex.cpp -O3 -lnumerics -larmadillo
 
-using namespace numerics;
-
 double g(double x) {
     double y = 0;
     for (int i=1; i <= 10; ++i) {
@@ -18,15 +16,9 @@ int main() {
     auto f = [](double x) -> double {return std::exp(-std::pow(x,2));}; // f(x) = exp[-x^2]
     
     long double val = 0.746824132812427025l;
-    double I = integrate(f,0,1);
-    std::cout << "|error| < 1e-5" << std::endl;
+    double I = numerics::integrate(f,0,1);
     std::cout << "\tintegrate() estimate: " << I << std::endl << "\tactual value: " << val << std::endl
               << "\terror: " << std::abs(I - val) << std::endl;
-    
-    I = integrate(f, 0, 1, 1.0);
-    std::cout << "|error| < 1" << std::endl;
-    std::cout << "\tintegrate() estimate: " << I << std::endl << "\tactual value: " << val << std::endl
-              << "\terror: " << std::abs(I - val) << std::endl; 
 
     std::cout << "\nnow we compare Simpson, Lobatto, and Chebyshev for the function: 0.5 - sum(sin(j*x)/j, {j,1,10})/pi  over [-pi,pi]" << std::endl;
 
@@ -34,19 +26,19 @@ int main() {
     std::cout << "using |err| < 0.001" << std::endl;
     double y;
     clock_t t = clock();
-    y = simpson_integral(g, -M_PI, M_PI, 1e-3);
+    y = numerics::simpson_integral(g, -M_PI, M_PI, 1e-3);
     t = clock() - t;
     std::cout << "simpson_integral() approx: " << y << " it took " << (float)t/CLOCKS_PER_SEC << " secs" << std::endl;
     std::cout << "\ttrue error: " << std::abs(val - y) << std::endl;
 
     t = clock();
-    y = lobatto_integral(g, -M_PI, M_PI, 1e-3);
+    y = numerics::lobatto_integral(g, -M_PI, M_PI, 1e-3);
     t = clock() - t;
     std::cout << "lobatto_integral() approx: " << y << " it took " << (float)t/CLOCKS_PER_SEC << " secs" << std::endl;
     std::cout << "\ttrue error: " << std::abs(val - y) << std::endl;
 
     t = clock();
-    y = chebyshev_integral(g, -M_PI, M_PI);
+    y = numerics::chebyshev_integral(g, -M_PI, M_PI);
     t = clock() - t;
     std::cout << "chebyshev_integral() approx: " << y << " it took " << (float)t/CLOCKS_PER_SEC << " secs" << std::endl;
     std::cout << "\ttrue error: " << std::abs(val - y) << std::endl;

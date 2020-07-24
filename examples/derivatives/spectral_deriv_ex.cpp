@@ -1,9 +1,8 @@
 #include "numerics.hpp"
 #include "matplotlibcpp.h"
 
-// g++ -g -Wall -o spectralD spectral_deriv_ex.cpp -O3 -lnumerics -larmadillo -I/usr/include/python2.7 -lpython2.7
+// g++ -g -Wall -o spectralD spectral_deriv_ex.cpp -O3 -lnumerics -larmadillo -I/usr/include/python3.8 -lpython3.8
 
-using namespace numerics;
 typedef std::vector<double> ddvec;
 
 double f(double x) {
@@ -20,8 +19,8 @@ int main() {
     arma::vec x = arma::linspace(a,b);
     arma::vec y = df(x);
 
-    poly_interp dy = spectral_deriv(f,a,b,m);
-    arma::vec v = dy(x);
+    numerics::PolyInterp dy = numerics::spectral_deriv(f,a,b,m);
+    arma::vec v = dy.predict(x);
 
     std::cout << "max error : " << arma::norm(v - y, "inf") << std::endl;
 

@@ -1,7 +1,7 @@
 #include "numerics.hpp"
 #include "matplotlibcpp.h"
 
-// g++ -Wall -g -o sample_from sample_ex.cpp -O3 -lnumerics -larmadillo -I/usr/include/python2.7 -lpython2.7
+// g++ -Wall -g -o sample_from sample_ex.cpp -O3 -lnumerics -larmadillo -I/usr/include/python3.8 -lpython3.8
 
 using namespace numerics;
 typedef std::vector<double> ddvec;

@@ -1,7 +1,7 @@
 #include "numerics.hpp"
 #include "matplotlibcpp.h"
 
-// g++ -g -Wall -o diffeq ode_ex.cpp -O3 -lnumerics -larmadillo -I/usr/include/python2.7 -lpython2.7
+// g++ -g -Wall -o diffeq ode_ex.cpp -O3 -lnumerics -larmadillo -I/usr/include/python3.8 -lpython3.8
 
 using namespace numerics::ode;
 typedef std::vector<double> ddvec;

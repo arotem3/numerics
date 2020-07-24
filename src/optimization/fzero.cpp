@@ -1,11 +1,6 @@
 #include "numerics.hpp"
 
-/* newton_1d(f,df,x,err) : finds local root of single variable nonlinear functions using newton's method.
- * --- f  : function to find root of.
- * --- df : derivative of f.
- * --- x : point near the root.
- * --- err : approximate error and stopping criteria. */
-double numerics::newton_1d(const std::function<double(double)>& f, const std::function<double(double)>& df, double x, double err) {
+double numerics::optimization::newton_1d(const std::function<double(double)>& f, const std::function<double(double)>& df, double x, double err) {
     err = std::abs(err); if (err <= 0) err = 1e-12;
     int max_iter = 100;
     
@@ -26,12 +21,7 @@ double numerics::newton_1d(const std::function<double(double)>& f, const std::fu
     return x;
 }
 
-/* secant(f,a,b,tol) : secant methods for finding roots of single variable functions.
- * for added efficiency we attempt to bracket the root with an auxilary point.
- * --- f  : function to find root of.
- * --- a,b : bracket for root.
- * --- tol : approximate bound on error and stopping criteria */
-double numerics::secant(const std::function<double(double)>& f, double a, double b, double tol) {
+double numerics::optimization::secant(const std::function<double(double)>& f, double a, double b, double tol) {
     int max_iter = 100;
 
     double fa = f(a), fb = f(b);
@@ -70,11 +60,7 @@ double numerics::secant(const std::function<double(double)>& f, double a, double
     return c;
 }
 
-/* bisect(f,a,b,tol) : bisection method for finding roots of single variable functions
- * --- f  : function to find root of.
- * --- a,b : bracket for root.
- * --- tol : approximate error and stopping criteria. */
-double numerics::bisect(const std::function<double(double)>& f, double a, double b, double tol) {
+double numerics::optimization::bisect(const std::function<double(double)>& f, double a, double b, double tol) {
     tol = std::abs(tol);
     long long k = 2;
 
@@ -109,11 +95,7 @@ double numerics::bisect(const std::function<double(double)>& f, double a, double
     return (a + b)/2;
 }
 
-/* fzero(f,a,b,tol) : adaptively deploys 3 different methods to find root of nonlinear equation
- * --- f  : function to find root of.
- * --- a,b : bracket for root.
- * --- tol : approximate error and stopping criteria. */
-double numerics::fzero(const std::function<double(double)>& f, double a, double b, double tol) {
+double numerics::optimization::fzero(const std::function<double(double)>& f, double a, double b, double tol) {
     int max_iter = std::min(std::pow(std::log2((b-a)/tol)+1,2), 1.0e2); // will nearly never happen
 
     double c, d, e, fa, fb, fc, m=0, s=0, p=0, q=0, r=0, t, eps = std::numeric_limits<double>::epsilon();

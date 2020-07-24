@@ -29,13 +29,13 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 namespace numerics {
-    #include "numerics/utility.hpp"
-    #include "numerics/integrals.hpp"
-    #include "numerics/optimization.hpp"
-    #include "numerics/interpolation.hpp"
-    #include "numerics/derivatives.hpp"
-    #include "numerics/data_science.hpp"
-    #include "numerics/ode.hpp"
-};
+    #include <numerics/utility.hpp>
+    #include <numerics/interpolation.hpp>
+    #include <numerics/data_science.hpp>
+    #include <numerics/derivatives.hpp>
+    #include <numerics/integrals.hpp>
+    #include <numerics/ode.hpp>
+    #include <numerics/optimization.hpp>
+}
 
 #endif

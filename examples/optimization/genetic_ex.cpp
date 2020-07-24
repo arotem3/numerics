@@ -12,18 +12,19 @@ int main() {
     std::cout << "Let's try to maximize f(x) = sum(-x^4 - 16x^2 + 5x)/2 where x is a 4 dimensional vector." << std::endl
               << "We will find the global max of the constrained problem [-5 -5 -5 -5] <= x <= [5  5  5  5]." << std::endl;
 
-    numerics::gen_optim genOptim; // declare gen_optim optimizer
+    numerics::optimization::GeneticOptimizer genOptim;
 
     clock_t t = clock();
-    genOptim.maximize(f, x, xMin, xMax);
+    genOptim.maximize(x, f, xMin, xMax);
     t = clock() - t;
     std::cout << "global maximum at: " << x.t() << "the value is: " << f(x) << std::endl;
     std::cout << "computation time: " << (float)t/CLOCKS_PER_SEC << std::endl << std::endl;
 
-    std::cout << "We will try to solve the unconstrained problem with initial guess x = [-2.5  -3  -3.1  -2.8] and search radius of 1.0" << std::endl;
-    arma::vec x0 = {-2.5,-3,-3.1,-2.8};
+    std::cout << "We will try to solve the unconstrained problem with initial guess x = [0 0 0 0] and search radius of 2.0" << std::endl;
+    arma::vec x0 = {0,0,0,0};
+    genOptim.set_search_radius(2.0);
     t = clock();
-    genOptim.maximize(f,x0);
+    genOptim.maximize(x0, f);
     t = clock() - t;
     std::cout << "local max at: " << x0.t() << "the value is: " << f(x0) << std::endl;
     std::cout << "computation time: " << (float)t/CLOCKS_PER_SEC << std::endl << std::endl;

@@ -1,17 +1,6 @@
 #include "numerics.hpp"
 
-/* wolfe_step(f, grad_f, x, p, c1, c2, b) : step size approximator for quasi-newton methods based on strong wolfe conditions using the one dimensional nelder mead method.
- * --- f : objective function.
- * --- grad_f : gradient function.
- * --- x : current guess.
- * --- p : search direction.
- * --- c1 : wolfe constant 1.
- * --- c2 : wolfe constant 2. */
-double numerics::wolfe_step(const std::function<double(const arma::vec&)>& f,
-                            const std::function<arma::vec(const arma::vec&)>& grad_f,
-                            const arma::vec& x,
-                            const arma::vec& p,
-                            double c1, double c2) {
+double numerics::optimization::wolfe_step(const dFunc& f, const VecFunc& grad_f, const arma::vec& x, const arma::vec& p, double c1, double c2) {
     auto g = [&](double a) -> double {
         return f(x + a*a*p);
     };

@@ -208,7 +208,7 @@ mat Jac = approx_jacobian(F,x);
 ### Spectral Derivatives
 Given function defined over an interval, we can approximate the derivative of the function with spectral accuracy using the `FFT`. The function `spectral_deriv()` does this:
 ```cpp
-poly_interp spectral_deriv(const function<double(double)>& f,
+PolyInterp spectral_deriv(const function<double(double)>& f,
                         double a, double b,
                         unsigned int sample_points = 50);
 ```
@@ -587,33 +587,33 @@ arma::mat cubic_interp::operator()(const arma::vec&);
 ### Polynomial Interpolation
 Class wrapper for armadillo's `polyfit` and `polyval` specialized for interpolation.
 ```cpp
-class poly_interp
+class PolyInterp
 ```
 We fit the polynomial on construction or using `fit()`:
 ```cpp
-poly_interp::poly_interp(const arma::vec& x, const arma::mat& Y);
+PolyInterp::PolyInterp(const arma::vec& x, const arma::mat& Y);
 
-poly_interp& poly_interp::fit(const arma::vec& x, const arma::mat& Y); // returns *this
+PolyInterp& PolyInterp::fit(const arma::vec& x, const arma::mat& Y); // returns *this
 ```
 We can save/load an interpolating object to a stream (such as a file stream):
 ```cpp
-poly_interp::save(ostream& out);
-poly_interp::load(istream& in);
+PolyInterp::save(ostream& out);
+PolyInterp::load(istream& in);
 ```
 We can also load a saved object on construction:
 ```cpp
-poly_interp::poly_interp(istream& in);
+PolyInterp::PolyInterp(istream& in);
 ```
 Note, the data matrix will be stored to the stream as part of the object and can be recovered when the object is loaded using:
 ```cpp
-arma::vec poly_interp::data_X(); // independent values
-arma::mat poly_interp::data_Y(); // dependent values
+arma::vec PolyInterp::data_X(); // independent values
+arma::mat PolyInterp::data_Y(); // dependent values
 ```
 
 We can predict based on the interpolation using the `predict` member function or the `()` operator:
 ```cpp
-arma::mat poly_interp::predict(const arma::vec&);
-arma::mat poly_interp::operator()(const arma::vec&);
+arma::mat PolyInterp::predict(const arma::vec&);
+arma::mat PolyInterp::operator()(const arma::vec&);
 ```
 
 If there is only a need to fit and interpolate a data set once, we may find it more efficient ($\mathcal O(n^3)\rightarrow\mathcal O(n^2)$) and numerically stable(!) to interpolate using Lagrange interpolation:

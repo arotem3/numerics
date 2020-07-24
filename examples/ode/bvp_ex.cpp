@@ -1,10 +1,9 @@
 #include "numerics.hpp"
 #include "matplotlibcpp.h"
 
-// g++ -g -Wall -o bvp bvp_ex.cpp -O3 -lnumerics -larmadillo -I/usr/include/python2.7 -lpython2.7
+// g++ -g -Wall -o bvp bvp_ex.cpp -O3 -lnumerics -larmadillo -I/usr/include/python3.8 -lpython3.8
 
-using namespace numerics::ode;
-typedef std::vector<double> ddvec;
+typedef std::vector<double> dvec;
 
 const double a = -M_PI, b = M_PI;
 const uint N = 32;
@@ -17,8 +16,8 @@ int main() {
               << "we will use an initial guess of u(x) = 1 and v(x) = 0" << std::endl
               << std::endl << std::endl;
 
-    auto f = [](double x, const arma::rowvec& u) -> arma::rowvec {
-        arma::rowvec up(2, arma::fill::zeros);
+    auto f = [](double x, const arma::vec& u) -> arma::vec {
+        arma::vec up(2);
         up(0) = u(1);
         up(1) = 2*(1 - x*x)*u(0);
         return up;
@@ -31,15 +30,15 @@ int main() {
         return A;
     };
 
-    auto bc = [](const arma::rowvec& uL, const arma::rowvec& uR) -> arma::vec {
+    auto bc = [](const arma::vec& uL, const arma::vec& uR) -> arma::vec {
         arma::vec v(2);
         v(0) = uL(0) - 1; // solution fixed as 1 at end points
         v(1) = uR(0) - 1;
         return v;
     };
 
-    auto guess = [](double x) -> arma::rowvec {
-        arma::rowvec y(2);
+    auto guess = [](double x) -> arma::vec {
+        arma::vec y(2);
         y(0) = 1;
         y(1) = 0;
         return y;
@@ -48,14 +47,12 @@ int main() {
     arma::vec x;
     arma::mat U;
 
-    bvp_k bvp_solver(4);
-        // bvp_solver.max_iterations = 20;
-        // bvp_solver.tol = 1e-7;
+    numerics::ode::BVPk bvp_solver(4);
         x = arma::linspace(a,b,N);
-        U = arma::zeros(N,2);
-        for (uint i=0; i < N; ++i) U.row(i) = guess(x(i));
-        bvp_solver.ode_solve(x,U,f,bc);
-        // bvp_solver.ode_solve(x,U,f,J,bc);
+        U = arma::zeros(2,N);
+        for (uint i=0; i < N; ++i) U.col(i) = guess(x(i));
+        numerics::ode::ODESolution sol = bvp_solver.ode_solve(f,bc,x,U);
+        // numerics::ode::ODESolution = bvp_solver.ode_solve(f,J,bc,x,U);
 
     /* bvp_cheb bvp_solver;
         bvp_solver.num_pts = N;
@@ -75,25 +72,25 @@ int main() {
         // bvp_solver.ode_solve(x,U,f,J,bc); */
 
     // an effective way to interpolate the numerical output of these bvp methods is via hermite splines
-    numerics::hspline_interp soln;
-    arma::mat dU(arma::size(U));
-    for (int i=0; i < N; ++i) dU.row(i) = f(x(i),U.row(i));
-    soln.fit(x,U,dU);
+    numerics::HSplineInterp soln;
+    arma::mat dU(arma::size(U.t()));
+    for (int i=0; i < N; ++i) dU.row(i) = f(sol.t(i),sol.solvec.at(i)).t();
+    soln.fit(sol.t, sol.solution, dU);
 
-    // if you are using bvp_cheb consider using a poly_interp object instead...
-    /* numerics::poly_interp soln;
+    // if you are using bvp_cheb consider using a PolyInterp object instead...
+    /* numerics::PolyInterp soln;
     soln.fit(x,U); */
 
     arma::vec xx = arma::linspace(a,b,500);
-    arma::mat uu = soln(xx);
+    arma::mat uu = soln.predict(xx);
 
-    std::cout << "Number of nonlinear iterations needed by solver: " << bvp_solver.num_iterations() << std::endl;
-            ddvec x1 = arma::conv_to<ddvec>::from(x);
-            ddvec u1 = arma::conv_to<ddvec>::from(U.col(0));
-            ddvec v1 = arma::conv_to<ddvec>::from(U.col(1));
-            ddvec x2 = arma::conv_to<ddvec>::from(xx.col(0));
-            ddvec u2 = arma::conv_to<ddvec>::from(uu.col(0));
-            ddvec v2 = arma::conv_to<ddvec>::from(uu.col(1));
+    std::cout << "Number of nonlinear iterations needed by solver: " << bvp_solver.num_iter << std::endl;
+            dvec x1 = arma::conv_to<dvec>::from(x);
+            dvec u1 = arma::conv_to<dvec>::from(sol.solution.col(0));
+            dvec v1 = arma::conv_to<dvec>::from(sol.solution.col(1));
+            dvec x2 = arma::conv_to<dvec>::from(xx.col(0));
+            dvec u2 = arma::conv_to<dvec>::from(uu.col(0));
+            dvec v2 = arma::conv_to<dvec>::from(uu.col(1));
             
             matplotlibcpp::subplot(2,1,1);
             std::map<std::string,std::string> ls = {{"marker","o"},{"label","u(x)"},{"ls","none"},{"color","purple"}};

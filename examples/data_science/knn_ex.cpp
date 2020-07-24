@@ -1,10 +1,9 @@
 #include "numerics.hpp"
 #include "matplotlibcpp.h"
 
-// g++ -g -Wall -o kNN knn_ex.cpp -O3 -lnumerics -larmadillo -I/usr/include/python2.7 -lpython2.7
+// g++ -g -Wall -o kNN knn_ex.cpp -O3 -lnumerics -larmadillo -I/usr/include/python3.8 -lpython3.8
 
-using namespace numerics;
-typedef std::vector<double> ddvec;
+typedef std::vector<double> dvec;
 
 arma::vec f(arma::vec& X) {
     arma::vec y = arma::zeros(arma::size(X));
@@ -16,29 +15,26 @@ arma::vec f(arma::vec& X) {
 
 int main() {
     arma::arma_rng::set_seed(123);
-    arma::vec x = 5*arma::randu(100)-2.5;
+    arma::vec x = 5*arma::randu(200)-2.5;
     arma::vec y = f(x) + 0.1*arma::randn(arma::size(x))%arma::round(arma::randu(arma::size(x))*1);
 
-    knn_algorithm alg = knn_algorithm::KD_TREE; // stores data in kd-tree allowing for O(log n) query time when x.n_cols << x.n_rows
-                                                // BRUTE stores data as is ==> O(n) query time
-    
-    knn_metric metr = knn_metric::L2_DISTANCE; // L1_DISTANCE, CONSTANT
+    bool distance_weights = false;
     arma::uvec k_set = arma::regspace<arma::uvec>(2,20);
     
-    numerics::knn_regression model(k_set, alg, metr);
+    numerics::KNeighborsRegressor model(k_set,2,distance_weights);
     model.fit(x,y);
     
     arma::vec t = arma::linspace(-3,3,500);
     arma::vec yhat = model.predict(t);
 
-    std::cout << "optimal k: " << model.num_neighbors << '\n'
-              << "RMSE : " << arma::norm(f(t) - yhat)/t.n_elem << '\n';
+    std::cout << "optimal k : " << model.k << '\n'
+              << "model R^2 : " << model.score(x,y) << '\n';
 
-    ddvec xx = arma::conv_to<ddvec>::from(x);
-    ddvec yy = arma::conv_to<ddvec>::from(y);
-    ddvec tt = arma::conv_to<ddvec>::from(t);
-    ddvec uu = arma::conv_to<ddvec>::from(yhat);
-    ddvec vv = arma::conv_to<ddvec>::from(f(t));
+    dvec xx = arma::conv_to<dvec>::from(x);
+    dvec yy = arma::conv_to<dvec>::from(y);
+    dvec tt = arma::conv_to<dvec>::from(t);
+    dvec uu = arma::conv_to<dvec>::from(yhat);
+    dvec vv = arma::conv_to<dvec>::from(f(t));
 
     matplotlibcpp::plot(xx,yy,"or");
     matplotlibcpp::named_plot("kNN fit", tt, uu, "-b");

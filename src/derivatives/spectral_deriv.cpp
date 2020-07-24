@@ -4,7 +4,7 @@
  * --- f : f(x) function to compute derivative of
  * --- [a,b] : interval over which to evaluate derivative over
  * --- sample_points: number of points to sample (more->more accurate) {default = 50} */
-numerics::poly_interp numerics::spectral_deriv(const std::function<double(double)>& f, double a, double b, uint sample_points) {
+numerics::PolyInterp numerics::spectral_deriv(const std::function<double(double)>& f, double a, double b, uint sample_points) {
     arma::cx_double i(0,1); // i^2 = -1
     int N = sample_points - 1;
 
@@ -24,6 +24,6 @@ numerics::poly_interp numerics::spectral_deriv(const std::function<double(double
     W = W.rows(0,N);
     W /= (b-a)/2;
 
-    poly_interp p(0.5*(y+1)*(b-a) + a, W);
+    PolyInterp p; p.fit(0.5*(y+1)*(b-a) + a, W);
     return p;
 }

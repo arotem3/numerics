@@ -1,52 +1,24 @@
 #include "numerics.hpp"
 
-/* cubic_interp : empty constructor does nothing */
-numerics::cubic_interp::cubic_interp() {
-    n = 0;
-}
+void numerics::CubicInterp::fit(const arma::vec& X, const arma::mat& Y) {
+    _check_xy(X, Y);
+    _check_x(X);
 
-/* cubic_interp(x, y) : cubic interpolation with one independent variable
- * --- x : independent variable
- * --- y : dependent variable */
-numerics::cubic_interp::cubic_interp(const arma::vec& X, const arma::mat& Y) {
-    if ( X.n_rows != Y.n_rows ) { // error with input arguments
-        std::cerr << "cubic_interp() error: interpolation could not be constructed. Input vectors must have the same length." << std::endl;
-        n = -1;
-        b = {NAN};
-        c = {NAN};
-        d = {NAN};
-        x = {NAN};
-        y = {NAN};
-        return;
-    }
-    
-    n = X.n_elem - 1;
-    
-    for (int i(0); i < n; ++i) { // error with invalid x input
-        for (int j(i+1); j < n+1; ++j) {
-            if ( std::abs(X(i) - X(j)) < arma::eps(X(i)) ) {
-                std::cerr << "cubic_interp() error: one or more x values are repeting, therefore no cubic interpolation exists for this data." << std::endl;
-                n = -1;
-                b = {NAN};
-                c = {NAN};
-                d = {NAN};
-                x = {NAN};
-                y = {NAN};
-                return;
-            }
-        }
-    }
+    u_long n = X.n_elem - 1;
 
     arma::mat h = arma::zeros(n,1);
     arma::sp_mat A(n+1,n+1);
     arma::mat RHS = arma::zeros(n+1,Y.n_cols);
-    b = arma::zeros(n,Y.n_cols);
-    d = arma::zeros(n,Y.n_cols);
-    x = X;
-    y = Y;
+    _b = arma::zeros(n,Y.n_cols);
+    _d = arma::zeros(n,Y.n_cols);
+    arma::uvec I = arma::sort_index(X);
+    _x = X(I);
+    _y = Y.rows(I);
+    _lb = _x.front(); _lb -= std::max(1e-8*std::abs(_lb), 1e-10);
+    _ub = _x.back(); _ub += std::max(1e-8*std::abs(_ub), 1e-10);
 
-    for (int i(1); i < n+1; ++i) {
-        h(i-1) = x(i) - x(i-1); 
+    for (u_long i=1; i < n+1; ++i) {
+        h(i-1) = _x(i) - _x(i-1); 
     }
 
     arma::vec subD = h;
@@ -58,7 +30,7 @@ numerics::cubic_interp::cubic_interp(const arma::vec& X, const arma::mat& Y) {
     mainD(n) = 1;
     supD(0) = 0;
 
-    for (int i(1); i < n; ++i) {     
+    for (u_long i=1; i < n; ++i) {     
         mainD(i) = 2 * (h(i) + h(i-1));
         supD(i) = h(i);
 
@@ -69,98 +41,69 @@ numerics::cubic_interp::cubic_interp(const arma::vec& X, const arma::mat& Y) {
     A.diag()   = mainD;
     A.diag(1)  = supD;
 
-    c = spsolve(A,RHS);
+    _c = spsolve(A,RHS);
 
-    for (int i(0); i < n; ++i) {
-        b.row(i) = (y.row(i+1) - y.row(i))/h(i) - h(i)*(2*c.row(i) + c.row(i+1))/3;
-        d.row(i) = (c.row(i+1) - c.row(i))/(3*h(i));
+    for (u_long i=0; i < n; ++i) {
+        _b.row(i) = (_y.row(i+1) - _y.row(i))/h(i) - h(i)*(2*_c.row(i) + _c.row(i+1))/3;
+        _d.row(i) = (_c.row(i+1) - _c.row(i))/(3*h(i));
     }
-    c = c.rows(arma::span(0,n-1));
+    _c = _c.rows(arma::span(0,n-1));
 }
 
-/* cubic_interp(in) : load data structure from file
- * --- in : file/input stream pointing to top of cubic interpolator object */
-numerics::cubic_interp::cubic_interp(std::istream& in) {
-    load(in);
-}
-
-/* save(out) : save data structure to file.
- * --- out : file/output stream pointing to write data to. */
-void numerics::cubic_interp::save(std::ostream& out) {
-    out << n << " " << y.n_cols << std::endl;
+void numerics::CubicInterp::save(std::ostream& out) const {
+    out << _y.n_rows << " " << _y.n_cols << std::endl;
     out.precision(12);
-    b.t().raw_print(out);
-    c.t().raw_print(out);
-    d.t().raw_print(out);
-    x.t().raw_print(out);
-    y.t().raw_print(out);
+    _b.t().raw_print(out);
+    _c.t().raw_print(out);
+    _d.t().raw_print(out);
+    _x.t().raw_print(out);
+    _y.t().raw_print(out);
 }
 
-/* load(in) : load data structure from file
- * --- in : file/input stream pointing to top of cubic interpolator object */
-void numerics::cubic_interp::load(std::istream& in) {
-    int m;
+void numerics::CubicInterp::load(std::istream& in) {
+    u_long n, m;
     in >> n >> m;
-    b = arma::zeros(n,m);
-        c = arma::zeros(n,m);
-        d = arma::zeros(n,m);
-        x = arma::zeros(n+1);
-        y = arma::zeros(n+1,m);
-    for (int i(0); i < m; ++i) {
-        for (int j(0); j < n; ++j) {
-            in >> b(j,i);
+    _b = arma::zeros(n,m);
+    _c = arma::zeros(n,m);
+    _d = arma::zeros(n,m);
+    _x = arma::zeros(n+1);
+    _y = arma::zeros(n+1,m);
+    for (u_long i=0; i < m; ++i) {
+        for (u_long j=0; j < n; ++j) {
+            in >> _b(j,i);
         }
     }
-    for (int i(0); i < m; ++i) {
-        for (int j(0); j < n; ++j) {
-            in >> c(j,i);
+    for (u_long i=0; i < m; ++i) {
+        for (u_long j=0; j < n; ++j) {
+            in >> _c(j,i);
         }
     }
-    for (int i(0); i < m; ++i) {
-        for (int j(0); j < n; ++j) {
-            in >> d(j,i);
+    for (u_long i=0; i < m; ++i) {
+        for (u_long j=0; j < n; ++j) {
+            in >> _d(j,i);
         }
     }
-    for (int i(0); i < n+1; ++i) {
-        in >> x(i);
+    for (u_long i=0; i < n+1; ++i) {
+        in >> _x(i);
     }
-    for (int i(0); i < m; ++i) {
-        for (int j(0); j < n+1; ++j) {
-            in >> y(j,i);
+    for (u_long i=0; i < m; ++i) {
+        for (u_long j=0; j < n+1; ++j) {
+            in >> _y(j,i);
         }
-    }  
-}
-
-/* data_x() : return independent data vector. */
-arma::vec numerics::cubic_interp::data_X() {
-    return x;
-}
-
-/* data_Y() : return dependent data matrix. */
-arma::mat numerics::cubic_interp::data_Y() {
-    return y;
-}
-
-/* cubic_interp::(t) : same as predict(t) */
-arma::mat numerics::cubic_interp::operator()(const arma::vec& t) {
-    return predict(t);
-}
-
-/* predict(t) : evaluate interpolator like a function at specific values.
- * --- t : points to evaluate interpolation on. */
-arma::mat numerics::cubic_interp::predict(const arma::vec& t) {
-    if ( (t.min() < x.min() - 0.01) || (x.max() + 0.01 < t.max()) ) { // input error
-        std::cerr << "cubic_interp::predict() failed: one or more input value is outside the domain of the interpolation. No possible evaluation exists." << std::endl;
-        return arma::mat();
     }
+}
 
-    int t_length = arma::size(t)(0);
-    arma::mat s = arma::zeros(t_length,y.n_cols);
+arma::mat numerics::CubicInterp::predict(const arma::vec& t) const {
+    _check_range(t);
 
-    for (int i(0); i < t_length; ++i) {
-        for (int j(0); j < n; ++j) {
-            if (t(i) >= x(j) && t(i) <= x(j+1)) {
-                s.row(i) = y.row(j) + b.row(j)*(t(i) - x(j)) + c.row(j)*pow(t(i) - x(j),2) + d.row(j)*pow(t(i)-x(j),3);
+    u_long t_length = t.n_elem;
+    arma::mat s = arma::zeros(t_length,_y.n_cols);
+
+    for (u_long i=0; i < t_length; ++i) {
+        for (u_long j=0; j < _x.n_elem-1; ++j) {
+            if (_x(j) <= t(i) && t(i) <= _x(j+1)) {
+                double h = t(i) - _x(j);
+                s.row(i) = _y.row(j) + _b.row(j)*h + _c.row(j)*std::pow(h,2) + _d.row(j)*std::pow(h,3);
             }
         }
     }

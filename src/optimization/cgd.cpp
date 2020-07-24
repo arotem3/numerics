@@ -17,13 +17,7 @@ arma::mat& one_over_diag(arma::mat& A) {
     return A;
 }
 
-/* cgd(A,b,x,tol,max_iter) : solves the system Ax = b (or A'A*x = A'b) using conjugate gradient descent
- * --- A : system i.e. LHS (MAY BE OVERWITTEN IF 'A' IS NOT SYM POS DEF)
- * --- b : RHS (MAY BE OVERWRITTEN IF 'A' IS NOT SYM POS DEF)
- * --- x : initial guess and solution stored here
- * --- tol : stopping criteria for measuring convergence to solution.
- * --- max_iter : maximum number of iterations after which the solver will stop regardless of convergence */
-void numerics::cgd(arma::mat& A, arma::mat& b, arma::mat& x, double tol, int max_iter) {
+void numerics::optimization::cgd(arma::mat& A, arma::mat& b, arma::mat& x, double tol, int max_iter) {
     if (max_iter <= 0) max_iter = 1.1*b.n_rows;
     
     if ( !A.is_symmetric() ) {
@@ -48,18 +42,11 @@ void numerics::cgd(arma::mat& A, arma::mat& b, arma::mat& x, double tol, int max
     }
 }
 
-/* cgd(A,b,x,tol,max_iter) : solves the sparse system Ax = b (or A'A*x = A'b) using conjugate gradient descent
- * --- A : sparse system i.e. LHS (MAY BE OVERWITTEN)
- * --- b : RHS (MAY BE OVERWRITTEN)
- * --- x : initial guess and solution stored here
- * --- tol : stopping criteria for measuring convergence to solution.
- * --- max_iter : maximum number of iterations after which the solver will stop regardless of convergence */
-void numerics::cgd(const arma::sp_mat& A, const arma::mat& b, arma::mat& x, double tol, int max_iter) {
+void numerics::optimization::cgd(const arma::sp_mat& A, const arma::mat& b, arma::mat& x, double tol, int max_iter) {
     if (max_iter <= 0) max_iter = 1.1*b.n_rows;
 
     if (!A.is_symmetric()) {
-        std::cerr << "cgd() error: sparse cgd() cannot handle nonsymmetric matrices." << std::endl;
-        return;
+        throw std::invalid_argument("sparse cgd cannot handle nonsymmetric matrices.");
     }
 
     arma::mat r = b - A*x;
@@ -76,59 +63,4 @@ void numerics::cgd(const arma::sp_mat& A, const arma::mat& b, arma::mat& x, doub
         p = r + p * beta;
         k++;
     }
-}
-
-/* minimize(grad_f, x, max_iter) : nonlinear conjugate gradient method.
- * --- grad_f : gradient function.
- * --- x : guess, and solution.
- * --- max_iter : maximum number of iterations after which the solver will stop regardless of convergence. */
-void numerics::nlcgd::minimize(const std::function<arma::vec(const arma::vec&)>& grad_f, arma::vec& x, int max_iter) {
-    if (max_iter <= 0) {
-        if (max_iterations <= 0) max_iterations = 100;
-    } else max_iterations = max_iter;
-
-    bool minimize_line = (step_size <= 0);
-    int n = x.n_elem;
-    arma::vec p, s;
-    double alpha = step_size, r, fval;
-
-    uint k = 0;
-    do {
-        if (k >= max_iterations) {
-            exit_flag = 1;
-            num_iter += k;
-            return;
-        }
-        p = -grad_f(x);
-        if (p.has_nan() || p.has_inf()) {
-            exit_flag = 2;
-            num_iter += k;
-            return;
-        }
-        s = p;
-        r = 1/arma::norm(p,"inf");
-        if (minimize_line) {
-            alpha = numerics::fminsearch(
-            [&p,&x,&grad_f,r](double a) -> double {
-                a *= a;
-                arma::vec z = x + (a*r)*p;
-                return r*arma::dot( p, grad_f(z) );
-            }, std::sqrt(alpha));
-            alpha *= alpha;
-        }
-        arma::vec ds = (alpha*r)*p - s;
-        s = (alpha*r)*p;
-        double ss = arma::dot(s,s);
-        
-        x+= s;
-        k++;
-        if (k%n == 0) {
-            p = -grad_f(x);
-        } else {
-            double beta = std::max(arma::dot(s,ds)/ss, 0.0);
-            p = beta*p - grad_f(x);
-        }
-    } while (1.0/r > tol);
-    num_iter += k;
-    exit_flag = 0;
 }

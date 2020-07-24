@@ -1,178 +1,124 @@
 #include <numerics.hpp>
 
-numerics::logistic_regression::logistic_regression(std::istream& in) {
-    load(in);
-}
-
-void numerics::logistic_regression::load(std::istream& in) {
-    int n_vars, n_cats;
-    in >> n_obs >> n_cats >> n_vars >> lambda >> beta;
-    x = arma::zeros(n_obs,n_vars);
-    for (int i=0; i < n_vars; ++i) {
-        for (int j=0; j < n_obs; ++j) {
-            in >> x(j,i);
+void mult_coefs_serial(arma::mat& yh, const arma::vec& coefs, const arma::rowvec& b, const arma::mat& w, const arma::mat& x) {
+    yh = arma::repmat(coefs.subvec(0,b.n_elem-1).as_row(), x.n_rows, 1);
+    arma::uword start = b.n_elem;
+    for (u_long i=0; i < w.n_rows; ++i) {
+        for (u_long j=0; j < w.n_cols; ++j) {
+            arma::uword ij = start + arma::sub2ind(arma::size(w), i, j);
+            yh.col(j) += x.col(i) * coefs(ij);
         }
     }
-    y = arma::zeros(n_obs,n_cats);
-    for (int i=0; i < n_cats; ++i) {
-        for (int j=0; j < n_obs; ++j) {
-            in >> y(j,i);
+    numerics::softmax_inplace(yh);
+}
+
+arma::vec grad_serial(const arma::mat& yh, const arma::vec& coefs, const arma::rowvec& b, const arma::mat& w, const arma::mat& x, const arma::mat& y, double L) {
+    u_long size = x.n_cols + 1;
+    size *= y.n_cols;
+
+    arma::vec out(size);
+
+    arma::mat res = y - yh;
+
+    for (u_long i=0; i < b.n_elem; ++i) {
+        out(i) = -arma::sum(res.col(i));
+    }
+
+    arma::uword start = b.n_elem;
+    for (u_long i=0; i < w.n_rows; ++i) {
+        for (u_long j=0; j < w.n_cols; ++j) {
+            arma::uword ij = start + arma::sub2ind(arma::size(w), i, j);
+            out(ij) = -arma::dot(x.col(i), res.col(j));
+            out(ij) += L * coefs(ij);
         }
     }
-    c = arma::zeros(n_vars+1,n_cats);
-    for (int i=0; i < n_cats; ++i) {
-        for (int j=0; j < n_vars; ++j) {
-            in >> c(j,i);
-        }
-    }
-    d = arma::zeros(n_obs, n_cats);
-    for (int i=0; i < n_cats; ++i) {
-        for (int j=0; j < n_obs; ++j) {
-            in >> d(j,i);
-        }
-    }
-    L = arma::zeros(25);
-    cv_scores = arma::zeros(25);
-    for (int i=0; i < 25; ++i) in >> L(i);
-    for (int i=0; i < 25; ++i) in >> cv_scores(i);
+    return out;
 }
 
-void numerics::logistic_regression::save(std::ostream& out) {
-    int n_vars = x.n_cols, n_cats = y.n_cols;
-    out << n_obs << " " << n_cats << " " << n_vars << " " << lambda << " " << beta << std::endl;
-    x.t().raw_print(out);
-    y.t().raw_print(out);
-    c.t().raw_print(out);
-    d.t().raw_print(out);
-    L.t().raw_print(out);
-    cv_scores.t().raw_print(out);
-}
+void fit_logreg(arma::rowvec& b, arma::mat& w, const arma::mat& x, const arma::mat& y, double L) {
+    u_long size = b.n_elem + w.n_elem;
 
-arma::mat numerics::logistic_regression::softmax(const arma::mat& z) {
-    arma::mat p = z;
-    p.each_row([](arma::rowvec& r)->void{r -= r.max();});
-    p = arma::exp(p);
-    p.each_row([](arma::rowvec& r)->void{r /= arma::accu(r);});
-    return p;
-}
+    arma::vec p = arma::zeros(size);
+    p(arma::span(0, b.n_elem-1)) = b.as_col();
+    p(arma::span(b.n_elem, b.n_elem + w.n_elem - 1)) = w.as_col();
 
-arma::mat numerics::logistic_regression::rbf(const arma::mat& xgrid) {
-    int n = x.n_rows;
-    arma::mat B = arma::zeros(xgrid.n_rows,n);
-    arma::mat R(xgrid.n_rows, xgrid.n_cols);
-    for (int i=0; i < n; ++i) {
-        R = xgrid;
-        R.each_row([&](arma::rowvec& q)->void{q -= x.row(i); q %= q;}); // R = (xgrid - x(i))^2
-        B.col(i) = arma::exp(-arma::sum(R,1)/beta);
-    }
-    return B;
-}
+    auto f = [&](const arma::vec& coefs) -> double {
+        arma::mat yh;
+        mult_coefs_serial(yh, coefs, b, w, x);
+        double cnorm = 0;
+        arma::uword start = b.n_elem;
+        for (u_long i=start; i < coefs.n_elem; ++i) cnorm += std::pow(coefs(i),2);
 
-void numerics::logistic_regression::fit_linear(double lam) {
-    arma::mat Phi = arma::join_rows(arma::ones(x.n_rows,1), x);
-    
-    auto f = [lam,&Phi,this](const arma::vec& cc) -> double {
-        arma::mat p = Phi*arma::reshape(cc, Phi.n_cols, y.n_cols);
-        p = softmax(p);
-        return 0.5*lam*arma::dot(c,c) - arma::accu(p % y);
-    };
-    
-    arma::vec cc = arma::zeros(Phi.n_cols*y.n_cols);
-    nelder_mead fmin;
-    fmin.minimize(f,cc);
-    c = arma::reshape(cc, Phi.n_cols, y.n_cols);
-}
-
-void numerics::logistic_regression::fit_no_replace(const arma::mat& X, const arma::mat& Y, double lam) {
-    int m = X.n_rows, n = X.n_cols;
-    arma::mat Phi = arma::ones(m, 1+n+n_obs);
-    Phi.cols(1,n) = X;
-    Phi.cols(n+1,n+n_obs) = rbf(X);
-    auto f = [lam,&Y,&Phi,this](const arma::vec& dd) -> double {
-        arma::mat p = Phi * arma::reshape(dd, Phi.n_cols, y.n_cols);
-        p = softmax(p);
-        return 0.5*lam*arma::norm(dd,"fro") - arma::accu(Y % p);
-    };
-    auto grad_f = [lam,&Y,&Phi,this](const arma::vec& dd) -> arma::vec {
-        arma::mat p = Phi * arma::reshape(dd, Phi.n_cols, y.n_cols);
-        p = softmax(p);
-        p = arma::vectorise(-Phi.t()*(Y-p)) + lam*dd;
-        return p;
+        return 0.5*L*cnorm - arma::accu(yh % y);
     };
 
-    arma::vec dd = arma::zeros(Phi.n_cols*y.n_cols);
-    lbfgs fmin;
-    fmin.minimize(f,grad_f,dd);
-    d = arma::reshape(dd, Phi.n_cols, y.n_cols);
-    c = d.rows(0,n);
-    d = d.rows(n+1,n+n_obs);
+    auto grad_f = [&](const arma::vec& coefs) -> arma::vec {
+        arma::mat yh;
+        mult_coefs_serial(yh, coefs, b, w, x);
+        return grad_serial(yh, coefs, b, w, x, y, L);
+    };
+
+    numerics::optimization::LBFGS fmin;
+    fmin.minimize(p, f, grad_f);
+
+    b = p.subvec(0, b.n_elem-1).as_row();
+    w = arma::reshape(p.subvec(b.n_elem, b.n_elem + w.n_elem - 1), arma::size(w));
 }
 
-void numerics::logistic_regression::fit(const arma::mat& X, const arma::mat& Y) {
-    if (X.n_rows != Y.n_rows) {
-        std::cerr << "logistic_regression::fit() error : x.n_rows = " << X.n_rows << " != " << Y.n_rows << " = y.n_rows" << std::endl
-                  << "fit not performed." << std::endl;
-        return;
-    }
-    x = X;
-    n_obs = x.n_rows;
-    y = Y;
+arma::mat pred_logreg(const arma::rowvec& b, const arma::mat& w, const arma::mat& x) {
+    arma::mat yh = x*w;
+    yh.each_row() += b;
+    numerics::softmax_inplace(yh);
+    return yh;
+}
 
-    if (std::isnan(lambda) || lambda < 0) { // lambda to be determined by cross validation
-        uint num_folds = 10;
-        if (X.n_rows / num_folds < 10) {
-            num_folds = 5;
-            if (X.n_rows / num_folds < 10) {
-                num_folds = 3;
-            }
-        }
-        k_folds split(x, y, num_folds);
+void numerics::LogisticRegression::fit(const arma::mat& x, const arma::uvec& y) {
+    _check_xy(x, y);
+    _dim = x.n_cols;
+    u_long nobs = x.n_rows;
 
-        int N = 25;
-        L = arma::logspace(-2,3,N);
+    _encoder.fit(y);
+    arma::mat onehot = _encoder.encode(y);
 
-        cv_scores = arma::zeros(N);
+    _b = arma::zeros(1, onehot.n_cols);
+    _w = arma::zeros(x.n_cols, onehot.n_cols);
 
-        #pragma omp parallel // run parameter sweep in parallel
-        #pragma omp for
-        for (int i=0; i < N; ++i) {
-            int r = 0;
+    if (_lambda < 0) {
+        u_short nfolds = 5;
+        if (nobs / nfolds < 50) nfolds = 3;
+        KFolds2Arr<double,double> split(nfolds);
+        split.fit(x, onehot);
+
+        auto cv = [&](double L) -> double {
+            L = std::pow(10.0, L);
             double score = 0;
-            for (uint j=0; j < num_folds; ++j) {
-                if (beta > 0) fit_no_replace(split.train_set_X(j),split.train_set_Y(j),L(i));
-                else fit_linear(L(i));
-                double score_new = arma::accu( split.test_set_Y(j) % predict_probabilities(split.test_set_X(j)) );
-                if (std::isnan(score_new)) continue;
-                score += score_new;
-                r++;
+            for (u_short i=0; i < nfolds; ++i) {
+                fit_logreg(_b, _w, split.trainX(i), split.trainY(i), L);
+                arma::mat p = pred_logreg(_b, _w, split.testX(i));
+                score -= accuracy_score(_encoder.decode(split.testY(i)), _encoder.decode(p));
             }
-            if (r != 0) score /= r;
-            else score = 0;
-            
-            cv_scores(i) = score;
-        }
-        int indmax = cv_scores.index_max(); // using log-likelihood, so maximizing
-        lambda = L(indmax);
+            return score;
+        };
+        _lambda = optimization::fminbnd(cv, -5, 4, 0.1);
+        _lambda = std::pow(10.0, _lambda);
     }
 
-    if (beta > 0) fit_no_replace(x,y,lambda);
-    else fit_linear(lambda);
+    fit_logreg(_b, _w, x, onehot, _lambda);
 }
 
-arma::mat numerics::logistic_regression::predict_probabilities(const arma::mat& xgrid) {
-    arma::mat p = arma::join_rows(arma::ones(xgrid.n_rows,1), xgrid) * c;
-    if (beta > 0) p += rbf(xgrid)*d;
-    return softmax(p);
+arma::mat numerics::LogisticRegression::predict_proba(const arma::mat& x) const {
+    _check_x(x);
+    arma::mat yh = x * _w;
+    yh.each_row() += _b;
+    softmax_inplace(yh);
+    return yh;
 }
 
-arma::umat numerics::logistic_regression::predict_categories(const arma::mat& xgrid) {
-    arma::uvec ind = arma::index_max(predict_probabilities(xgrid),1);
-    arma::umat categories = arma::zeros<arma::umat>(ind.n_rows,c.n_cols);
-    for (uint i=0; i < ind.n_rows; ++i) categories(i,ind(i)) = 1;
-    return categories;
+arma::uvec numerics::LogisticRegression::predict(const arma::mat& x) const {
+    return _encoder.decode(predict_proba(x));
 }
 
-numerics::logistic_regression::logistic_regression(double Beta, double Lambda) {
-    beta = Beta;
-    lambda = Lambda;
+double numerics::LogisticRegression::score(const arma::mat& x, const arma::uvec& y) const {
+    _check_xy(x,y);
+    return accuracy_score(y, predict(x));
 }

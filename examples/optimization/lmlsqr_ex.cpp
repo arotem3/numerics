@@ -1,7 +1,7 @@
 #include "numerics.hpp"
 #include "matplotlibcpp.h"
 
-// g++ -g -Wall -o lmlsqr lmlsqr_ex.cpp -O3 -lnumerics -larmadillo -I/usr/include/python2.7 -lpython2.7
+// g++ -g -Wall -o lmlsqr lmlsqr_ex.cpp -O3 -lnumerics -larmadillo -I/usr/include/python3.8 -lpython3.8
 
 using namespace numerics;
 typedef std::vector<double> ddvec;
@@ -12,7 +12,7 @@ arma::vec f_true(const arma::vec& t) {
 
 int main() {
     std::cout << std::fixed << std::setprecision(3);
-    std::cout << "lmlsqr uses the Levenberg-Marquardt algorithm to find least squares solutions of root finding problems f(x) = 0" << std::endl;
+    std::cout << "LmLSQR uses the Levenberg-Marquardt algorithm to find least squares solutions of root finding problems f(x) = 0" << std::endl;
     std::cout << "We will try to perform a nonlinear fit of the form:" << std::endl
               << "\ty = f(x) = b(0) + b(1) / (b(2) + b(3)*x^2)" << std::endl;
     
@@ -43,12 +43,11 @@ int main() {
         return A;
     };
 
-    numerics::lmlsqr lm;
-    lm.use_cgd = false;
-    // lm.fsolve(f,J,b_hat); // specify jacobian
-    lm.fsolve(f,b_hat); // compute jacobian by finite differences and Broyden updates
-    std::string flag;
-    lm.get_exit_flag(flag);
+    numerics::optimization::LmLSQR lm;
+    lm.use_lu();
+    // lm.fsolve(b_hat,f,J); // specify jacobian
+    lm.fsolve(b_hat,f); // compute jacobian by finite differences and Broyden updates
+    std::string flag = lm.get_exit_flag();
 
     std::cout << "results after optimization : " << std::endl
               << "\tb_hat = " << b_hat.t()
