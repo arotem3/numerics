@@ -81,7 +81,7 @@ class HSplineInterp : public Interpolator {
 };
 
 class PolyInterp : public Interpolator {
-    private:
+    protected:
     arma::mat _p;
 
     public:

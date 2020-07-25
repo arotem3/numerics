@@ -22,8 +22,9 @@ namespace ode {
         std::vector<arma::vec> _Uvec;
         arma::vec _t;
         arma::mat _U;
+        int _flag;
 
-        void _convert() {
+        void _prepare() {
             if (_t.is_empty()) {
                 _t = arma::conv_to<arma::vec>::from(_tvec);
                 _U.set_size(_Uvec.size(), _dim);
@@ -44,10 +45,26 @@ namespace ode {
         const arma::mat& solution;
         const std::vector<double>& tvec;
         const std::vector<arma::vec>& solvec;
+        const int& exit_flag;
 
-        explicit ODESolution(u_long dim) : t(_t), solution(_U), tvec(_tvec), solvec(_Uvec) {
-            if (dim == 0) throw std::runtime_error("require solution dimension (=" + std::to_string(dim) + ") > 0");
+        explicit ODESolution(u_long dim) : t(_t), solution(_U), tvec(_tvec), solvec(_Uvec), exit_flag(_flag) {
+            if (dim == 0) throw std::runtime_error("ODESolution: require solution dimension (=" + std::to_string(dim) + ") > 0");
             _dim = dim;
+            _flag = 0;
+        }
+
+        std::string get_exit_flag() {
+            std::string flag;
+            if (_flag == 0) {
+                flag = "solution successfully found over the specified domain.";
+            } else if (_flag == 1) {
+                flag = "solution could not be found within specified error tolerance.";
+            } else if (_flag == 2) {
+                flag = "NaN or infinite value encountered.";
+            } else if (_flag == 3) {
+                flag = "could not solve system of linear equations.";
+            }
+            return flag;
         }
     };
     // --- IVP events ------------ //

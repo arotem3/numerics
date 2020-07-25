@@ -14,10 +14,10 @@ numerics::ode::ODESolution numerics::ode::BVP3a::ode_solve(const odefunc& f, con
 
     u_long k = 0;
     arma::sp_mat J(dim*n,dim*n);
-    arma::mat F(n,dim),dU;
+    arma::mat F(n,dim), dU;
     do {
         if (k >= _max_iter) {
-            std::cout << "BVP3a failed to converge withing the maximum number of iterations.\n";
+            sol._flag = 1;
             break;
         }
         arma::vec BC = bc(U.col(0),U.col(n-1));
@@ -61,8 +61,8 @@ numerics::ode::ODESolution numerics::ode::BVP3a::ode_solve(const odefunc& f, con
             );
             dydu = 0.5*arma::eye(dim,dim) + h/8 * dfdu;
 
-            J.rows((i+1)*dim, (i+2)*dim-1).cols(i*dim, (i+1)*dim-1) = -arma::eye(dim,dim) - h/6 * (dfdu + 4*dfdy*dydu);
-
+            J.submat((i+1)*dim, i*dim, (i+2)*dim-1, (i+1)*dim-1) = -arma::eye(dim,dim) - h/6 * (dfdu + 4*dfdy*dydu);
+            
             dfdu = numerics::approx_jacobian(
                 [&](const arma::vec& v) -> arma::vec {
                     return f(x(i+1),v);
@@ -70,7 +70,7 @@ numerics::ode::ODESolution numerics::ode::BVP3a::ode_solve(const odefunc& f, con
             );
             dydu = 0.5*arma::eye(dim,dim) + h/8 * dfdu;
 
-            J.submat((i+1)*dim,(i+2)*dim-1,(i+1)*dim,(i+2)*dim-1) = arma::eye(dim,dim) - h/6 * (dfdu + 4*dfdy*dydu);
+            J.submat((i+1)*dim,(i+1)*dim,(i+2)*dim-1,(i+2)*dim-1) = arma::eye(dim,dim) - h/6 * (dfdu + 4*dfdy*dydu);
             fi = fip1;
         }
         F = F.as_col();
@@ -79,20 +79,24 @@ numerics::ode::ODESolution numerics::ode::BVP3a::ode_solve(const odefunc& f, con
             throw std::runtime_error("number of boundary conditions (=" + std::to_string(BC.n_elem) + ") does not match the system dimensions (=" + std::to_string(dim) + ")");
         }
         F.rows(0,dim-1) = BC;
-        J.submat(0,dim-1, 0, dim-1) = bcJac_L;
-        J.submat(0,dim-1, 0, dim-1) = bcJac_R;
+        J.submat(0, 0, dim-1, dim-1) = bcJac_L;
+        J.submat(0, J.n_cols-dim, dim-1, J.n_cols-1) = bcJac_R;
 
         bool solve_success = arma::spsolve(dU,J,-F);
-        if (!solve_success || dU.has_nan() || dU.has_inf()) {
-            std::cerr << "BVP3a error: NaN or infinity encountered after " << k << " iterations.\n";
-            break; 
+        if (not solve_success) {
+            sol._flag = 3;
+            break;
+        }
+        if (dU.has_nan() || dU.has_inf()) {
+            sol._flag = 2;
+            break;
         }
         U += arma::reshape(dU,dim,n);
         k++;
     } while (arma::norm(dU,"inf") > _tol);
     _num_iter = k;
     arma::inplace_trans(U);
-    sol._convert();
+    sol._prepare();
     return sol;
 }
 
@@ -110,10 +114,10 @@ numerics::ode::ODESolution numerics::ode::BVP3a::ode_solve(const odefunc& f, con
 
     u_long k = 0;
     arma::sp_mat J(dim*n,dim*n);
-    arma::mat F(n,dim),dU;
+    arma::mat F(n,dim), dU;
     do {
         if (k >= _max_iter) {
-            std::cout << "BVP3a failed to converge withing the maximum number of iterations.\n";
+            sol._flag = 1;
             break;
         }
         arma::vec BC = bc(U.col(0),U.col(n-1));
@@ -148,12 +152,12 @@ numerics::ode::ODESolution numerics::ode::BVP3a::ode_solve(const odefunc& f, con
             dfdy = jacobian(s,y);
             dydu = 0.5*arma::eye(dim,dim) + h/8 * dfdu;
 
-            J.rows((i+1)*dim, (i+2)*dim-1).cols(i*dim, (i+1)*dim-1) = -arma::eye(dim,dim) - h/6 * (dfdu + 4*dfdy*dydu);
-
+            J.submat((i+1)*dim, i*dim, (i+2)*dim-1, (i+1)*dim-1) = -arma::eye(dim,dim) - h/6 * (dfdu + 4*dfdy*dydu);
+            
             dfdu = jacobian(x(i+1),U.col(i+1));
             dydu = 0.5*arma::eye(dim,dim) + h/8 * dfdu;
 
-            J.submat((i+1)*dim,(i+2)*dim-1,(i+1)*dim,(i+2)*dim-1) = arma::eye(dim,dim) - h/6 * (dfdu + 4*dfdy*dydu);
+            J.submat((i+1)*dim,(i+1)*dim,(i+2)*dim-1,(i+2)*dim-1) = arma::eye(dim,dim) - h/6 * (dfdu + 4*dfdy*dydu);
             fi = fip1;
         }
         F = F.as_col();
@@ -162,19 +166,23 @@ numerics::ode::ODESolution numerics::ode::BVP3a::ode_solve(const odefunc& f, con
             throw std::runtime_error("number of boundary conditions (=" + std::to_string(BC.n_elem) + ") does not match the system dimensions (=" + std::to_string(dim) + ")");
         }
         F.rows(0,dim-1) = BC;
-        J.submat(0,dim-1, 0, dim-1) = bcJac_L;
-        J.submat(0,dim-1, 0, dim-1) = bcJac_R;
+        J.submat(0, 0, dim-1, dim-1) = bcJac_L;
+        J.submat(0, J.n_cols-dim, dim-1, J.n_cols-1) = bcJac_R;
 
         bool solve_success = arma::spsolve(dU,J,-F);
-        if (!solve_success || dU.has_nan() || dU.has_inf()) {
-            std::cerr << "BVP3a error: NaN or infinity encountered after " << k << " iterations.\n";
-            break; 
+        if (not solve_success) {
+            sol._flag = 3;
+            break;
+        }
+        if (dU.has_nan() || dU.has_inf()) {
+            sol._flag = 2;
+            break;
         }
         U += arma::reshape(dU,dim,n);
         k++;
     } while (arma::norm(dU,"inf") > _tol);
     _num_iter = k;
     arma::inplace_trans(U);
-    sol._convert();
+    sol._prepare();
     return sol;
 }

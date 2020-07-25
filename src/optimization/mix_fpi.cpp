@@ -26,7 +26,7 @@ void numerics::optimization::MixFPI::fix(arma::vec& x, const VecFunc& f) {
         F.col(head) = f(x);
         X.col(head) = x;
 
-        FF.submat(0,n-1,head,head) = F.col(head) - X.col(head);
+        FF.submat(0,head,n-1,head) = F.col(head) - X.col(head);
         if (k < _steps_to_remember) x = F.cols(0,k) * arma::solve(FF.cols(0,k), b);
         else x = F * arma::solve(FF, b);
 

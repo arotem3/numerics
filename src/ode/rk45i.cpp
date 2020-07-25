@@ -95,7 +95,7 @@ numerics::ode::ODESolution numerics::ode::rk45i::ode_solve(const odefunc& f, dou
         }
         if (t.at(i) + k > tf) k = tf - t.at(i);
     }
-    sol._convert();
+    sol._prepare();
     return sol;
 }
 
@@ -214,6 +214,6 @@ numerics::ode::ODESolution numerics::ode::rk45i::ode_solve(const odefunc& f, con
         }
         if (t.at(i) + k > tf) k = tf - t.at(i);
     }
-    sol._convert();
+    sol._prepare();
     return sol;
 }

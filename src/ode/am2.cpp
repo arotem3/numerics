@@ -46,7 +46,7 @@ numerics::ode::ODESolution numerics::ode::am2::ode_solve(const odefunc& f, doubl
         i++;
         if (kk == 0) break; // event stop
     }
-    sol._convert();
+    sol._prepare();
     return sol;
 }
 
@@ -106,6 +106,6 @@ numerics::ode::ODESolution numerics::ode::am2::ode_solve(const odefunc& f, const
         i++;
         if (kk == 0) break; // event stop
     }
-    sol._convert();
+    sol._prepare();
     return sol;
 }

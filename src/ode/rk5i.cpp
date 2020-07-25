@@ -53,7 +53,7 @@ numerics::ode::ODESolution numerics::ode::rk5i::ode_solve(const odefunc& f, doub
         if (kk == 0) break; // event stop
         i++;
     }
-    sol._convert();
+    sol._prepare();
     return sol;
 }
 
@@ -120,6 +120,6 @@ numerics::ode::ODESolution numerics::ode::rk5i::ode_solve(const odefunc& f, cons
         if (kk == 0) break; // event stop
         i++;
     }
-    sol._convert();
+    sol._prepare();
     return sol;
 }

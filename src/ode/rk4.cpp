@@ -36,6 +36,6 @@ numerics::ode::ODESolution numerics::ode::rk4::ode_solve(const odefunc& f, doubl
         ++i;
         if (kk == 0) break; // event stop
     }
-    sol._convert();
+    sol._prepare();
     return sol;
 }

@@ -62,6 +62,6 @@ numerics::ode::ODESolution numerics::ode::rk45::ode_solve(const odefunc& f, doub
             k = tf - t.at(j);
         }
     }
-    sol._convert();
+    sol._prepare();
     return sol;
 }
