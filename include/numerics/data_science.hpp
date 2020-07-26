@@ -1120,4 +1120,198 @@ class LogisticRegression : public Classifier {
     double score(const arma::mat& x, const arma::uvec& y) const override;
 };
 
+class ModelSGD {
+    protected:
+    neuralnet::Model _mdl;
+    neuralnet::fit_parameters _fitp;
+
+    public:
+    explicit ModelSGD(const std::string& loss, long max_iter, double tol, double l2, double l1, const std::string& optimizer, bool verbose) {
+        _mdl.set_l2(l2);
+        _mdl.set_l1(l1);
+        _mdl.set_loss(loss);
+        _mdl.set_optimizer(optimizer);
+        _fitp.tol = tol;
+        _fitp.max_iter = max_iter;
+        _fitp.verbose = verbose;
+    }
+};
+
+class LinearRegressorSGD : public Regressor, public ModelSGD {
+    public:
+    /* initializes linear regression model trained using stochastic gradient descent.
+     * --- loss : loss function, choice of "mse", "mae".
+     * --- max_iter : maximum number of iterations for optimization algorithm.
+     * --- tol : stopping tolerance for optimization algorithm.
+     * --- l2 : l2-norm regularization for coefficients, larger values induce a stronger penalization.
+     * --- l1 : l1-norm regularization for coefficients, larger values induce a stronger penalization.
+     * --- optimizer : optimization algorithm, choice of "adam", "sgd".
+     * --- verbose : communicate solver progress. */
+    explicit LinearRegressorSGD(const std::string& loss="mse", long max_iter=200, double tol=1e-4, double l2=1e-4, double l1=0, const std::string& optimizer="adam",bool verbose=false) : ModelSGD(loss,max_iter,tol,l2,l1,optimizer,verbose) {}
+
+    void fit(const arma::mat& x, const arma::vec& y) override {
+        _check_xy(x,y);
+        _dim = x.n_cols;
+        neuralnet::Layer lyr(_dim, 1);
+        _mdl.attach(lyr);
+        _mdl.compile();
+        _mdl.fit(x,y,_fitp);
+    }
+
+    arma::vec predict(const arma::mat& x) const override {
+        _check_x(x);
+        return _mdl.predict(x);
+    }
+
+    double score(const arma::mat& x, const arma::vec& y) const override {
+        _check_xy(x,y);
+        return r2_score(y, predict(x));
+    }
+};
+
+class LinearClassifierSGD : public Classifier, public ModelSGD {
+    protected:
+    OneHotEncoder _encoder;
+    u_long _n_classes;
+    
+    public:
+    /* initializes linear regression model trained using stochastic gradient descent.
+     * --- loss : loss function, choice of "categorical_crossentropy".
+     * --- max_iter : maximum number of iterations for optimization algorithm.
+     * --- tol : stopping tolerance for optimization algorithm.
+     * --- l2 : l2-norm regularization for coefficients, larger values induce a stronger penalization.
+     * --- l1 : l1-norm regularization for coefficients, larger values induce a stronger penalization.
+     * --- optimizer : optimization algorithm, choice of "adam", "sgd".
+     * --- verbose : communicate solver progress. */
+    explicit LinearClassifierSGD(const std::string& loss="categorical_crossentropy", long max_iter=200, double tol=1e-4, double l2=1e-4, double l1=0, const std::string& optimizer="adam",bool verbose=false) : ModelSGD(loss,max_iter,tol,l2,l1,optimizer,verbose) {}
+
+    void fit(const arma::mat& x, const arma::uvec& y) override {
+        _check_xy(x,y);
+        _dim = x.n_cols;
+        _encoder.fit(y);
+        arma::mat onehot = _encoder.encode(y);
+        _n_classes = onehot.n_cols;
+        neuralnet::Layer lyr(_dim, _n_classes);
+        lyr.set_activation("softmax");
+        _mdl.attach(lyr);
+        _mdl.compile();
+        std::cout << _fitp.max_iter << "\n";
+        _mdl.fit(x, onehot, _fitp);
+    }
+
+    arma::mat predict_proba(const arma::mat& x) const {
+        _check_x(x);
+        return _mdl.predict(x);
+    }
+
+    arma::uvec predict(const arma::mat& x) const override {
+        return _encoder.decode(predict_proba(x));
+    }
+
+    double score(const arma::mat& x, const arma::uvec& y) const override {
+        _check_xy(x,y);
+        return accuracy_score(y, predict(x));
+    }
+};
+
+class NeuralNetRegressor : public Regressor, public ModelSGD {
+    protected:
+    std::vector<std::pair<int,std::string>> _layers;
+
+    public:
+    /* initializes linear regression model trained using stochastic gradient descent.
+     * --- layers : vector specifying hidden layers (not including output layer) where layers.at(i).first is the number of units in the i^th layer, and layers.at(i).second is the activation function for i^th layer. Choices of activation functions are found neuralnet
+     * --- loss : loss function, choice of "mse", "mae".
+     * --- max_iter : maximum number of iterations for optimization algorithm.
+     * --- tol : stopping tolerance for optimization algorithm.
+     * --- l2 : l2-norm regularization for coefficients, larger values induce a stronger penalization.
+     * --- l1 : l1-norm regularization for coefficients, larger values induce a stronger penalization.
+     * --- optimizer : optimization algorithm, choice of "adam", "sgd".
+     * --- verbose : communicate solver progress. */
+    explicit NeuralNetRegressor(const std::vector<std::pair<int,std::string>>& layers={{100,"relu"}}, const std::string& loss="mse", long max_iter=200, double tol=1e-4, double l2=1e-4, double l1=0, const std::string& optimizer="adam", bool verbose=false) : ModelSGD(loss,max_iter,tol,l2,l1,optimizer,verbose) {
+        _layers = layers;
+    }
+
+    void fit(const arma::mat& x, const arma::vec& y) override {
+        _check_xy(x,y);
+        _dim = x.n_cols;
+        long prev_dim = _dim;
+        for (const std::pair<int,std::string>& l : _layers) {
+            neuralnet::Layer lyr(prev_dim, l.first);
+            lyr.set_activation(l.second);
+            _mdl.attach(lyr);
+            prev_dim = l.first;
+        }
+        neuralnet::Layer lyr(prev_dim, 1);
+        _mdl.attach(lyr);
+        _mdl.compile();
+        _mdl.fit(x, y, _fitp);
+    }
+
+    arma::vec predict(const arma::mat& x) const override {
+        _check_x(x);
+        return _mdl.predict(x);
+    }
+
+    double score(const arma::mat& x, const arma::vec& y) const override {
+        _check_xy(x,y);
+        return r2_score(y, predict(x));
+    }
+};
+
+class NeuralNetClassifier : public Classifier, public ModelSGD {
+    protected:
+    std::vector<std::pair<int,std::string>> _layers;
+    OneHotEncoder _encoder;
+    u_long _n_classes;
+
+    public:
+    /* initializes linear regression model trained using stochastic gradient descent.
+     * --- layers : vector specifying hidden layers (not including output layer) where layers.at(i).first is the number of units in the i^th layer, and layers.at(i).second is the activation function for i^th layer. Choices of activation functions are found neuralnet
+     * --- loss : loss function, choice of "categorical_crossentropy".
+     * --- max_iter : maximum number of iterations for optimization algorithm.
+     * --- tol : stopping tolerance for optimization algorithm.
+     * --- l2 : l2-norm regularization for coefficients, larger values induce a stronger penalization.
+     * --- l1 : l1-norm regularization for coefficients, larger values induce a stronger penalization.
+     * --- optimizer : optimization algorithm, choice of "adam", "sgd".
+     * --- verbose : communicate solver progress. */
+    explicit NeuralNetClassifier(const std::vector<std::pair<int,std::string>>& layers={{100,"relu"}}, const std::string& loss="categorical_crossentropy", long max_iter=200, double tol=1e-4, double l2=1e-4, double l1=0, const std::string& optimizer="adam", bool verbose=false) : ModelSGD(loss,max_iter,tol,l2,l1,optimizer,verbose) {
+        _layers = layers;
+    }
+
+    void fit(const arma::mat& x, const arma::uvec& y) override {
+        _check_xy(x,y);
+        _dim = x.n_cols;
+        _encoder.fit(y);
+        arma::mat onehot = _encoder.encode(y);
+        _n_classes = onehot.n_cols;
+        long prev_dim = _dim;
+        for (const std::pair<int,std::string>& l : _layers) {
+            neuralnet::Layer lyr(prev_dim, l.first);
+            lyr.set_activation(l.second);
+            _mdl.attach(lyr);
+            prev_dim = l.first;
+        }
+        neuralnet::Layer lyr(prev_dim, _n_classes);
+        lyr.set_activation("softmax");
+        _mdl.attach(lyr);
+        _mdl.compile();
+        _mdl.fit(x, onehot, _fitp);
+    }
+
+    arma::mat predict_proba(const arma::mat& x) const {
+        _check_x(x);
+        return _mdl.predict(x);
+    }
+
+    arma::uvec predict(const arma::mat& x) const override {
+        return _encoder.decode(predict_proba(x));
+    }
+
+    double score(const arma::mat& x, const arma::uvec& y) const override {
+        _check_xy(x,y);
+        return accuracy_score(y, predict(x));
+    }
+};
+
 #endif

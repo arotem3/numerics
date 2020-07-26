@@ -25,7 +25,7 @@ namespace optimization {
             std::cout << "|" << std::right << std::setw(6) << std::setfill(' ') << iter
                     << "|" << std::left << std::setw(20) << std::setfill(' ') << bar
                     << "|" << std::scientific << std::setprecision(4) << std::right << std::setw(12) << std::setfill(' ') << fval
-                    << "|\r";
+                    << "|\r" << std::flush;
         }
 
         void success_flag() {

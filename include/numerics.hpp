@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <queue>
 #include <set>
+#include <memory>
 
 #include <omp.h>
 
@@ -31,6 +32,7 @@ limitations under the License. */
 namespace numerics {
     #include <numerics/utility.hpp>
     #include <numerics/interpolation.hpp>
+    #include <numerics/neural_network.hpp>
     #include <numerics/data_science.hpp>
     #include <numerics/derivatives.hpp>
     #include <numerics/integrals.hpp>

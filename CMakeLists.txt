@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.10)
 project(numerics)
 
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 14)
 
 find_package(OpenMP)
 
@@ -77,6 +77,10 @@ add_library(numerics SHARED
         
         src/utility/meshgrid.cpp
         src/utility/sample_from.cpp
+
+        src/neural_network/layer.cpp
+        src/neural_network/optimize.cpp
+        src/neural_network/model.cpp
 )
 
 if(OpenMP_FOUND)
