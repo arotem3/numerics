@@ -1,38 +1,5 @@
 #include <numerics.hpp>
 
-class VerboseTracker {
-    public:
-    u_long max_iter;
-    VerboseTracker(u_long m) {
-        max_iter = m;
-    }
-    void print_init() {
-        std::cout << "|" << std::right << std::setw(6) << std::setfill(' ') << "iter"
-                  << "|" << std::right << std::setw(20) << std::setfill(' ') << "progress"
-                  << "|" << std::right << std::setw(12) << std::setfill(' ') << "mse"
-                  << "|\n";
-    }
-
-    void print_iter(u_long iter, double fval) {
-        std::string bar;
-        float p = (float)iter/max_iter;
-        for (int i=0; i < 20*p-1; ++i) bar += "=";
-        bar += ">";
-        std::cout << "|" << std::right << std::setw(6) << std::setfill(' ') << iter
-                  << "|" << std::left << std::setw(20) << std::setfill(' ') << bar
-                  << "|" << std::scientific << std::setprecision(4) << std::right << std::setw(12) << std::setfill(' ') << fval
-                  << "|\r";
-    }
-
-    void print_converge() {
-        std::cout << std::endl << "---converged to solution within tolerance---\n";
-    }
-
-    void print_limit() {
-        std::cout << std::endl << "---maximum number of iterations reached---\n";
-    }
-};
-
 /* soft_threshold(u,v) : __utility for coordinate_lasso__ compute the soft threshold of u parameterized by v. i.e. sign(u) * positive_part(|u| - v) */
 inline arma::mat soft_threshold(const arma::mat& u, double v) {
     return arma::sign(u)%(arma::abs(u)-v > 0)%(arma::abs(u)-v);
@@ -77,19 +44,19 @@ int coordinate_lasso_unsafe(arma::mat& w, const arma::mat& X, const arma::mat& y
     u_long p = X.n_cols;
     arma::rowvec z = arma::sum(arma::square(X),0);
 
-    VerboseTracker T(max_iter);
-    if (verbose) T.print_init();
+    numerics::optimization::VerboseTracker T(max_iter);
+    if (verbose) T.header();
 
     u_long n = 0;
     double loss0 = std::numeric_limits<double>::infinity();
     double loss1 = loss(X,y,w);
     while (true) {
         if (std::abs(loss1 - loss0) < tol) {
-            if (verbose) T.print_converge();
+            if (verbose) T.success_flag();
             return 0;
         }
         if (n >= max_iter) {
-            if (verbose) T.print_limit();
+            if (verbose) T.max_iter_flag();
             return 1;
         }
 
@@ -99,7 +66,7 @@ int coordinate_lasso_unsafe(arma::mat& w, const arma::mat& X, const arma::mat& y
             w.row(i) = soft_threshold(rho, lambda/2) / z(i);
         }
         loss1 = loss(X,y,w);
-        if (verbose) T.print_iter(n, loss1);
+        if (verbose) T.iter(n, loss1);
         n++;
     }
 }
@@ -108,19 +75,19 @@ int coordinate_lasso_unsafe(arma::rowvec& b, arma::mat& w, const arma::mat& X, c
     u_long p = X.n_cols;
     arma::rowvec z = arma::sum(arma::square(X),0);    
 
-    VerboseTracker T(max_iter);
-    if (verbose) T.print_init();
+    numerics::optimization::VerboseTracker T(max_iter);
+    if (verbose) T.header();
 
     u_long n = 0;
     double loss0 = std::numeric_limits<double>::infinity();
     double loss1 = loss(X,y,b,w);
     while (true) {
         if (std::abs(loss1 - loss0) < tol) {
-            if (verbose) T.print_converge();
+            if (verbose) T.success_flag();
             return 0;
         }
         if (n >= max_iter) {
-            if (verbose) T.print_limit();
+            if (verbose) T.max_iter_flag();
             return 1;
         }
 
@@ -134,7 +101,7 @@ int coordinate_lasso_unsafe(arma::rowvec& b, arma::mat& w, const arma::mat& X, c
             }
         }
         loss1 = loss(X,y,b,w);
-        if (verbose) T.print_iter(n, loss1);
+        if (verbose) T.iter(n, loss1);
         n++;
     }
 }

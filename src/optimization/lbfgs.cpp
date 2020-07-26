@@ -36,6 +36,12 @@ void numerics::optimization::LBFGS::minimize(arma::vec& x, const dFunc& f, const
     arma::vec x1, g1, s, y, p;
     double alpha;
 
+    VerboseTracker T(_max_iter);
+    if (_v) {
+        T.header();
+        T.iter(0, f(x));
+    }
+
     _g = grad_f(x);
     p = -_g;
     alpha = wolfe_step(f, grad_f, x, p, _wolfe_c1, _wolfe_c2);
@@ -48,14 +54,19 @@ void numerics::optimization::LBFGS::minimize(arma::vec& x, const dFunc& f, const
         if (arma::norm(_g, "inf") < _tol) {
             _exit_flag = 0;
             _n_iter += iters;
+            if (_v) T.success_flag();
             return;
         }
 
         if (iters >= _max_iter) {
             _exit_flag = 1;
             _n_iter += iters;
+            if (_v) T.max_iter_flag();
             return;
         }
+
+        if (_v) T.iter(iters, f(x));
+
         g1 = grad_f(x1);
 
         s = x1 - x;
@@ -79,6 +90,7 @@ void numerics::optimization::LBFGS::minimize(arma::vec& x, const dFunc& f, const
         if (std::isnan(alpha) || std::isinf(alpha)) {
             _exit_flag = 2;
             _n_iter += iters;
+            if (_v) T.nan_flag();
             return;
         }
 

@@ -2,6 +2,49 @@
 #define NUMERICS_OPTIMIZATION_HPP
 
 namespace optimization {
+    class VerboseTracker {
+        protected:
+        u_long max_iter;
+        
+        public:
+        VerboseTracker(u_long m) {
+            max_iter = m;
+        }
+        void header(const std::string& name="loss") {
+            std::cout << "|" << std::right << std::setw(6) << std::setfill(' ') << "iter"
+                    << "|" << std::right << std::setw(20) << std::setfill(' ') << "progress"
+                    << "|" << std::right << std::setw(12) << std::setfill(' ') << name
+                    << "|\n";
+        }
+
+        void iter(u_long iter, double fval) {
+            std::string bar;
+            float p = (float)iter/max_iter;
+            for (int i=0; i < 20*p-1; ++i) bar += "=";
+            bar += ">";
+            std::cout << "|" << std::right << std::setw(6) << std::setfill(' ') << iter
+                    << "|" << std::left << std::setw(20) << std::setfill(' ') << bar
+                    << "|" << std::scientific << std::setprecision(4) << std::right << std::setw(12) << std::setfill(' ') << fval
+                    << "|\r";
+        }
+
+        void success_flag() {
+            std::cout << std::endl << "---converged to solution within tolerance---\n";
+        }
+
+        void max_iter_flag() {
+            std::cout << std::endl << "---maximum number of iterations reached---\n";
+        }
+
+        void nan_flag() {
+            std::cout << std::endl << "---NaN of Infinite value encountered---\n";
+        }
+
+        void empty_flag() {
+            std::cout << std::endl;
+        }
+    };
+
     typedef std::function<arma::vec(const arma::vec&)> VecFunc;
     typedef std::function<arma::mat(const arma::vec&)> MatFunc;
     typedef std::function<double(const arma::vec&)> dFunc;
@@ -29,6 +72,7 @@ namespace optimization {
         u_long _n_iter;
         short _exit_flag;
         double _tol;
+        bool _v;
 
         void _check_loop_parameters() {
             if ((_tol == 0) and (_max_iter == 0)) {
@@ -73,11 +117,12 @@ namespace optimization {
             return flag;
         }
     
-        explicit NonLinSolver(double t, long m) : tol(_tol), max_iter(_max_iter), n_iter(_n_iter), exit_flag(_exit_flag) {
+        explicit NonLinSolver(double t, long m, bool verbose) : tol(_tol), max_iter(_max_iter), n_iter(_n_iter), exit_flag(_exit_flag) {
             set_tol(t);
             set_max_iter(m);
             _n_iter = 0;
             _exit_flag = -1;
+            _v = verbose;
         }
     };
 
@@ -97,7 +142,7 @@ namespace optimization {
             _use_cgd = false;
         }
 
-        explicit Newton(double t=1e-3, long m=100) : NonLinSolver(t, m), fval(_F), Jacobian(_J) {
+        explicit Newton(double t=1e-3, long m=100, bool v=false) : NonLinSolver(t, m, v), fval(_F), Jacobian(_J) {
             _use_cgd = false;
         }
 
@@ -110,7 +155,7 @@ namespace optimization {
 
     class QausiNewton : public Newton {
         public:
-        explicit QausiNewton(double t=1e-3, long m=100) : Newton(t, m) {}
+        explicit QausiNewton(double t=1e-3, long m=100, bool v=false) : Newton(t, m, v) {}
 
         virtual void fsolve(arma::vec& x, const VecFunc& f) = 0;
     };
@@ -118,7 +163,7 @@ namespace optimization {
     class Broyd : public QausiNewton {
         public:
         /* initialize Broyden's method nonlinear solver specifying solver tolerance and maximum number of iterations. This object stores function values and jacobian for warm re-start of the solver. */
-        explicit Broyd(double t=1e-3, long m=100) : QausiNewton(t, m) {}
+        explicit Broyd(double t=1e-3, long m=100, bool v=false) : QausiNewton(t, m, v) {}
 
         /* Broyden's method for local root finding of nonlinear system of equations, specify jacobian function as a warm start for the jacobian estimate
          * --- x : guess for root, also where root will be stored.
@@ -139,7 +184,7 @@ namespace optimization {
 
         public:
         /* initialize Levenberg-Marquardt solver initializing tol and max_iter. Solver stores jacobian for warm re-start of solver. */
-        explicit LmLSQR(double t=1e-3, long m=100) : QausiNewton(t, m) {
+        explicit LmLSQR(double t=1e-3, long m=100, bool v=false) : QausiNewton(t, m, v) {
             _damping_param = 1e-2;
             _damping_scale = 2;
         }
@@ -171,7 +216,7 @@ namespace optimization {
         u_int _steps_to_remember;
 
         public:
-        explicit MixFPI(int steps_to_remember=5, double t=1e-3, long m=100) : NonLinSolver(t,m) {
+        explicit MixFPI(int steps_to_remember=5, double t=1e-3, long m=100, bool v=false) : NonLinSolver(t,m,v) {
             if (steps_to_remember < 1) {
                 throw std::invalid_argument("require number of steps (=" + std::to_string(steps_to_remember) + ") >= 1");
             }
@@ -227,7 +272,7 @@ namespace optimization {
 
         public:
         const arma::vec& grad;
-        explicit GradientOptimizer(double t=1e-3, long m=100) : NonLinSolver(t,m), grad(_g) {}
+        explicit GradientOptimizer(double t=1e-3, long m=100, bool v=false) : NonLinSolver(t,m,v), grad(_g) {}
 
         virtual void minimize(arma::vec& x, const dFunc& f, const VecFunc& grad_f) = 0;
     };
@@ -241,7 +286,7 @@ namespace optimization {
 
         public:
         const arma::mat& inv_hessian;
-        explicit BFGS(double t=1e-3, long m=100, double wolfe1=1e-4, double wolfe2=0.9) : GradientOptimizer(t,m), inv_hessian(_H) {
+        explicit BFGS(double t=1e-3, long m=100, bool v=false, double wolfe1=1e-4, double wolfe2=0.9) : GradientOptimizer(t,m,v), inv_hessian(_H) {
             _wolfe_c1 = wolfe1;
             _wolfe_c2 = wolfe2;
             _use_fd = false;
@@ -288,7 +333,7 @@ namespace optimization {
         void _lbfgs_update(arma::vec& p);
 
         public:
-        explicit LBFGS(long steps=5, double t=1e-3, long m=100, double wolfe1=1e-4, double wolfe2=0.9) : GradientOptimizer(t,m), _S(steps), _Y(steps) {
+        explicit LBFGS(long steps=5, double t=1e-3, long m=100, bool v=false, double wolfe1=1e-4, double wolfe2=0.9) : GradientOptimizer(t,m,v), _S(steps), _Y(steps) {
             _steps_to_remember = steps;
             _wolfe_c1 = wolfe1;
             _wolfe_c2 = wolfe2;
@@ -311,7 +356,7 @@ namespace optimization {
         const double& step_size;
 
         /* initializes gradient descent object. By default momentum is disabled, and line-minimization is used. To enable momentum, call set_step_size and specify a constant step size. */
-        explicit MomentumGD(double t=1e-3, long m=1000) : GradientOptimizer(t,m), damping_parameter(_damping_param), step_size(_alpha) {
+        explicit MomentumGD(double t=1e-3, long m=1000, bool v=false) : GradientOptimizer(t,m,v), damping_parameter(_damping_param), step_size(_alpha) {
             _line_min = true;
             _damping_param = 0;
             _alpha = 0;
@@ -360,7 +405,7 @@ namespace optimization {
         arma::mat _init_simplex(const arma::vec& x);
 
         public:
-        explicit NelderMead(double t=1e-3, long m=1000) : NonLinSolver(t,m) {
+        explicit NelderMead(double t=1e-3, long m=1000, bool v=false) : NonLinSolver(t,m,v) {
             _step = 1;
             _expand = 2;
             _contract = 0.5;
@@ -410,7 +455,7 @@ namespace optimization {
         u_long _population_size, _diversity_cutoff, _random_seed;
 
         public:
-        explicit GeneticOptimizer(long seed=0, double t=1e-1, long m=100) : NonLinSolver(t,m) {
+        explicit GeneticOptimizer(long seed=0, double t=1e-1, long m=100) : NonLinSolver(t,m,false) {
             _reproduction_rate = 0.5;
             _mutation_rate = 0.5;
             _diversity_weight = 0.2;

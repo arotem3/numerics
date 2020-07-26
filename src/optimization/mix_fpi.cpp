@@ -14,12 +14,17 @@ void numerics::optimization::MixFPI::fix(arma::vec& x, const VecFunc& f) {
 
     u_long k = 0;
     u_long head;
+    VerboseTracker T(_max_iter);
+    if (_v) T.header("max|x-f(x)|");
     do {
         if (k >= _max_iter) {
             _exit_flag = 1;
             _n_iter += k;
+            if (_v) T.max_iter_flag();
             return;
         }
+
+        if (_v) T.iter(k, arma::norm(F.col(head) - x,"inf"));
 
         head = k % _steps_to_remember;
         
@@ -34,4 +39,5 @@ void numerics::optimization::MixFPI::fix(arma::vec& x, const VecFunc& f) {
     } while (arma::norm(F.col(head) - x,"inf") > _tol);
     _n_iter += k;
     _exit_flag = 0;
+    if (_v) T.success_flag();
 }

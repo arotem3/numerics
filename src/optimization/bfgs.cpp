@@ -15,10 +15,13 @@ void numerics::optimization::BFGS::minimize(arma::vec& x, const dFunc& f, const 
     double alpha;
     arma::vec s, y;
     u_long k = 0;
+    VerboseTracker T(_max_iter);
+    if (_v) T.header();
     do {
         if (k >= _max_iter) {
             _exit_flag = 1;
             _n_iter += k;
+            if (_v) T.max_iter_flag();
             return;
         }
         p = -(_H*_g);
@@ -36,12 +39,14 @@ void numerics::optimization::BFGS::minimize(arma::vec& x, const dFunc& f, const 
         if (s.has_nan() || s.has_inf()) {
             _n_iter += k;
             _exit_flag = 2;
+            if (_v) T.nan_flag();
             return;
         }
-
         x += s;
         g1 = grad_f(x);
         y = g1 - _g;
+
+        if (_v) T.iter(k, f(x));
 
         double sdoty = arma::dot(s,y);
         arma::vec Hdoty = _H*y;
@@ -51,6 +56,7 @@ void numerics::optimization::BFGS::minimize(arma::vec& x, const dFunc& f, const 
     } while (arma::norm(p,"inf") > _tol);
     _n_iter += k;
     _exit_flag = 0;
+    if (_v) T.success_flag();
 }
 
 void numerics::optimization::BFGS::minimize(arma::vec& x, const dFunc& f, const VecFunc& grad_f, const MatFunc& hessian) {
@@ -66,10 +72,13 @@ void numerics::optimization::BFGS::minimize(arma::vec& x, const dFunc& f, const 
     double alpha;
     arma::vec s, y;
     u_long k = 0;
+    VerboseTracker T(_max_iter);
+    if (_v) T.header();
     do {
         if (k >= _max_iter) {
             _exit_flag = 1;
             _n_iter += k;
+            if (_v) T.max_iter_flag();
             return;
         }
         p = -(_H*_g);
@@ -85,12 +94,15 @@ void numerics::optimization::BFGS::minimize(arma::vec& x, const dFunc& f, const 
         if (s.has_nan() || s.has_inf()) {
             _n_iter += k;
             _exit_flag = 2;
+            if (_v) T.nan_flag();
             return;
         }
 
         x += s;
         g1 = grad_f(x);
         y = g1 - _g;
+
+        if (_v) T.iter(k, f(x));
 
         double sdoty = arma::dot(s,y);
         arma::vec Hdoty = _H*y;
@@ -100,4 +112,5 @@ void numerics::optimization::BFGS::minimize(arma::vec& x, const dFunc& f, const 
     } while (arma::norm(p,"inf") > _tol);
     _n_iter += k;
     _exit_flag = 0;
+    if (_v) T.success_flag();
 }

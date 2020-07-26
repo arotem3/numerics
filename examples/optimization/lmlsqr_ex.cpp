@@ -3,8 +3,7 @@
 
 // g++ -g -Wall -o lmlsqr lmlsqr_ex.cpp -O3 -lnumerics -larmadillo -I/usr/include/python3.8 -lpython3.8
 
-using namespace numerics;
-typedef std::vector<double> ddvec;
+typedef std::vector<double> dvec;
 
 arma::vec f_true(const arma::vec& t) {
     return arma::exp(-t%t);
@@ -43,7 +42,7 @@ int main() {
         return A;
     };
 
-    numerics::optimization::LmLSQR lm;
+    numerics::optimization::LmLSQR lm(1e-3,100,true);
     lm.use_lu();
     // lm.fsolve(b_hat,f,J); // specify jacobian
     lm.fsolve(b_hat,f); // compute jacobian by finite differences and Broyden updates
@@ -56,17 +55,18 @@ int main() {
               << "\ttheoretical b sum of squares  = " << arma::norm(f(b)) << std::endl
               << "\t||b - b_hat|| = " << arma::norm(b - b_hat,"inf") << std::endl << std::endl
               << "\tflag:" << flag << std::endl << std::endl
-              << "resulting model:" << std::endl
+              << "resulting model:" << std::endl;
+    std::cout << std::fixed << std::setprecision(3)
               << "\ty = " << b_hat(0) << " + " << b_hat(1) << " / (" << b_hat(2) << " + "  << b_hat(3) << "x^2)" << std::endl;
     std::cout << "We can, ofcourse, use lmlsqr to compute roots of an algebraic system, which is explored in newton_ex" << std::endl;
 
     arma::vec y_hat = b_hat(0) + b_hat(1) / (b_hat(2) + b_hat(3)*t%t);
     
-    ddvec xx = arma::conv_to<ddvec>::from(x);
-    ddvec yy = arma::conv_to<ddvec>::from(y);
-    ddvec tt = arma::conv_to<ddvec>::from(t);
-    ddvec yyt = arma::conv_to<ddvec>::from(y_true);
-    ddvec yyh = arma::conv_to<ddvec>::from(y_hat);
+    dvec xx = arma::conv_to<dvec>::from(x);
+    dvec yy = arma::conv_to<dvec>::from(y);
+    dvec tt = arma::conv_to<dvec>::from(t);
+    dvec yyt = arma::conv_to<dvec>::from(y_true);
+    dvec yyh = arma::conv_to<dvec>::from(y_hat);
 
     matplotlibcpp::named_plot("data",xx,yy,"og");
     matplotlibcpp::named_plot("exact model", tt, yyt, "--k");

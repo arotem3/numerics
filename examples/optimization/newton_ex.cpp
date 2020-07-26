@@ -33,9 +33,9 @@ int main() {
               << "\t[0,0,0]\n\t[-0.707,-1.414,-0.707]\n\t[-0.707,1.414,-0.707]\n\t[0.707,-1.414,0.707]\n\t[0.707,1.414,0.707]" << std::endl;
     arma::vec x = arma::randn(3);
 
-    // numerics::optimization::Newton fsolver; std::cout << "using Newton's method..." << std::endl;
-    numerics::optimization::Broyd fsolver; std::cout << std::endl << "using Broyden's method..." << std::endl;
-    // numerics::optimization::LmLSQR fsolver; std::cout << "using Levenberg-Marquardt least squares..." << std::endl;
+    // numerics::optimization::Newton fsolver(1e-4,100,true); std::cout << "using Newton's method..." << std::endl;
+    numerics::optimization::Broyd fsolver(1e-4,100,true); std::cout << std::endl << "using Broyden's method..." << std::endl;
+    // numerics::optimization::LmLSQR fsolver(1e-4,100,true); std::cout << "using Levenberg-Marquardt least squares..." << std::endl;
 
     clock_t t = clock();
     fsolver.fsolve(x,f,J);

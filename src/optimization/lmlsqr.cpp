@@ -13,12 +13,17 @@ void numerics::optimization::LmLSQR::fsolve(arma::vec& x, const VecFunc& f) {
     double lam = tau*arma::norm(_J.diag(),"inf");
 
     u_long k = 0;
+    VerboseTracker T(_max_iter);
+    if (_v) T.header("|f|_2");
     do {
         if (k >= _max_iter) {
             _exit_flag = 1;
             _n_iter += k;
+            if (_v) T.max_iter_flag();
             return;
         }
+
+        if (_v) T.iter(k, arma::norm(_F));
 
         arma::vec RHS = -(_J.t() * _F);
         double rho;
@@ -35,6 +40,7 @@ void numerics::optimization::LmLSQR::fsolve(arma::vec& x, const VecFunc& f) {
             if (delta.has_nan() || delta.has_inf()) {
                 _exit_flag = 2;
                 _n_iter += k;
+                if (_v) T.nan_flag();
                 return;
             }
             F1 = f(x + delta);
@@ -59,6 +65,7 @@ void numerics::optimization::LmLSQR::fsolve(arma::vec& x, const VecFunc& f) {
 
     _n_iter += k;
     _exit_flag = 0;
+    if (_v) T.success_flag();
 }
 
 void numerics::optimization::LmLSQR::fsolve(arma::vec& x, const VecFunc& f, const MatFunc& jacobian) {
@@ -74,12 +81,17 @@ void numerics::optimization::LmLSQR::fsolve(arma::vec& x, const VecFunc& f, cons
     if (!_use_cgd) arma::eig_sym(D, V, _J.t()*_J);
 
     u_long k = 0;
+    VerboseTracker T(_max_iter);
+    if (_v) T.header("|f|_2");
     do {
         if (k >= _max_iter) {
             _exit_flag = 1;
             _n_iter += k;
+            if (_v) T.max_iter_flag();
             return;
         }
+
+        if (_v) T.iter(k, arma::norm(_F));
 
         arma::vec RHS = -(_J.t() * _F);
         double rho;
@@ -96,6 +108,7 @@ void numerics::optimization::LmLSQR::fsolve(arma::vec& x, const VecFunc& f, cons
             if (delta.has_nan() || delta.has_inf()) {
                 _exit_flag = 2;
                 _n_iter += k;
+                if (_v) T.nan_flag();
                 return;
             }
             F1 = f(x + delta);
@@ -119,4 +132,5 @@ void numerics::optimization::LmLSQR::fsolve(arma::vec& x, const VecFunc& f, cons
 
     _n_iter += k;
     _exit_flag = 0;
+    if (_v) T.success_flag();
 }

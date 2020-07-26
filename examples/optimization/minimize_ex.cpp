@@ -15,7 +15,10 @@ int main() {
               << "\t(3) stylinsky-tang" << std::endl
               << "your choice : ";
     int choice;
-    std::cin >> choice;
+    do {
+        std::cin >> choice;
+        std::cout << "invalid choice for optimization. Please specify another option: ";
+    } while (choice < 1 || choice > 3);
 
     int n;
     if (choice == 1) n = 2;
@@ -78,26 +81,26 @@ int main() {
     clock_t tt = clock();
     if (choice == 1) {
         std::cout << "using Nelder-Mead method..." << std::endl;
-        numerics::optimization::NelderMead fmin(1e-8,1000);
+        numerics::optimization::NelderMead fmin(1e-8,1000,true);
         fmin.minimize(x,g);
         flag = fmin.get_exit_flag();
         n_iter = fmin.n_iter;
     } else if (choice == 2) {
         std::cout << "using BFGS..." << std::endl;
-        numerics::optimization::BFGS fmin(1e-8, 200);
+        numerics::optimization::BFGS fmin(1e-8, 200,true);
         // fmin.minimize(x, g, dg);
         fmin.minimize(x, g, dg, H); // use Hessian information to improve results
         flag = fmin.get_exit_flag();
         n_iter = fmin.n_iter;
     } else if (choice == 3) {
         std::cout << "using limited memory BFGS..." << std::endl;
-        numerics::optimization::LBFGS fmin(5, 1e-8, 200);
+        numerics::optimization::LBFGS fmin(5, 1e-8, 200,true);
         fmin.minimize(x, g, dg);
         flag = fmin.get_exit_flag();
         n_iter = fmin.n_iter;
     } else if (choice == 4) {
         std::cout << "using momentum gradient descent..." << std::endl;
-        numerics::optimization::MomentumGD fmin(1e-5, 1000);
+        numerics::optimization::MomentumGD fmin(1e-5, 1000,true);
         // fmin.set_step_size(0.001, 0.9);
         fmin.minimize(x,g,dg);
         flag = fmin.get_exit_flag();

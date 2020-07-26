@@ -20,6 +20,8 @@ void numerics::optimization::NelderMead::minimize(arma::vec& x, const dFunc& f) 
 
     int worst, scndw, best;
     int k = 0;
+    VerboseTracker T(_max_iter);
+    if (_v) T.header();
     do {
         arma::uvec ind = arma::sort_index(yy);
         worst = ind(m);
@@ -30,6 +32,7 @@ void numerics::optimization::NelderMead::minimize(arma::vec& x, const dFunc& f) 
             _exit_flag = 1;
             _n_iter += k;
             x = xx.col(best);
+            if (_v) T.max_iter_flag();
             return;
         }
 
@@ -79,10 +82,12 @@ void numerics::optimization::NelderMead::minimize(arma::vec& x, const dFunc& f) 
                 }
             }
         }
+        if (_v) T.iter(k, yy(best));
         k++;
-    } while (arma::norm(xx.col(scndw) - xx.col(best),"inf") > _tol);
+    } while (arma::norm(xx.col(worst) - xx.col(best),"inf") > _tol);
     int i = yy.index_min();
     x = xx.col(i);
     _exit_flag = 0;
     _n_iter += k;
+    if (_v) T.success_flag();
 }
