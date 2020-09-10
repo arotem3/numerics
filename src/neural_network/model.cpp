@@ -10,7 +10,7 @@ void numerics::neuralnet::Model::_forward_prop(const arma::mat& x) {
 void numerics::neuralnet::Model::_back_prop(const arma::mat& x, const arma::mat& y) {
     _forward_prop(x);
 
-    arma::mat yhat = _layers.back().cached_output;
+    const arma::mat& yhat = _layers.back().cached_output;
     
     bool bin_loss = (_loss->name == "binary_crossentropy") and (_layers.back()._activation->name == "logisitic");
     bool cat_loss = (_loss->name == "categorical_crossentropy") and (_layers.back()._activation->name == "softmax");
