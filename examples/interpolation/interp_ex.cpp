@@ -5,37 +5,40 @@
 
 typedef std::vector<double> ddvec;
 
-arma::mat f(const arma::vec& x) {
-    arma::mat y(x.n_elem, 2);
-    y.col(0) = 0.5*arma::sin(2*x)%arma::exp(x/3);
-    y.col(1) = arma::exp(-x%x);
-    return y;
+arma::vec f(const arma::vec& x) {
+    return 0.5*x - 4*x%arma::exp(-arma::square(x))%(2*arma::square(x)-3);
 }
 
 int main() {
     arma::arma_rng::set_seed_random();
-    double a = -3; double b = 3; double m = 10; double n = 150; bool normalize_lagrange_interp = false;
+    double a = -3; double b = 3; double m = 20; double n = 300;
 
     arma::vec x = (b-a)*arma::regspace<arma::vec>(0,m)/m + a;
-    arma::mat y = f(x);
+    arma::vec y = f(x);
 
-    numerics::CubicInterp cspline; cspline.fit(x,y);
-    arma::vec u = arma::linspace(x.min(), x.max(), n);
-    arma::mat v;
+    std::string extrapolation[5] = {
+        "const",
+        "boundary",
+        "linear",
+        "periodic",
+        "polynomial"
+    };
 
-    numerics::HSplineInterp hspline; hspline.fit(x,y);
+    arma::vec u = arma::linspace(-5, 5, n);
+    arma::vec v;
+
+    numerics::CubicInterp cspline(x, y, extrapolation[3]);
+
+    numerics::HSplineInterp hspline(x,y, extrapolation[2]);
 
     matplotlibcpp::suptitle("interpolation");
     
     for (int i(0); i < 4; ++i) {
         std::string title;
-        if (i==0) {v = cspline.predict(u); title = "cubic spline";}
-        else if (i==1) {v = hspline.predict(u); title = "Hermite spline";}
-        else if (i==2) {v = numerics::lagrange_interp(x,y,u, normalize_lagrange_interp); title = "lagrange";}
+        if (i==0) {v = cspline(u); title = "cubic spline";}
+        else if (i==1) {v = hspline(u); title = "Hermite spline";}
+        else if (i==2) {v = numerics::lagrange_interp(x,y,u); title = "lagrange";}
         else if (i==3) {v = numerics::sinc_interp(x,y,u); title = "sinc";}
-
-        std::cout << std::endl << title << std::endl;
-        std::cout << "||error|| : " << arma::norm(v - f(u), "fro") << std::endl;
 
         ddvec xx = arma::conv_to<ddvec>::from(x);
         ddvec y1 = arma::conv_to<ddvec>::from(y.col(0));
@@ -53,7 +56,7 @@ int main() {
         
         matplotlibcpp::plot(uu, v1, "-r");
         if (y.n_cols==2) matplotlibcpp::plot(uu, v2, "-b");
-        matplotlibcpp::ylim(-1.5,1.5);
+        matplotlibcpp::ylim(-5,5);
     }
     matplotlibcpp::tight_layout();
     matplotlibcpp::show();

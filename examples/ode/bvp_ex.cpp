@@ -80,36 +80,29 @@ int main() {
     arma::mat U(2,N);
     for (int i=0; i < N; ++i) U.col(i) = guess(x(i)); // set U to the initial guess
 
-    numerics::ode::BoundaryValueProblem *solver;
+    numerics::ode::BoundaryValueProblem *sol;
     if (method == -1) {
-        solver = new numerics::ode::BVPCheb(N);
+        sol = new numerics::ode::BVPCheb(N);
     } else if (method == -2) {
-        solver = new numerics::ode::BVP3a();
+        sol = new numerics::ode::BVP3a();
     } else {
-        solver = new numerics::ode::BVPk(method);
+        sol = new numerics::ode::BVPk(method);
     }
 
-    numerics::ode::ODESolution sol = solver->ode_solve(f,bc,x,U);
+    sol->ode_solve(f,bc,x,U);
+
+    std::cout << "success.\n";
 
     arma::vec xx = arma::linspace(a,b,500);
-    arma::mat uu;
-    if (method == -1) {
-        uu = numerics::lagrange_interp(sol.t, sol.solution, xx);
-    } else {
-        numerics::HSplineInterp soln;
-        arma::mat dU(arma::size(sol.solution));
-        for (int i=0; i < N; ++i) dU.row(i) = f(sol.t(i),sol.solvec.at(i)).t();
-        soln.fit(sol.t, sol.solution, dU);
-        uu = soln.predict(xx);
-    }
+    arma::mat uu = (*sol)(xx);
 
-    std::cout << "Number of nonlinear iterations needed by solver: " << solver->num_iter << std::endl;
-    dvec x1 = arma::conv_to<dvec>::from(sol.t);
-    dvec u1 = arma::conv_to<dvec>::from(sol.solution.col(0));
-    dvec v1 = arma::conv_to<dvec>::from(sol.solution.col(1));
+    std::cout << "Number of nonlinear iterations needed by solver: " << sol->num_iter << std::endl;
+    dvec x1 = arma::conv_to<dvec>::from(sol->x);
+    dvec u1 = arma::conv_to<dvec>::from(sol->u.row(0));
+    dvec v1 = arma::conv_to<dvec>::from(sol->u.row(1));
     dvec x2 = arma::conv_to<dvec>::from(xx);
-    dvec u2 = arma::conv_to<dvec>::from(uu.col(0));
-    dvec v2 = arma::conv_to<dvec>::from(uu.col(1));
+    dvec u2 = arma::conv_to<dvec>::from(uu.row(0));
+    dvec v2 = arma::conv_to<dvec>::from(uu.row(1));
     
     matplotlibcpp::subplot(2,1,1);
     std::map<std::string,std::string> ls = {{"marker","o"},{"label","u(x)"},{"ls","none"},{"color","purple"}};

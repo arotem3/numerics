@@ -42,7 +42,6 @@ add_library(numerics SHARED
         src/interpolation/cubic_interp.cpp
         src/interpolation/hspline_interp.cpp
         src/interpolation/lagrange_interp.cpp
-        src/interpolation/poly_interp.cpp
         src/interpolation/sinc_interp.cpp
         src/interpolation/polynomials.cpp
 

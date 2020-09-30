@@ -1,17 +1,8 @@
 #include <numerics.hpp>
 
-/* diffvec(x, x0, k) : returns rowvec w such the w * f(x) produces an approximation of the k^th-derivative f^{k} at x0.
- * --- x : points (near) x0 to form the interpolation over.
- * --- x0 : the point to produce the approximation for.
- * --- k : the order of the derivative (k < x.n_elem), e.g. k=1 is the first derivative */
-arma::rowvec numerics::ode::diffvec(const arma::vec& x, double x0, uint k) {
+arma::rowvec _diffvec_unsafe(const arma::vec& x, double x0, u_int k) {
     int n = x.n_elem;
-    if (k >= n) {
-        std::cerr << "diffvec() error: in order to approximate a " << k << "-order derivative, at least "
-                  << k+1 << " x-values are needed but only " << n << " were provided." << std::endl;
-        return arma::rowvec();
-    }
-
+    
     double c1 = 1, c2, c3, c4 = x(0) - x0, c5;
     arma::mat C = arma::zeros(n,k+1);
     C(0,0) = 1;
@@ -35,29 +26,57 @@ arma::rowvec numerics::ode::diffvec(const arma::vec& x, double x0, uint k) {
     return C.col(k).t();
 }
 
+/* diffvec(x, x0, k) : returns rowvec w such the w * f(x) produces an approximation of the k^th-derivative f^{k} at x0.
+ * source : Fornberg, Bengt "Calculation of weights in finite difference formulas". SIAM, 1998
+ * --- x : points (near) x0 to form the interpolation over.
+ * --- x0 : the point to produce the approximation for.
+ * --- k : the order of the derivative (k < x.n_elem), e.g. k=1 is the first derivative */
+arma::rowvec numerics::ode::diffvec(const arma::vec& x, double x0, uint k) {
+    int n = x.n_elem;
+    if (k >= n) {
+        throw std::invalid_argument(
+            "diffvec() error: in order to approximate a " + std::to_string(k) + "-order derivative, at least "
+            + std::to_string(k+1) + " x-values are needed but only " + std::to_string(n)
+            + " were provided."
+        );
+    }
+
+    if (not x.is_sorted()) {
+        throw std::runtime_error("diffvec() error: require sorted x values");
+    }
+
+    return _diffvec_unsafe(x,x0,k);
+}
+
 
 /* diffmat(x, k, bdw) : produces the differentiation matrix of nonuniformly spaced data.
  * --- x : values to evaluate the operator for.
  * --- k : the order of the derivative (k < x.n_elem), e.g. k=1 is the first derivative.
- * --- bdw : number of points -1 to use in approximation, bdw > 1, if bdw = even then a symmetric differencing will be prefered when possible and if bdw = odd then a backwards differencing will be prefered. The truncation error should be ~ O(h^bdw), where h is the maximum spacing between consecutive x-values. */
-void numerics::ode::diffmat(arma::mat& D, const arma::vec& x, uint k, uint bdw) {
+ * --- npt : number of points to use in approximation, bdw > 1, if npt = even then a symmetric differencing will be used, but when npt = odd then a forward biased differencing will be used for npt > 3. The truncation error should be ~ O(h^{npt-1}), where h is the maximum spacing between consecutive x-values. */
+void numerics::ode::diffmat(arma::mat& D, const arma::vec& x, uint k, uint npt) {
     int n = x.n_elem;
     if (k >= n) {
-        std::cerr << "diffmat() error: in order to approximate a " << k << "-order derivative, at least "
-                  << k+1 << " x-values are needed but only " << n << " were provided." << std::endl;
-        return;
+        throw std::invalid_argument(
+            "diffmat() error: in order to approximate a " + std::to_string(k) + "-order derivative, at least "
+            + std::to_string(k+1) + " x-values are needed but only " + std::to_string(n)
+            + " were provided."
+        );
     }
+
+    if (npt < 2) {
+        throw std::invalid_argument("diffmat() error: require npt (=" + std::to_string(npt) + ") > 1");
+    }
+
     arma::uvec ind = arma::sort_index(x);
     arma::vec t = x(ind);
 
-    bool center = (bdw%2 == 0);
+    bool center = (npt%2 == 0);
     D = arma::zeros(n,n);
     for (int i=0; i < n; ++i) {
-        int j = i - bdw/2;
-        if (!center) j--;
+        int j = (center) ? (i - npt/2) : (i - 1);
         if (j < 0) j = 0;
-        if (j + bdw + 1 >= n) j = (n-1) - bdw;
-        D.row(i).cols(j,j+bdw) = diffvec(t.rows(j,j+bdw), t(i), k);
+        if (j + npt >= n-1) j = (n-1) - npt;
+        D.row(i).cols(j,j+npt-1) = diffvec(t.rows(j,j+npt-1), t(i), k);
     }
     D = D.cols(ind);
     D = D.rows(ind);

@@ -5,7 +5,7 @@
  * --- y  : y values
  * --- u  : points to evaluate interpolant
  * --- normalize : whether to improve conditioning of interpolant by scaling distant according to exp(-x^2) */
-arma::mat numerics::lagrange_interp(const arma::vec& x, const arma::mat& y, const arma::vec& u, bool normalize) {
+arma::mat numerics::lagrange_interp(const arma::vec& x, const arma::mat& y, const arma::vec& u) {
     int nx = x.n_elem;
     if (x.n_elem != y.n_rows) { // dimension error
         std::cerr << "lagrange_interp() error: interpolation could not be constructed, x and y vectors must be the same length." << std::endl
@@ -21,16 +21,10 @@ arma::mat numerics::lagrange_interp(const arma::vec& x, const arma::mat& y, cons
             }
         }
     }
-
-    if ((u.min() < x.min()-0.01) || (u.max() > x.max()+0.01)) { // out of bounds error
-        std::cerr << "lagrange_interp() error: atleast one element of u is out of bounds of x." << std::endl;
-        return {NAN};
-    }
     
     int nu = u.n_elem;
     arma::mat v(nu, y.n_cols, arma::fill::zeros);
     double var;
-    if (normalize) var = 0.5*arma::range(x)/x.n_elem;
 
     for (int i(0); i <  nx; ++i) {
         arma::mat P(nu, y.n_cols, arma::fill::ones);
@@ -38,9 +32,6 @@ arma::mat numerics::lagrange_interp(const arma::vec& x, const arma::mat& y, cons
             if (j != i) {
                 P.each_col() %= (u - x(j))/(x(i) - x(j));
             }
-        }
-        if (normalize) {
-            P.each_col() %= arma::exp(-arma::square(u - x(i))/var);
         }
         P.each_row() %= y.row(i);
         v += P;

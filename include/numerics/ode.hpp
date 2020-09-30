@@ -268,6 +268,11 @@ namespace ode {
         u_long _num_iter, _max_iter;
         double _tol;
 
+        arma::vec _x;
+        arma::mat _u;
+        arma::mat _du;
+        short _flag;
+
         u_long _check_dim(const arma::vec& x, const arma::mat& U) {
             u_long dim;
             if (U.n_rows == x.n_elem) dim = U.n_cols;
@@ -282,17 +287,37 @@ namespace ode {
 
         public:
         const u_long& num_iter;
-        explicit BoundaryValueProblem(double tol, long max_iter) : num_iter(_num_iter) {
+        const arma::vec& x;
+        const arma::mat& u;
+        const arma::mat& du;
+        explicit BoundaryValueProblem(double tol, long max_iter) : num_iter(_num_iter), x(_x), u(_u), du(_du) {
             _tol = tol;
             _max_iter = max_iter;
+            _flag = 0;
         }
-        virtual ODESolution ode_solve(const odefunc& f, const boundary_conditions& bc, const arma::vec& x, const arma::mat& U) = 0;
-        virtual ODESolution ode_solve(const odefunc& f, const odejacobian& J, const boundary_conditions& bc, const arma::vec& x, const arma::mat& U) = 0;
+        virtual void ode_solve(const odefunc& f, const boundary_conditions& bc, const arma::vec& x, const arma::mat& U) = 0;
+        virtual void ode_solve(const odefunc& f, const odejacobian& J, const boundary_conditions& bc, const arma::vec& x, const arma::mat& U) = 0;
+        virtual arma::mat operator()(const arma::vec& x) const = 0;
+
+        std::string get_exit_flag() {
+            std::string flag;
+            if (_flag == 0) {
+                flag = "solution successfully found over the specified domain.";
+            } else if (_flag == 1) {
+                flag = "solution could not be found within specified error tolerance.";
+            } else if (_flag == 2) {
+                flag = "NaN or infinite value encountered.";
+            } else if (_flag == 3) {
+                flag = "could not solve system of linear equations.";
+            }
+            return flag;
+        }
     };
 
     class BVPk : public BoundaryValueProblem {
         protected:
         u_long k;
+        std::vector<HSplineInterp> _sol;
 
         public:
         explicit BVPk(int order=4, double tol=1e-5, long max_iter=100) : BoundaryValueProblem(tol,max_iter) {
@@ -304,19 +329,23 @@ namespace ode {
          * --- bc : bc(u[0], u[n-1]) == 0, boundary conditions function.
          * --- x  : x values, must be initialized (the solver will solve the bvp at these points), and must be sorted.
          * --- U  : u values, must be initialized, zeros should be fine, but an initial guess is ideal. */
-        ODESolution ode_solve(const odefunc& f, const boundary_conditions& bc, const arma::vec& x, const arma::mat& U) override;
+        void ode_solve(const odefunc& f, const boundary_conditions& bc, const arma::vec& x, const arma::mat& U) override;
         /* solves general systems of  (potentially) nonlinear boudary value problems.
          * --- f  : u'(x) = f(x,u) is a vector valued function.
          * --- J  : jacobian of f, i.e. J = df/du
          * --- bc : bc(u[0], u[n-1]) == 0, boundary conditions function.
          * --- x  : x values, must be initialized (the solver will solve the bvp at these points), and must be sorted.
          * --- U  : u values, must be initialized, zeros should be fine, but an initial guess is ideal. */
-        ODESolution ode_solve(const odefunc& f, const odejacobian& J, const boundary_conditions& bc, const arma::vec& x, const arma::mat& U) override;
+        void ode_solve(const odefunc& f, const odejacobian& J, const boundary_conditions& bc, const arma::vec& x, const arma::mat& U) override;
+
+        /* evaluate the solution at specified points in x. */
+        arma::mat operator()(const arma::vec& x) const override;
     };
     
     class BVPCheb : public BoundaryValueProblem {
         protected:
         u_long num_pts;
+        std::vector<Polynomial> _sol;
 
         public:
         explicit BVPCheb(long num_points = 32, double tol=1e-5, long max_iter=100) : BoundaryValueProblem(tol,max_iter) {
@@ -328,32 +357,40 @@ namespace ode {
          * --- bc : bc(u[0], u[n-1]) == 0, boundary conditions function.
          * --- x  : x values, must be initialized (the solver will solve the bvp at these points), and must be sorted.
          * --- U  : u values, must be initialized, zeros should be fine, but an initial guess is ideal. */
-        ODESolution ode_solve(const odefunc& f, const boundary_conditions& bc, const arma::vec& x, const arma::mat& U) override;
+        void ode_solve(const odefunc& f, const boundary_conditions& bc, const arma::vec& x, const arma::mat& U) override;
         /* solves general systems of  (potentially) nonlinear boudary value problems.
          * --- f  : u'(x) = f(x,u) is a vector valued function.
          * --- J  : jacobian of f, i.e. J = df/du
          * --- bc : bc(u[0], u[n-1]) == 0, boundary conditions function.
          * --- x  : x values, must be initialized (the solver will solve the bvp at these points), and must be sorted.
          * --- U  : u values, must be initialized, zeros should be fine, but an initial guess is ideal. */
-        ODESolution ode_solve(const odefunc& f, const odejacobian& jacobian, const boundary_conditions& bc, const arma::vec& x, const arma::mat& U) override;
+        void ode_solve(const odefunc& f, const odejacobian& jacobian, const boundary_conditions& bc, const arma::vec& x, const arma::mat& U) override;
+
+        /* evaluate the solution at specified points in x. */
+        arma::mat operator()(const arma::vec& x) const override;
     };
 
     class BVP3a : public BoundaryValueProblem {
+        protected:
+        std::vector<HSplineInterp> _sol;
+
         public:
-        explicit BVP3a(double tol=1e-5, long max_iter=100) : BoundaryValueProblem(tol,max_iter) {}
+        explicit BVP3a(double tol=1e-3, long max_iter=100) : BoundaryValueProblem(tol,max_iter) {}
         /* solves general systems of  (potentially) nonlinear boudary value problems.
          * --- f  : u'(x) = f(x,u) is a vector valued function.
          * --- bc : bc(u[0], u[n-1]) == 0, boundary conditions function.
          * --- x  : x values, must be initialized (the solver will solve the bvp at these points), and must be sorted.
          * --- U  : u values, must be initialized, zeros should be fine, but an initial guess is ideal. */
-        ODESolution ode_solve(const odefunc& f, const boundary_conditions& bc, const arma::vec& x, const arma::mat& U) override;
+        void ode_solve(const odefunc& f, const boundary_conditions& bc, const arma::vec& x, const arma::mat& U) override;
         /* solves general systems of  (potentially) nonlinear boudary value problems.
          * --- f  : u'(x) = f(x,u) is a vector valued function.
          * --- J  : jacobian of f, i.e. J = df/du
          * --- bc : bc(u[0], u[n-1]) == 0, boundary conditions function.
          * --- x  : x values, must be initialized (the solver will solve the bvp at these points), and must be sorted.
          * --- U  : u values, must be initialized, zeros should be fine, but an initial guess is ideal. */
-        ODESolution ode_solve(const odefunc& f, const odejacobian& J, const boundary_conditions& bc, const arma::vec& x, const arma::mat& U) override;
+        void ode_solve(const odefunc& f, const odejacobian& J, const boundary_conditions& bc, const arma::vec& x, const arma::mat& U) override;
+
+        arma::mat operator()(const arma::vec& x) const override;
     };
 
     // --- PDEs -------------------- //

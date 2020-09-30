@@ -1,188 +1,203 @@
 #include <numerics.hpp>
 
-numerics::ode::ODESolution numerics::ode::BVP3a::ode_solve(const odefunc& f, const boundary_conditions& bc, const arma::vec& x0, const arma::mat& U0) {
-    u_long n = x0.n_elem;
-    u_long dim = _check_dim(x0, U0);
-
-    _check_x(x0);
-    ODESolution sol(dim);
-    arma::vec& x = sol._t;
-    arma::mat& U = sol._U;
-    x = x0;
-    if (U.n_rows == n) U = U0.t();
-    else U = U0;
-
-    u_long k = 0;
-    arma::sp_mat J(dim*n,dim*n);
-    arma::mat F(n,dim), dU;
-    do {
-        if (k >= _max_iter) {
-            sol._flag = 1;
-            break;
-        }
-        arma::vec BC = bc(U.col(0),U.col(n-1));
-        arma::mat bcJac_L = numerics::approx_jacobian(
+void numerics::ode::BVP3a::ode_solve(const odefunc& f, const boundary_conditions& bc, const arma::vec& x0, const arma::mat& U0) {
+    auto jacobian = [&](double x, const arma::vec& u) -> arma::mat {
+        return numerics::approx_jacobian(
             [&](const arma::vec& v) -> arma::vec {
-                return bc(v, U.col(n-1));
+                return f(x,v);
             },
-            U.col(0)
+            u
         );
-        arma::mat bcJac_R = numerics::approx_jacobian(
-            [&](const arma::vec& v) -> arma::vec {
-                return bc(U.col(0), v);
-            },
-            U.col(n-1)
-        );
-
-        arma::vec fi,fip1,y;
-        arma::mat dfdy, dfdu, dydu;
-        F.set_size(dim,n);
-
-        dfdu = numerics::approx_jacobian(
-            [&](const arma::vec& v) -> arma::vec {
-                return f(x(0),v);
-            },
-            U.col(0)
-        );
-        fi = f(x(0), U.col(0));
-
-        for (u_long i=0; i < n-1; ++i) {
-            double h = x(i+1) - x(i);
-            double s = x(i) + h/2;
-            fip1 = f(x(i+1),U.col(i+1));
-            y = (U.col(i+1) + U.col(i))/2 + h/8 * (fi - fip1);
-            
-            F.col(i+1) = U.col(i+1) - U.col(i) - h/6 * (fi + 4*f(s,y) + fip1);
-            
-            dfdy = numerics::approx_jacobian(
-                [&](const arma::vec& v) -> arma::vec {
-                    return f(s,v);
-                }, y, h*h
-            );
-            dydu = 0.5*arma::eye(dim,dim) + h/8 * dfdu;
-
-            J.submat((i+1)*dim, i*dim, (i+2)*dim-1, (i+1)*dim-1) = -arma::eye(dim,dim) - h/6 * (dfdu + 4*dfdy*dydu);
-            
-            dfdu = numerics::approx_jacobian(
-                [&](const arma::vec& v) -> arma::vec {
-                    return f(x(i+1),v);
-                }, U.col(i+1), h*h
-            );
-            dydu = 0.5*arma::eye(dim,dim) + h/8 * dfdu;
-
-            J.submat((i+1)*dim,(i+1)*dim,(i+2)*dim-1,(i+2)*dim-1) = arma::eye(dim,dim) - h/6 * (dfdu + 4*dfdy*dydu);
-            fi = fip1;
-        }
-        F = F.as_col();
-        int n_bc = BC.n_elem;
-        if (n_bc != dim) {
-            throw std::runtime_error("number of boundary conditions (=" + std::to_string(BC.n_elem) + ") does not match the system dimensions (=" + std::to_string(dim) + ")");
-        }
-        F.rows(0,dim-1) = BC;
-        J.submat(0, 0, dim-1, dim-1) = bcJac_L;
-        J.submat(0, J.n_cols-dim, dim-1, J.n_cols-1) = bcJac_R;
-
-        bool solve_success = arma::spsolve(dU,J,-F);
-        if (not solve_success) {
-            sol._flag = 3;
-            break;
-        }
-        if (dU.has_nan() || dU.has_inf()) {
-            sol._flag = 2;
-            break;
-        }
-        U += arma::reshape(dU,dim,n);
-        k++;
-    } while (arma::norm(dU,"inf") > _tol);
-    _num_iter = k;
-    arma::inplace_trans(U);
-    sol._prepare();
-    return sol;
+    };
+    ode_solve(f, jacobian, bc, x0, U0);
 }
 
-numerics::ode::ODESolution numerics::ode::BVP3a::ode_solve(const odefunc& f, const odejacobian& jacobian, const boundary_conditions& bc, const arma::vec& x0, const arma::mat& U0) {
+
+void numerics::ode::BVP3a::ode_solve(const odefunc& f, const odejacobian& jacobian, const boundary_conditions& bc, const arma::vec& x0, const arma::mat& U0) {
     u_long n = x0.n_elem;
     u_long dim = _check_dim(x0, U0);
 
+    arma::mat I = arma::eye(dim,dim);
+
     _check_x(x0);
-    ODESolution sol(dim);
-    arma::vec& x = sol._t;
-    arma::mat& U = sol._U;
-    x = x0;
-    if (U.n_rows == n) U = U0.t();
-    else U = U0;
+    double L = x0(0);
+    double R = x0(n-1);
+    std::map<double, arma::vec> sol;
+    std::map<double, arma::vec> ff;
+    std::vector<double> x = arma::conv_to<std::vector<double>>::from(x0);
+    for (int j=0; j < n; ++j) {
+        if (U0.n_rows == n) sol[x0(j)] = U0.row(j).as_col();
+        else sol[x0(j)] = U0.col(j);
+    }
 
-    u_long k = 0;
-    arma::sp_mat J(dim*n,dim*n);
-    arma::mat F(n,dim), dU;
-    do {
-        if (k >= _max_iter) {
-            sol._flag = 1;
+    u_long iter = 0;
+
+    arma::sp_mat J;
+    arma::vec r;
+
+
+    while (true) {
+        n = x.size();
+
+        auto setup_equations = [&](bool compute_jacobian) -> void {
+            // we evaluate residual r of Runge-Kutta scheme with respect to current approximation
+            // and compute the jacobian if necessary
+            r.set_size(dim*n);
+            r(arma::span(0,dim-1)) = bc(sol.at(L), sol.at(R));
+            
+            if (compute_jacobian) {
+                J.zeros(dim*n,dim*n);
+                J(arma::span(0,dim-1), arma::span(0,dim-1)) = numerics::approx_jacobian(
+                    [&](const arma::vec& v) -> arma::vec {
+                        return bc(v, sol.at(R));
+                    },
+                    sol.at(L)
+                );
+                J(arma::span(0,dim-1), arma::span((n-1)*dim, n*dim-1)) = numerics::approx_jacobian(
+                    [&](const arma::vec& v) -> arma::vec {
+                        return bc(sol.at(L), v);
+                    },
+                    sol.at(R)
+                );
+            }
+
+            ff[L] = f(L, sol.at(L));
+            arma::mat dfdu0, dfdu1;
+
+            if (compute_jacobian) dfdu1 = jacobian(L, sol[L]);
+
+            for (int j=1; j < n; ++j) {
+                double h = x.at(j) - x.at(j-1);
+
+                ff[x.at(j)] = f(x.at(j), sol.at(x.at(j)));
+
+                const arma::vec& u1 = sol.at(x.at(j));
+                const arma::vec& u0 = sol.at(x.at(j-1));
+
+                arma::vec u_half = (u0 + u1)/2 - 0.125*h*(ff[x.at(j)] - ff[x.at(j-1)]);
+                arma::vec f_half = f(x.at(j-1) + h/2, u_half);
+
+                r(arma::span(dim*j, dim*(j+1)-1)) = u1 - u0 - h/6 * (ff[x.at(j-1)] + 4*f_half + ff[x.at(j)]);
+
+                if (compute_jacobian) {
+                    dfdu0 = std::move(dfdu1);
+                    dfdu1 = jacobian(x.at(j), u1);
+                    arma::mat dfdu_half = jacobian(x.at(j-1)+h/2, u_half);
+
+                    J(arma::span(dim*j,dim*(j+1)-1),arma::span(dim*(j-1), dim*j-1)) = -I - h/6 * dfdu0 - 2*h/3 * dfdu_half * (0.5*I + 0.125*h*dfdu0);
+                    J(arma::span(dim*j,dim*(j+1)-1),arma::span(dim*j,dim*(j+1)-1)) = I - h/6 * dfdu1 - 2*h/3 * dfdu_half * (0.5*I - 0.125*h*dfdu1);
+                }
+            }
+        };
+
+        for (u_int ii=0; ii < 10; ++ii) { // upto ten Newton iterations, then refine mesh, repeat
+            setup_equations(true);
+
+            if (arma::norm(r,"inf") < _tol/2) break; // solution is good enough
+
+            arma::vec du;
+            bool solve_success = arma::spsolve(du,J,-r);
+            if (not solve_success) {
+                _flag = 3;
+                break;
+            }
+            if (du.has_nan() || du.has_inf()) {
+                _flag = 2;
+                break;
+            }
+
+            for (int j=0; j < n; ++j) {
+                sol.at(x.at(j)) += du(arma::span(dim*j,dim*(j+1)-1));
+            }
+        }
+
+        // we count iterations as the number of mesh refinements because the goal of this scheme is to provide
+        // a uniform error bound which is achieved by a accurate solution values on a refined mesh. Thus, we allow
+        // max_iter mesh refinements, and max_iter + 1 applications of Newton's method to ensure the solution is
+        // accurate at the final mesh.
+        if (iter >= _max_iter) {
+            _flag = 1;
             break;
         }
-        arma::vec BC = bc(U.col(0),U.col(n-1));
-        arma::mat bcJac_L = numerics::approx_jacobian(
-            [&](const arma::vec& v) -> arma::vec {
-                return bc(v, U.col(n-1));
-            },
-            U.col(0)
-        );
-        arma::mat bcJac_R = numerics::approx_jacobian(
-            [&](const arma::vec& v) -> arma::vec {
-                return bc(U.col(0), v);
-            },
-            U.col(n-1)
-        );
+        
+        setup_equations(false);
 
-        arma::vec fi,fip1,y;
-        arma::mat dfdy, dfdu, dydu;
-        F.set_size(dim,n);
-
-        dfdu = jacobian(x(0),U.col(0));
-        fi = f(x(0), U.col(0));
-
-        for (u_long i=0; i < n-1; ++i) {
-            double h = x(i+1) - x(i);
-            double s = x(i) + h/2;
-            fip1 = f(x(i+1),U.col(i+1));
-            y = (U.col(i+1) + U.col(i))/2 + h/8 * (fi - fip1);
+        auto S = [&](double t, u_long j) -> arma::vec {
+            double h = x.at(j) - x.at(j-1);
+            const arma::vec& u1 = sol.at(x.at(j));
+            const arma::vec& u0 = sol.at(x.at(j-1));
             
-            F.col(i+1) = U.col(i+1) - U.col(i) - h/6 * (fi + 4*f(s,y) + fip1);
-            
-            dfdy = jacobian(s,y);
-            dydu = 0.5*arma::eye(dim,dim) + h/8 * dfdu;
+            t = (t - x.at(j-1)) / h;
+            arma::vec spline = u0 * (1 + 2*t) * std::pow(1 - t,2);
+            spline += ff[x.at(j-1)] * h * t * std::pow(1 - t,2);
+            spline += u1 * std::pow(t,2) * (3 - 2*t);
+            spline += ff[x.at(j)] * h * std::pow(t,2) * (t - 1);
+            return spline;
+        };
 
-            J.submat((i+1)*dim, i*dim, (i+2)*dim-1, (i+1)*dim-1) = -arma::eye(dim,dim) - h/6 * (dfdu + 4*dfdy*dydu);
-            
-            dfdu = jacobian(x(i+1),U.col(i+1));
-            dydu = 0.5*arma::eye(dim,dim) + h/8 * dfdu;
+        auto Sp = [&](double t, u_long j) -> arma::vec {
+            double h = x.at(j) - x.at(j-1);
+            const arma::vec& u1 = sol.at(x.at(j));
+            const arma::vec& u0 = sol.at(x.at(j-1));
 
-            J.submat((i+1)*dim,(i+1)*dim,(i+2)*dim-1,(i+2)*dim-1) = arma::eye(dim,dim) - h/6 * (dfdu + 4*dfdy*dydu);
-            fi = fip1;
+            t = (t - x.at(j-1)) / h;
+            arma::vec spline = u0 * 6*t * (t - 1) / h;
+            spline += ff[x.at(j-1)] * (1 - 4*t + 3*std::pow(t,2));
+            spline += u1 * 6*t * (1 - t) / h;
+            spline += ff[x.at(j)] * t * (3*t - 2);
+            return spline;
+        };
+
+        auto error = [&](double t, u_long j) -> double {
+            return std::pow(arma::norm(Sp(t,j) - f(t, S(t,j))),2);
+        };
+
+        arma::vec residuals(n-1);
+        for (int j=1; j < n; ++j) {
+            double h = x.at(j) - x.at(j-1);
+            double x_half = (x.at(j) + x.at(j-1)) / 2;
+            double node0 = x_half - std::sqrt(3.0/7)*h/2, node1 = x_half + std::sqrt(3.0/7)*h/2;
+
+            residuals(j-1) = 0.1*std::pow(arma::norm(r(arma::span(dim*(j-1),dim*j-1))),2);
+            residuals(j-1) += (49.0/90)*error(node0,j);
+            residuals(j-1) += (32.0/35)*error(x_half,j);
+            residuals(j-1) += (49.0/90)*error(node1,j);
+            residuals(j-1) += 0.1*std::pow(arma::norm(r(arma::span(dim*j,dim*(j+1)-1))),2);
+            residuals(j-1) *= h/2;
         }
-        F = F.as_col();
-        int n_bc = BC.n_elem;
-        if (n_bc != dim) {
-            throw std::runtime_error("number of boundary conditions (=" + std::to_string(BC.n_elem) + ") does not match the system dimensions (=" + std::to_string(dim) + ")");
-        }
-        F.rows(0,dim-1) = BC;
-        J.submat(0, 0, dim-1, dim-1) = bcJac_L;
-        J.submat(0, J.n_cols-dim, dim-1, J.n_cols-1) = bcJac_R;
+        residuals = arma::sqrt(residuals);
 
-        bool solve_success = arma::spsolve(dU,J,-F);
-        if (not solve_success) {
-            sol._flag = 3;
+        arma::uvec idx = arma::find(residuals > _tol);
+        if (idx.is_empty()) { // found solution whose error is bounded by tol everywhere
             break;
+        } else {
+            for (u_int j : idx) {
+                x.push_back((x.at(j) + x.at(j+1))/2);
+                sol[x.back()] = S(x.back(), j+1); // add new points to grid
+            }
+            std::stable_sort(x.begin(), x.end());
         }
-        if (dU.has_nan() || dU.has_inf()) {
-            sol._flag = 2;
-            break;
-        }
-        U += arma::reshape(dU,dim,n);
-        k++;
-    } while (arma::norm(dU,"inf") > _tol);
-    _num_iter = k;
-    arma::inplace_trans(U);
-    sol._prepare();
-    return sol;
+        iter++;
+    }
+    _x = arma::conv_to<arma::vec>::from(x);
+    _u.set_size(dim, _x.n_elem);
+    _du.set_size(dim, _x.n_elem);
+    for (u_long i=0; i < x.size(); ++i) {
+        _u.col(i) = sol.at(_x(i));
+        _du.col(i) = ff.at(_x(i));
+    }
+
+    for (u_long i=0; i < dim; ++i) {
+        _sol.push_back(HSplineInterp(_x, _u.row(i).as_col(), _du.row(i).as_col(), "boundary"));
+    }
+    
+    _num_iter = iter;
+}
+
+arma::mat numerics::ode::BVP3a::operator()(const arma::vec& t) const {
+    arma::mat out(_sol.size(), t.n_elem);
+    for (u_long i=0; i < _sol.size(); ++i) {
+        out.row(i) = _sol.at(i)(t).as_row();
+    }
+    return out;
 }

@@ -21,11 +21,6 @@ arma::mat numerics::sinc_interp(const arma::vec& x, const arma::mat& y, const ar
         }
     }
 
-    if (arma::any(u - x(0) < -0.01) || !arma::all(u - x(n - 1) <= 0.01)) { // out of bounds error
-        std::cerr << "sinc_interp() error: atleast one element of u is out of bounds of x." << std::endl;
-        return {NAN};
-    }
-
     double h = x(1) - x(0);
     arma::mat v(u.n_elem, y.n_cols, arma::fill::zeros);
     for (int i(0); i < n; ++i) {
