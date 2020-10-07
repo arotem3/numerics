@@ -102,11 +102,3 @@ void numerics::ode::BVPCheb::ode_solve(const odefunc& f, const odejacobian& jaco
         _sol.push_back(Polynomial(_x, _u.row(i).as_col()));
     }
 }
-
-arma::mat numerics::ode::BVPCheb::operator()(const arma::vec& t) const {
-    arma::mat out(_sol.size(), t.n_elem);
-    for (u_long i=0; i < _sol.size(); ++i) {
-        out.row(i) = _sol.at(i)(t).as_row();
-    }
-    return out;
-}

@@ -102,14 +102,6 @@ void numerics::ode::BVPk::ode_solve(const odefunc& f, const odejacobian& jacobia
     _du = std::move(F);
 
     for (u_int i=0; i < dim; ++i) {
-        _sol.push_back(HSplineInterp(_x,_u.row(i).as_col(),_du.row(i).as_col(),"boundary"));
+        _sol.push_back(hermite_cubic_spline(_x,_u.row(i).as_col(),_du.row(i).as_col(),"boundary"));
     }
-}
-
-arma::mat numerics::ode::BVPk::operator()(const arma::vec& t) const {
-    arma::mat out(_sol.size(), t.n_elem);
-    for (u_long i=0; i < _sol.size(); ++i) {
-        out.row(i) = _sol.at(i)(t).as_row();
-    }
-    return out;
 }

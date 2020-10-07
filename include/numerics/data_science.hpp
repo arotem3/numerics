@@ -66,7 +66,6 @@ template<typename A> class KFolds1Arr {
     arma::Mat<A> _X;
     arma::umat _I;
     arma::uvec _range;
-    bool _move;
 
     void _check_index(u_long i) {
         if (i >= _n_folds) {
@@ -77,17 +76,22 @@ template<typename A> class KFolds1Arr {
     public:
     const arma::Mat<A>& X;
 
-    explicit KFolds1Arr(int n_folds=2, bool move_data=false) : X(_X) {
+    explicit KFolds1Arr(int n_folds=2) : X(_X) {
         if (n_folds < 2) {
             throw std::invalid_argument("require number of folds (=" + std::to_string(n_folds) + ") >= 2.");
         }
         _n_folds = n_folds;
-        _move = move_data;
+    }
+
+    void fit(arma::Mat<A>&& xx) {
+        _X = xx;
+
+        _I = arma::reshape(arma::randperm(_X.n_rows), _X.n_rows/_n_folds, _n_folds);
+        _range = arma::regspace<arma::uvec>(0, _n_folds-1);
     }
 
     void fit(const arma::Mat<A>& xx) {
-        if (_move) _X = std::move(xx);
-        else _X = xx;
+        _X = xx;
 
         _I = arma::reshape(arma::randperm(_X.n_rows), _X.n_rows/_n_folds, _n_folds);
         _range = arma::regspace<arma::uvec>(0, _n_folds-1);
@@ -124,25 +128,29 @@ template<typename A, typename B> class KFolds2Arr {
     const arma::Mat<A>& X;
     const arma::Mat<B>& y;
 
-    explicit KFolds2Arr(int n_folds=2, bool move_data=false) : X(_X), y(_y) {
+    explicit KFolds2Arr(int n_folds=2) : X(_X), y(_y) {
         if (n_folds < 2) {
             throw std::invalid_argument("require number of folds (=" + std::to_string(n_folds) + ") >= 2.");
         }
         _n_folds = n_folds;
-        _move = move_data;
     }
     
     void fit(const arma::Mat<A>& xx, const arma::Mat<B>& yy) {
         if (xx.n_rows != yy.n_rows) {
             throw std::invalid_argument("require number of rows in X (=" + std::to_string(xx.n_rows) + ") == number of rows in y (=" + std::to_string(yy.n_rows) + ").");
         }
-        if (_move) {
-            _X = std::move(xx);
-            _y = std::move(yy);
-        } else {
-            _X = xx;
-            _y = yy;
+        _X = xx;
+        _y = yy;
+        _I = arma::reshape(arma::randperm(_X.n_rows), _X.n_rows/_n_folds, _n_folds);
+        _range = arma::regspace<arma::uvec>(0, _n_folds-1);
+    }
+
+    void fit(arma::Mat<A>&& xx, arma::Mat<B>&& yy) {
+        if (xx.n_rows != yy.n_rows) {
+            throw std::invalid_argument("require number of rows in X (=" + std::to_string(xx.n_rows) + ") == number of rows in y (=" + std::to_string(yy.n_rows) + ").");
         }
+        _X = xx;
+        _y = yy;
         _I = arma::reshape(arma::randperm(_X.n_rows), _X.n_rows/_n_folds, _n_folds);
         _range = arma::regspace<arma::uvec>(0, _n_folds-1);
     }
@@ -175,6 +183,7 @@ typedef KFolds2Arr<double,double> KFolds;
 template<class T> class LabelEncoder {
     protected:
     std::map<T,arma::uword> _classes;
+    std::map<arma::uword,T> _iclasses;
     arma::uword _n_classes;
 
     public:
@@ -182,18 +191,28 @@ template<class T> class LabelEncoder {
     void fit(const std::vector<T>& y) {
         _n_classes=0;
         _classes.clear();
+        _iclasses.clear();
         for (const T& t : y) {
             if (_classes.count(t) == 0) {
                 _classes.insert({t,_n_classes});
+                _iclasses.insert({_n_classes,t});
                 _n_classes++;
             }
         }
     }
 
-    arma::uvec transform(const std::vector<T>& y) const {
+    arma::uvec encode(const std::vector<T>& y) const {
         arma::uvec yh; yh.set_size(y.size());
         for (u_long i=0; i < y.size(); ++i) {
             yh(i) = _classes.at(y.at(i));
+        }
+        return yh;
+    }
+
+    std::vector<T> decode(const arma::uvec& y) const {
+        std::vector<T> yh;
+        for (u_long i=0; i < y.n_elem; ++i) {
+            yh.push_back(_iclasses.at(y(i)));
         }
         return yh;
     }
@@ -316,7 +335,6 @@ namespace neighbors {
         u_long _n_dims;
         u_long _leaf_size;
         u_long _p;
-        bool _move;
         
         arma::mat _data;
         arma::mat _bounding_box;
@@ -342,8 +360,7 @@ namespace neighbors {
         /* KDTree : implements kd-tree data structure for O(log n) nearest neighbor searches.
             * --- p_norm : distance type, >=0 or "inf", (0 indicates "inf").
             * --- leaf_size : number of points to store in the leaf nodes. Storing the data this way takes advantage of the fast brute force search for small data-sets and the fast tree search for large data. */
-        explicit KDTree(int pnorm=2, int leafsize=30, bool move_data=false) : data(_data), p_norm(_p), leaf_size(_leaf_size) {
-            _move = move_data;
+        explicit KDTree(int pnorm=2, int leafsize=30) : data(_data), p_norm(_p), leaf_size(_leaf_size) {
             _valid_leaf_size(leafsize);
             _leaf_size = leafsize;
             _valid_p_norm(pnorm);
@@ -354,8 +371,7 @@ namespace neighbors {
         /* KDTree : implements kd-tree data structure for O(log n) nearest neighbor searches.
             * --- p_norm : distance type, >=0 or "inf", (0 indicates "inf").
             * --- leaf_size : number of points to store in the leaf nodes. Storing the data this way takes advantage of the fast brute force search for small data-sets and the fast tree search for large data. */
-        explicit KDTree(const std::string& pnorm, int leafsize=30, bool move_data=false) : data(_data), p_norm(_p), leaf_size(_leaf_size) {
-            _move = move_data;
+        explicit KDTree(const std::string& pnorm, int leafsize=30) : data(_data), p_norm(_p), leaf_size(_leaf_size) {
             _valid_leaf_size(leafsize);
             _leaf_size = leafsize;
             
@@ -386,6 +402,7 @@ namespace neighbors {
 
         /* fit : represents data-set as a tree structure. */
         void fit(const arma::mat& x);
+        void fit(arma::mat&& x);
         
         /* min : find minimum along a specified dimension. */
         double min(u_long dim) const;
@@ -434,38 +451,7 @@ template<typename eT> class KNeighborsEstimator : public Estimator<eT> {
         }
     }
 
-    virtual eT _vote(const arma::umat& idx, const arma::mat& distances) const = 0;
-
-    virtual eT _vote(const arma::umat& idx) const = 0;
-
-    public:
-    const u_int& k;
-    const arma::uvec& ks;
-    const arma::vec& scores;
-    const neighbors::KDTree& X;
-    const arma::Col<eT>& y;
-
-    explicit KNeighborsEstimator(int K, int p_norm, bool use_distance_weights, int leaf_size, bool move_data) : _data(p_norm, leaf_size, move_data), _weighted(use_distance_weights), k(_k), ks(_ks), scores(_scores), X(_data), y(_y) {
-        _check_k(K);
-        _k = K;
-    }
-
-    explicit KNeighborsEstimator(int K, const std::string& p_norm, bool use_distance_weights,  int leaf_size, bool move_data) : _data(p_norm, leaf_size, move_data), _weighted(use_distance_weights), k(_k), ks(_ks), scores(_scores), X(_data), y(_y) {
-        _check_k(K);
-        _k = K;
-    }
-
-    explicit KNeighborsEstimator(arma::uvec& Ks, int p_norm, bool use_distance_weights, int leaf_size, bool move_data) : _data(p_norm, leaf_size, move_data), _weighted(use_distance_weights), k(_k), ks(_ks), scores(_scores), X(_data), y(_y) {
-        for (arma::uword K : Ks) _check_k(K);
-        _ks = Ks;
-    }
-
-    explicit KNeighborsEstimator(arma::uvec& Ks, const std::string& p_norm, bool use_distance_weights, int leaf_size, bool move_data) : _data(p_norm, leaf_size, move_data), _weighted(use_distance_weights), k(_k), ks(_ks), scores(_scores), X(_data), y(_y) {
-        for (arma::uword K : Ks) _check_k(K);
-        _ks = Ks;
-    }
-
-    void fit(const arma::mat& xx, const arma::Col<eT>& yy) override {
+    void _fit(const arma::mat& xx, const arma::Col<eT>& yy) {
         _check_xy(xx, yy);
         _dim = xx.n_cols;
         if (not _ks.is_empty()) {
@@ -485,6 +471,47 @@ template<typename eT> class KNeighborsEstimator : public Estimator<eT> {
             int best_score = _scores.index_max();
             _k = _ks(best_score);
         }
+    }
+
+    virtual eT _vote(const arma::umat& idx, const arma::mat& distances) const = 0;
+
+    virtual eT _vote(const arma::umat& idx) const = 0;
+
+    public:
+    const u_int& k;
+    const arma::uvec& ks;
+    const arma::vec& scores;
+    const neighbors::KDTree& X;
+    const arma::Col<eT>& y;
+
+    explicit KNeighborsEstimator(int K, int p_norm, bool use_distance_weights, int leaf_size) : _data(p_norm, leaf_size), _weighted(use_distance_weights), k(_k), ks(_ks), scores(_scores), X(_data), y(_y) {
+        _check_k(K);
+        _k = K;
+    }
+
+    explicit KNeighborsEstimator(int K, const std::string& p_norm, bool use_distance_weights,  int leaf_size) : _data(p_norm, leaf_size), _weighted(use_distance_weights), k(_k), ks(_ks), scores(_scores), X(_data), y(_y) {
+        _check_k(K);
+        _k = K;
+    }
+
+    explicit KNeighborsEstimator(const arma::uvec& Ks, int p_norm, bool use_distance_weights, int leaf_size) : _data(p_norm, leaf_size), _weighted(use_distance_weights), k(_k), ks(_ks), scores(_scores), X(_data), y(_y) {
+        for (arma::uword K : Ks) _check_k(K);
+        _ks = Ks;
+    }
+
+    explicit KNeighborsEstimator(const arma::uvec& Ks, const std::string& p_norm, bool use_distance_weights, int leaf_size) : _data(p_norm, leaf_size), _weighted(use_distance_weights), k(_k), ks(_ks), scores(_scores), X(_data), y(_y) {
+        for (arma::uword K : Ks) _check_k(K);
+        _ks = Ks;
+    }
+
+    void fit(const arma::mat& xx, const arma::Col<eT>& yy) override {
+        _fit(xx,yy);
+        _data.fit(xx);
+        _y = yy;
+    }
+
+    void fit(arma::mat&& xx, arma::Col<eT>&& yy) {
+        _fit(xx,yy);
         _data.fit(xx);
         _y = yy;
     }
@@ -555,7 +582,7 @@ class KNeighborsClassifier : public KNeighborsEstimator<arma::uword> {
         * --- use_distance_weights : weigh estimate by the distance of neighbors.
         * --- leaf_size : leaf_size for KDTree object for nearest neighbor queries.
         * --- move_data : whether to move data into KDTree or copy. */
-    explicit KNeighborsClassifier(int K, int p_norm=2, bool use_distance_weights=false, int leaf_size=30, bool move_data=false) : KNeighborsEstimator<arma::uword>(K,p_norm,use_distance_weights,leaf_size,move_data) {}
+    explicit KNeighborsClassifier(int K, int p_norm=2, bool use_distance_weights=false, int leaf_size=30) : KNeighborsEstimator<arma::uword>(K,p_norm,use_distance_weights,leaf_size) {}
     
     /* initializes k-neighbors classifier, by specifying k or a vector of k values to test by cross-validation.
         * --- K : number of nearest neighbors to use for estimation.
@@ -563,7 +590,7 @@ class KNeighborsClassifier : public KNeighborsEstimator<arma::uword> {
         * --- use_distance_weights : weigh estimate by the distance of neighbors.
         * --- leaf_size : leaf_size for KDTree object for nearest neighbor queries.
         * --- move_data : whether to move data into KDTree or copy. */
-    explicit KNeighborsClassifier(int K, const std::string& p_norm, bool use_distance_weights=false,  int leaf_size=30, bool move_data=false) : KNeighborsEstimator<arma::uword>(K,p_norm,use_distance_weights,leaf_size,move_data) {}
+    explicit KNeighborsClassifier(int K, const std::string& p_norm, bool use_distance_weights=false,  int leaf_size=30) : KNeighborsEstimator<arma::uword>(K,p_norm,use_distance_weights,leaf_size) {}
     
     /* initializes k-neighbors classifier, by specifying k or a vector of k values to test by cross-validation.
         * --- Ks : list of nearest neighbors to test (using cross-validation).
@@ -571,7 +598,7 @@ class KNeighborsClassifier : public KNeighborsEstimator<arma::uword> {
         * --- use_distance_weights : weigh estimate by the distance of neighbors.
         * --- leaf_size : leaf_size for KDTree object for nearest neighbor queries.
         * --- move_data : whether to move data into KDTree or copy. */
-    explicit KNeighborsClassifier(arma::uvec& Ks, int p_norm=2, bool use_distance_weights=false, int leaf_size=30, bool move_data=false) : KNeighborsEstimator<arma::uword>(Ks,p_norm,use_distance_weights,leaf_size,move_data) {}
+    explicit KNeighborsClassifier(const arma::uvec& Ks, int p_norm=2, bool use_distance_weights=false, int leaf_size=30) : KNeighborsEstimator<arma::uword>(Ks,p_norm,use_distance_weights,leaf_size) {}
     
     /* initializes k-neighbors classifier, by specifying k or a vector of k values to test by cross-validation.
         * --- Ks : list of nearest neighbors to test (using cross-validation).
@@ -579,7 +606,7 @@ class KNeighborsClassifier : public KNeighborsEstimator<arma::uword> {
         * --- use_distance_weights : weigh estimate by the distance of neighbors.
         * --- leaf_size : leaf_size for KDTree object for nearest neighbor queries.
         * --- move_data : whether to move data into KDTree or copy. */
-    explicit KNeighborsClassifier(arma::uvec& Ks, const std::string& p_norm, bool use_distance_weights=false, int leaf_size=30, bool move_data=false) : KNeighborsEstimator<arma::uword>(Ks,p_norm,use_distance_weights,leaf_size,move_data) {}
+    explicit KNeighborsClassifier(const arma::uvec& Ks, const std::string& p_norm, bool use_distance_weights=false, int leaf_size=30) : KNeighborsEstimator<arma::uword>(Ks,p_norm,use_distance_weights,leaf_size) {}
     
     /* returns the mean accuracy between yy and predict(xx) */
     double score(const arma::mat& xx, const arma::uvec& yy) const override {
@@ -645,7 +672,7 @@ class KNeighborsRegressor : public KNeighborsEstimator<double> {
         * --- use_distance_weights : weigh estimate by the distance of neighbors.
         * --- leaf_size : leaf_size for KDTree object for nearest neighbor queries.
         * --- move_data : whether to move data into KDTree or copy. */
-    explicit KNeighborsRegressor(int K, int p_norm=2, bool use_distance_weights=false, int leaf_size=30, bool move_data=false) : KNeighborsEstimator<double>(K,p_norm,use_distance_weights,leaf_size,move_data) {}
+    explicit KNeighborsRegressor(int K, int p_norm=2, bool use_distance_weights=false, int leaf_size=30) : KNeighborsEstimator<double>(K,p_norm,use_distance_weights,leaf_size) {}
     
     /* initializes k-neighbors regressor, by specifying k or a vector of k values to test by cross-validation.
         * --- K : number of nearest neighbors to use for estimation.
@@ -653,7 +680,7 @@ class KNeighborsRegressor : public KNeighborsEstimator<double> {
         * --- use_distance_weights : weigh estimate by the distance of neighbors.
         * --- leaf_size : leaf_size for KDTree object for nearest neighbor queries.
         * --- move_data : whether to move data into KDTree or copy. */
-    explicit KNeighborsRegressor(int K, const std::string& p_norm, bool use_distance_weights=false,  int leaf_size=30, bool move_data=false) : KNeighborsEstimator<double>(K,p_norm,use_distance_weights,leaf_size,move_data) {}
+    explicit KNeighborsRegressor(int K, const std::string& p_norm, bool use_distance_weights=false,  int leaf_size=30) : KNeighborsEstimator<double>(K,p_norm,use_distance_weights,leaf_size) {}
     
     /* initializes k-neighbors regressor, by specifying k or a vector of k values to test by cross-validation.
         * --- Ks : list of nearest neighbors to test (using cross-validation).
@@ -661,7 +688,7 @@ class KNeighborsRegressor : public KNeighborsEstimator<double> {
         * --- use_distance_weights : weigh estimate by the distance of neighbors.
         * --- leaf_size : leaf_size for KDTree object for nearest neighbor queries.
         * --- move_data : whether to move data into KDTree or copy. */
-    explicit KNeighborsRegressor(arma::uvec& Ks, int p_norm=2, bool use_distance_weights=false, int leaf_size=30, bool move_data=false) : KNeighborsEstimator<double>(Ks,p_norm,use_distance_weights,leaf_size,move_data) {}
+    explicit KNeighborsRegressor(const arma::uvec& Ks, int p_norm=2, bool use_distance_weights=false, int leaf_size=30) : KNeighborsEstimator<double>(Ks,p_norm,use_distance_weights,leaf_size) {}
     
     /* initializes k-neighbors regressor, by specifying k or a vector of k values to test by cross-validation.
         * --- Ks : list of nearest neighbors to test (using cross-validation).
@@ -669,7 +696,7 @@ class KNeighborsRegressor : public KNeighborsEstimator<double> {
         * --- use_distance_weights : weigh estimate by the distance of neighbors.
         * --- leaf_size : leaf_size for KDTree object for nearest neighbor queries.
         * --- move_data : whether to move data into KDTree or copy. */
-    explicit KNeighborsRegressor(arma::uvec& Ks, const std::string& p_norm, bool use_distance_weights=false, int leaf_size=30, bool move_data=false) : KNeighborsEstimator<double>(Ks,p_norm,use_distance_weights,leaf_size,move_data) {}
+    explicit KNeighborsRegressor(const arma::uvec& Ks, const std::string& p_norm, bool use_distance_weights=false, int leaf_size=30) : KNeighborsEstimator<double>(Ks,p_norm,use_distance_weights,leaf_size) {}
     
     /* returns the R^2 score between yy and predict(xx) */
     double score(const arma::mat& xx, const arma::vec& yy) const override {

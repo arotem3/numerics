@@ -184,8 +184,22 @@ void numerics::neighbors::KDTree::fit(const arma::mat& x) {
     _size = x.n_rows;
     _n_dims = x.n_cols;
 
-    if (_move) _data = std::move(x);
-    else _data = x;
+    _data = x;
+
+    _build_tree();
+    
+    _bounding_box.set_size(2, _n_dims);
+    for (u_long i=0; i < _n_dims; ++i) {
+        _bounding_box(0, i) = x.col(i).min();
+        _bounding_box(1, i) = x.col(i).max();
+    }
+}
+
+void numerics::neighbors::KDTree::fit(arma::mat&& x) {
+    _size = x.n_rows;
+    _n_dims = x.n_cols;
+
+    _data = x;
 
     _build_tree();
     

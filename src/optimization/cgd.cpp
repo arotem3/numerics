@@ -17,13 +17,14 @@ arma::mat& one_over_diag(arma::mat& A) {
     return A;
 }
 
-void numerics::optimization::cgd(arma::mat& A, arma::mat& b, arma::mat& x, double tol, int max_iter) {
+void numerics::optimization::cgd(arma::mat& x, const arma::mat& A, const arma::mat& b, double tol, int max_iter) {
     if (max_iter <= 0) max_iter = 1.1*b.n_rows;
-    
-    if ( !A.is_symmetric() ) {
-        b = A.t()*b;
-        A = A.t()*A;
-    }
+
+    arma::mat AtA;
+    bool sym = A.is_symmetric();
+    const arma::mat& AA = (sym) ? (A) : (AtA);
+    if (not sym) AtA = A.t() * A;
+
     if (x.empty()) x = arma::randn(A.n_cols,b.n_cols);
 
     arma::mat r = b - A*x;
@@ -33,32 +34,35 @@ void numerics::optimization::cgd(arma::mat& A, arma::mat& b, arma::mat& x, doubl
     while (arma::norm(r, "inf") > tol) {
         if (k >= max_iter) break;
         arma::mat rtr = diag_inner_prod(r, r);
-        arma::mat alpha = rtr * diag_inner_prod(p, A*p, true);
+        arma::mat alpha = rtr * diag_inner_prod(p, AA*p, true);
         x += p * alpha;
-        r -= (A*p) * alpha;
+        r -= (AA*p) * alpha;
         arma::mat beta = diag_inner_prod(r, r) * one_over_diag(rtr);
         p = r + p * beta;
         k++;
     }
 }
 
-void numerics::optimization::cgd(const arma::sp_mat& A, const arma::mat& b, arma::mat& x, double tol, int max_iter) {
+void numerics::optimization::cgd(arma::mat& x, const arma::sp_mat& A, const arma::mat& b, double tol, int max_iter) {
     if (max_iter <= 0) max_iter = 1.1*b.n_rows;
 
-    if (!A.is_symmetric()) {
-        throw std::invalid_argument("sparse cgd cannot handle nonsymmetric matrices.");
-    }
+    bool sym = A.is_symmetric(); // if A is not square and symmetric, we assume we are solving a least squares problem
+    
+    arma::mat r;
+    if (not sym) r = A.t()*b - A.t()*(A*x);
+    else r = b - A*x;
 
-    arma::mat r = b - A*x;
     arma::mat p;
     uint k = 0;
     p = r;
     while (arma::norm(r, "inf") > tol) {
         if (k >= max_iter) break;
+        arma::mat Ap;
+        if (not sym) Ap = A*(A.t()*p);
         arma::mat rtr = diag_inner_prod(r, r);
-        arma::mat alpha = rtr * diag_inner_prod(p, A*p, true);
+        arma::mat alpha = rtr * diag_inner_prod(p, Ap, true);
         x += p*alpha;
-        r -= (A*p)*alpha;
+        r -= Ap*alpha;
         arma::mat beta = diag_inner_prod(r, r) * one_over_diag(rtr);
         p = r + p * beta;
         k++;

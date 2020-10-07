@@ -49,21 +49,21 @@ namespace optimization {
     typedef std::function<arma::mat(const arma::vec&)> MatFunc;
     typedef std::function<double(const arma::vec&)> dFunc;
     //--- linear ---//
-    /* cgd(A,b,x,tol,max_iter) : solves the system Ax = b (or A'A*x = A'b) using conjugate gradient descent
-     * --- A : system i.e. LHS (MAY BE OVERWITTEN IF 'A' IS NOT SYM POS DEF)
-     * --- b : RHS (MAY BE OVERWRITTEN IF 'A' IS NOT SYM POS DEF)
+    /* cgd(x,A,b,tol,max_iter) : solves the system Ax = b (or A'A*x = A'b) using conjugate gradient descent
      * --- x : initial guess and solution stored here
+     * --- A : as in A*x = b
+     * --- b : as in A*x = b
      * --- tol : stopping criteria for measuring convergence to solution.
      * --- max_iter : maximum number of iterations after which the solver will stop regardless of convergence */
-    void cgd(arma::mat&, arma::mat&, arma::mat&, double tol = 1e-3, int max_iter = 0);
+    void cgd(arma::mat& x, const arma::mat& A, const arma::mat& b, double tol = 1e-3, int max_iter = 0);
 
     /* cgd(A,b,x,tol,max_iter) : solves the sparse system Ax = b (or A'A*x = A'b) using conjugate gradient descent
-     * --- A : sparse system i.e. LHS (MAY BE OVERWITTEN)
-     * --- b : RHS (MAY BE OVERWRITTEN)
      * --- x : initial guess and solution stored here
+     * --- A : as in A*x = b
+     * --- b : as in A*x = b
      * --- tol : stopping criteria for measuring convergence to solution.
      * --- max_iter : maximum number of iterations after which the solver will stop regardless of convergence */
-    void cgd(const arma::sp_mat&, const arma::mat&, arma::mat&, double tol = 1e-3, int max_iter = 0);
+    void cgd(arma::mat& x, const arma::sp_mat& A, const arma::mat& b, double tol = 1e-3, int max_iter = 0);
 
     //--- nonlinear ---//
     class NonLinSolver {

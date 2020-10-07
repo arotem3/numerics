@@ -17,7 +17,7 @@ void numerics::optimization::Newton::fsolve(arma::vec& x, const VecFunc& f, cons
         _F = -f(x);
         if (_v) T.iter(k, arma::norm(_F,"inf"));
         _J = jacobian(x);
-        if (_use_cgd) cgd(_J,_F,dx);
+        if (_use_cgd) cgd(dx, _J,_F);
         else dx = arma::solve(_J,_F);
         x += dx;
         k++;

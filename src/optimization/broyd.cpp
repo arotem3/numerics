@@ -1,6 +1,5 @@
 #include <numerics.hpp>
 
-
 void numerics::optimization::Broyd::fsolve(arma::vec& x, const VecFunc& f) {
     _check_loop_parameters();
     arma::vec F1,dx,y;

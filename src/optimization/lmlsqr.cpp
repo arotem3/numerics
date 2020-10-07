@@ -32,7 +32,7 @@ void numerics::optimization::LmLSQR::fsolve(arma::vec& x, const VecFunc& f) {
             if (_use_cgd) {
                 LHS = _J.t() * _J;
                 LHS.diag() += lam;
-                cgd(LHS, RHS, delta);
+                cgd(delta, LHS, RHS);
             } else {
                 delta = V * arma::diagmat(1/(D+lam)) * V.t() * RHS;
             }
@@ -100,7 +100,7 @@ void numerics::optimization::LmLSQR::fsolve(arma::vec& x, const VecFunc& f, cons
             if (_use_cgd) {
                 LHS = _J.t() * _J;
                 LHS.diag() += lam;
-                cgd(LHS, RHS, delta);
+                cgd(delta, LHS, RHS);
             } else {
                 delta = V * arma::diagmat(1/(D+lam)) * V.t() * RHS;
             }

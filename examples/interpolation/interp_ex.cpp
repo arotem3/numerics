@@ -27,16 +27,15 @@ int main() {
     arma::vec u = arma::linspace(-5, 5, n);
     arma::vec v;
 
-    numerics::CubicInterp cspline(x, y, extrapolation[3]);
-
-    numerics::HSplineInterp hspline(x,y, extrapolation[2]);
+    numerics::PieceWisePoly cspline = numerics::natural_cubic_spline(x, y, extrapolation[3]);
+    numerics::PieceWisePoly hspline = numerics::hermite_cubic_spline(x,y, extrapolation[2]);
 
     matplotlibcpp::suptitle("interpolation");
     
     for (int i(0); i < 4; ++i) {
         std::string title;
-        if (i==0) {v = cspline(u); title = "cubic spline";}
-        else if (i==1) {v = hspline(u); title = "Hermite spline";}
+        if (i==0) {v = cspline(u); title = "natural cubic spline with periodic extrapolation";}
+        else if (i==1) {v = hspline(u); title = "Hermite spline with liear extrapolation";}
         else if (i==2) {v = numerics::lagrange_interp(x,y,u); title = "lagrange";}
         else if (i==3) {v = numerics::sinc_interp(x,y,u); title = "sinc";}
 
@@ -56,7 +55,7 @@ int main() {
         
         matplotlibcpp::plot(uu, v1, "-r");
         if (y.n_cols==2) matplotlibcpp::plot(uu, v2, "-b");
-        matplotlibcpp::ylim(-5,5);
+        if (i > 0) matplotlibcpp::ylim(-5,5);
     }
     matplotlibcpp::tight_layout();
     matplotlibcpp::show();

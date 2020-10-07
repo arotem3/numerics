@@ -8,11 +8,17 @@ typedef std::vector<double> dvec;
 int main() {
     double a = -M_PI, b = M_PI;
 
-    std::cout << "Now we will solve the nonlinear boundary value problem:" << std::endl
-              << "\tu' = v" << std::endl << "\tv' = 2(1 - x^2)*u" << std::endl
-              << "\t-pi < x < pi" << std::endl
-              << "\tu(-pi) = 1\tu(pi) = 1" << std::endl
-              << "we will use an initial guess of u(x) = 1 and v(x) = 0" << std::endl
+    std::cout << "Now we will solve the boundary value problem:\n"
+              << "\tu''(x) = 2(1 - x^2)*u(x)\n"
+              << "\t-pi < x < pi\n"
+              << "\tu(-pi) = 1\tu(pi) = 1\n"
+              << "----------------------------------------------------\n"
+              << "first we re-write the problem as a system of first order ODEs:\n"
+              << "\tu'(x) = v(x)\n\tv'(x) = 2(1-x^2)*u(x)\n"
+              << "\twith the same set of initial conditions.\n"
+              << "----------------------------------------------------\n"
+              << "we need to provide the solver an initial guess, so we will simply use\n\tu(x) = 1\n\tv(x) = 0\n"
+              << "----------------------------------------------------\n"
               << "Using method:" << std::endl
               << "\t('cheb' w/o quotes) Chebyshev spectral method." << std::endl
               << "\t('lobatto' w/o quotes) Lobatto IIIa two point explicit method." << std::endl
@@ -42,7 +48,7 @@ int main() {
 
     int N;
     while (true) {
-        std::cout << "number of grid points: ";
+        std::cout << "initial number of grid points: ";
         std::cin >> N;
         if (N > 2) break;
         else std::cout << "\nnumber of points must be >= 3, and practically speaking should be large, consider 32, 64, 100 (powers of two are most efficient for cheb but not necessary).\n";
@@ -53,13 +59,6 @@ int main() {
         up(0) = u(1);
         up(1) = 2*(1 - x*x)*u(0);
         return up;
-    };
-
-    auto J = [](double x,const arma::vec& u) -> arma::mat {
-        arma::mat A = arma::zeros(2,2);
-        A(0,1) = 1;
-        A(1,0) = 2*(1 - x*x);
-        return A;
     };
 
     auto bc = [](const arma::vec& uL, const arma::vec& uR) -> arma::vec {
@@ -80,26 +79,44 @@ int main() {
     arma::mat U(2,N);
     for (int i=0; i < N; ++i) U.col(i) = guess(x(i)); // set U to the initial guess
 
-    numerics::ode::BoundaryValueProblem *sol;
+    arma::vec x_sol;
+    arma::mat U_sol;
+    arma::vec xx = arma::linspace(a,b,500);
+    arma::mat uu;
+    int nit;
+    std::string flag;
+
     if (method == -1) {
-        sol = new numerics::ode::BVPCheb(N);
+        numerics::ode::BVPCheb sol(N);
+        sol.ode_solve(f,bc,x,U);
+        x_sol = sol.x;
+        U_sol = sol.u;
+        uu = sol(xx);
+        nit = sol.num_iter;
+        flag = sol.get_exit_flag();
     } else if (method == -2) {
-        sol = new numerics::ode::BVP3a();
+        numerics::ode::BVP3a sol;
+        sol.ode_solve(f,bc,x,U);
+        x_sol = sol.x;
+        U_sol = sol.u;
+        uu = sol(xx);
+        nit = sol.num_iter;
+        flag = sol.get_exit_flag();
     } else {
-        sol = new numerics::ode::BVPk(method);
+        numerics::ode::BVPk sol(method);
+        sol.ode_solve(f,bc,x,U);
+        x_sol = sol.x;
+        U_sol = sol.u;
+        uu = sol(xx);
+        nit = sol.num_iter;
+        flag = sol.get_exit_flag();
     }
 
-    sol->ode_solve(f,bc,x,U);
-
-    std::cout << "success.\n";
-
-    arma::vec xx = arma::linspace(a,b,500);
-    arma::mat uu = (*sol)(xx);
-
-    std::cout << "Number of nonlinear iterations needed by solver: " << sol->num_iter << std::endl;
-    dvec x1 = arma::conv_to<dvec>::from(sol->x);
-    dvec u1 = arma::conv_to<dvec>::from(sol->u.row(0));
-    dvec v1 = arma::conv_to<dvec>::from(sol->u.row(1));
+    std::cout << "Number of nonlinear iterations needed by solver: " << nit << "\n"
+              << "exit flag: " << flag << "\n";
+    dvec x1 = arma::conv_to<dvec>::from(x_sol);
+    dvec u1 = arma::conv_to<dvec>::from(U_sol.row(0));
+    dvec v1 = arma::conv_to<dvec>::from(U_sol.row(1));
     dvec x2 = arma::conv_to<dvec>::from(xx);
     dvec u2 = arma::conv_to<dvec>::from(uu.row(0));
     dvec v2 = arma::conv_to<dvec>::from(uu.row(1));
