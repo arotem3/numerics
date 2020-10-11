@@ -70,7 +70,7 @@ void numerics::ode::diffmat(arma::mat& D, const arma::vec& x, uint k, uint npt) 
     arma::uvec ind = arma::sort_index(x);
     arma::vec t = x(ind);
 
-    bool center = (npt%2 == 0);
+    bool center = (npt%2 != 0);
     D = arma::zeros(n,n);
     for (int i=0; i < n; ++i) {
         int j = (center) ? (i - npt/2) : (i - 1);

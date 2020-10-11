@@ -1,6 +1,6 @@
 #include <numerics.hpp>
 
-void numerics::ode::BVPk::ode_solve(const odefunc& f, const boundary_conditions& bc, const arma::vec& x0, const arma::mat& U0) {
+void numerics::ode::BVPk::solve_bvp(const odefunc& f, const boundary_conditions& bc, const arma::vec& x0, const arma::mat& U0) {
     auto jacobian = [&](double x, const arma::vec& u) -> arma::mat {
         return numerics::approx_jacobian(
             [&](const arma::vec& v) -> arma::vec {
@@ -9,10 +9,10 @@ void numerics::ode::BVPk::ode_solve(const odefunc& f, const boundary_conditions&
             u
         );
     };
-    ode_solve(f, jacobian, bc, x0, U0);
+    solve_bvp(f, jacobian, bc, x0, U0);
 }
 
-void numerics::ode::BVPk::ode_solve(const odefunc& f, const odejacobian& jacobian, const boundary_conditions& bc, const arma::vec& x0, const arma::mat& U0) {
+void numerics::ode::BVPk::solve_bvp(const odefunc& f, const odejacobian& jacobian, const boundary_conditions& bc, const arma::vec& x0, const arma::mat& U0) {
     u_long n = x0.n_elem;
     u_long dim = _check_dim(x0, U0);
 

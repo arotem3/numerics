@@ -19,27 +19,6 @@
       - [Example](#example-2)
     - [Spectral Derivatives](#spectral-derivatives)
       - [Example](#example-3)
-  - [Linear Root Finding and Optimization](#linear-root-finding-and-optimization)
-    - [Conjugate Gradient Method](#conjugate-gradient-method)
-    - [Linear Programming](#linear-programming)
-  - [Nonlinear Root Finding](#nonlinear-root-finding)
-    - [Newton's method](#newtons-method)
-    - [Quasi-Newton Solvers](#quasi-newton-solvers)
-    - [Broyden's Method](#broydens-method)
-    - [Levenberg-Marquardt Trust Region/Damped Least Squares](#levenberg-marquardt-trust-regiondamped-least-squares)
-    - [Fixed Point Iteration with Anderson Mixing](#fixed-point-iteration-with-anderson-mixing)
-    - [fzero](#fzero)
-    - [Secant](#secant)
-    - [Bisection method](#bisection-method)
-  - [Nonlinear Optimization](#nonlinear-optimization)
-    - [fminbnd](#fminbnd)
-    - [fminsearch](#fminsearch)
-    - [Multivariate Minimization](#multivariate-minimization)
-    - [Broyden–Fletcher–Goldfarb–Shanno algorithm](#broydenfletchergoldfarbshanno-algorithm)
-    - [Limited Memory BFGS](#limited-memory-bfgs)
-    - [Momentum Gradient Descent](#momentum-gradient-descent)
-    - [Nelder-Mead Gradient Free Minimization](#nelder-mead-gradient-free-minimization)
-    - [Genetic Maximization Algorithm](#genetic-maximization-algorithm)
   - [Interpolation](#interpolation)
     - [Polynomials](#polynomials)
     - [Piecewise Polynomials](#piecewise-polynomials)
@@ -69,9 +48,32 @@
     - [Kernel Estimators](#kernel-estimators)
     - [Kernel Density Estimation](#kernel-density-estimation)
     - [Kernel Smoothing](#kernel-smoothing)
+- [`numerics::optimization` Documentation](#numericsoptimization-documentation)
+  - [Linear Root Finding and Optimization](#linear-root-finding-and-optimization)
+    - [Conjugate Gradient Method](#conjugate-gradient-method)
+    - [Linear Programming](#linear-programming)
+  - [Nonlinear Root Finding](#nonlinear-root-finding)
+    - [Newton's method](#newtons-method)
+    - [Quasi-Newton Solvers](#quasi-newton-solvers)
+    - [Broyden's Method](#broydens-method)
+    - [Levenberg-Marquardt Trust Region/Damped Least Squares](#levenberg-marquardt-trust-regiondamped-least-squares)
+    - [Fixed Point Iteration with Anderson Mixing](#fixed-point-iteration-with-anderson-mixing)
+    - [fzero](#fzero)
+    - [Secant](#secant)
+    - [Bisection method](#bisection-method)
+  - [Nonlinear Optimization](#nonlinear-optimization)
+    - [fminbnd](#fminbnd)
+    - [fminsearch](#fminsearch)
+    - [Multivariate Minimization](#multivariate-minimization)
+    - [Broyden–Fletcher–Goldfarb–Shanno algorithm](#broydenfletchergoldfarbshanno-algorithm)
+    - [Limited Memory BFGS](#limited-memory-bfgs)
+    - [Momentum Gradient Descent](#momentum-gradient-descent)
+    - [Nelder-Mead Gradient Free Minimization](#nelder-mead-gradient-free-minimization)
+    - [Genetic Maximization Algorithm](#genetic-maximization-algorithm)
 - [`numerics::ode` Documentation](#numericsode-documentation)
   - [Table of Contents](#table-of-contents-1)
   - [Differentiation Operators](#differentiation-operators)
+      - [Example](#example-6)
   - [Initial Value Problem Solvers](#initial-value-problem-solvers)
     - [Dormand-Prince 4/5](#dormand-prince-45)
     - [Runge-Kutta Fourth Order](#runge-kutta-fourth-order)
@@ -81,10 +83,15 @@
     - [Adams-Moulton Second Order](#adams-moulton-second-order)
     - [IVP Events](#ivp-events)
   - [Boundary Value Problems Solver](#boundary-value-problems-solver)
-    - [Variable Order Method](#variable-order-method)
+      - [Example](#example-7)
+      - [Solver Structure](#solver-structure)
+    - [k-Order Finite Difference Method](#k-order-finite-difference-method)
     - [Chebyshev Spectral Method](#chebyshev-spectral-method)
     - [Lobatto IIIa method](#lobatto-iiia-method)
     - [Poisson Solver](#poisson-solver)
+- [`numerics::neuralnet` Documentation](#numericsneuralnet-documentation)
+  - [Layers](#layers)
+  - [Models](#models)
 
 all definitions are members of namespace `numerics`, all examples assume:
 ```cpp
@@ -92,6 +99,7 @@ using namespace std;
 using namespace arma; // typically only vec and mat
 using namespace numerics;
 using namespace ode;
+using namespace optimization;
 ```
 
 ## Utility Methods
@@ -268,346 +276,6 @@ vec derivative = df(x);
 ```
 
 For more discrete derivatives see [`numerics::ode`](#`numerics::ode`-documentation).
-
-## Linear Root Finding and Optimization
-The header file `optimization.hpp` declares the following types for convinience:
-```cpp
-typedef function<vec(const vec&)>       VecFunc;    // R^n -> R^k
-typedef function<mat(const vec&)>       MatFunc;    // R^n -> R^{k x n}
-typedef function<double(const vec&)>    dFunc;      // R^n -> R
-```
-### Conjugate Gradient Method
-Armadillo features a very robust `solve()` and `spsolve()` direct solvers for linear systems, but in the case where less precise solutions of very large systems (especially sparse systems) iterative solvers may be more efficient. The functions `cgd()` solve systems of linear equations $A \mathbf{x}=\mathbf{b}$ when $A$ is symmetric positive definite (sparse or dense), or in the least squares sense $A^TA\mathbf{x}=A^T\mathbf{b}$ by conjugate gradient method. The righthand side $b$ can be either a single column vector or a matrix.
-```cpp
-void cgd(mat& x, const mat& A, const mat& b, double tol = 1e-3, int max_iter = 0);
-void cgd(mat& x, const sp_mat& A, const mat& b, double tol = 1e-3, int max_iter = 0);
-```
-if `max_iter <= 0`, then `max_iter = b.n_rows`.
-
-### Linear Programming
-
-For solving linear __*maximization*__ problems with linear constraints, we have the simplex algorithm that computes solutions using partial row reduction of linear system of equations. The simplex method solves problems of the form:
-$$\max_x f^T x$$
-$$A x \preceq b$$
-```cpp
-double simplex(arma::vec& x, const arma::vec& f, const arma::mat& A, const arma::vec& b);
-```
-The function returns the __*maximum*__ value within a convex polygon defined by $A x\preceq b$. The argument of the maximum is stored in `x`.
-
-## Nonlinear Root Finding
-All of the nonlinear solver inherit from the `nlsolver` class:
-```cpp
-class NonLinSolver {
-    public:
-    const double& tol;
-    const u_long& max_iter;
-    const u_long& n_iter;
-    const short& exit_flag;
-
-    explicit NonLinSolver(double tol, long maxiter, bool verbose);
-    
-    void set_tol(double t);
-    void set_max_iter(long m);
-    std::string get_exit_flag() const;
-};
-```
-All of the solvers have `tol` speicifications which varies in interpretation for each method, but it is essentially a small parameter that determines convergence. In general, `tol` is either
-$$\|x_{k+1} - x_k\|_\infty < \texttt{tol},$$
-or
-$$\|f(x_{k+1})\|_\infty < \texttt{tol}.$$
-The parameter `maxiter` lets you specify the maximum iterations to compute before stopping the scheme; this parameter also varies from scheme to scheme based on convergence properties and cost per iteration of each method.
-
-If `verbose == true`, then the solver will display a progress bar showing the number of iterations complete relative to `max_iter`, and display a message upon completion.
-
-The parameter `exit_flag` takes on values `{-1,0,1,2}` where:
-* -1 : the solver was never given a problem to solve, e.g. `fsolve` was never called.
-* 0 : the solver successfully converged.
-* 1 : the maximum number of iterations was reached.
-* 2 : a NaN or Infinite value was encountered during a function evaluation.
-
-The function `get_exit_flag` will provide a string which explains why the solver stopped, i.e. one of the options above.
-
-### Newton's method
-This is an implementation of Newton's method for systems of nonlinear equations. A jacobian function of the system of equations is required. As well as a good initial guess:
-```cpp
-class Newton : public NonLinSolver {
-    public:
-    const vec& fval;
-    const mat& Jacobian;
-
-    explicit Newton(double tol=1e-3, long maxiter=100, bool verbose=false);
-
-    void use_cgd();
-    void use_lu();
-
-    virtual void fsolve(vec& x, const VecFunc& f, const MatFunc& jacobian);
-};
-```
-The function `fsolve` solves the system $f(x) = 0$. The initial guess should be stored in `x` and this value will be updated with the solution found by Newton's method. The functions `use_cgd`, and `use_lu` allows the user to specify how to invert the jacobian at each iteration where `use_cgd` toggles the use of conjugate gradient method, while `use_lu` toggles the use of `arma::solve()`; by default Newton's method inverts the jacobian directly.
-
-The solver also stores the final value of $f(x)$ in `fval` for verifying the solution, as well as the final value of the jacobian in `Jacobian`.
-
-There is also a single variable version:
-```cpp
-double newton_1d(const function<double(double)>& f,
-              const function<double(double)>& df,
-              double x,
-              double err = 1e-5);
-```
-### Quasi-Newton Solvers
-The following solvers inherit from the virtual class `QuasiNewton`:
-```cpp
-class QausiNewton : public Newton {
-    public:
-    explicit QausiNewton(double tol=1e-3, long maxiter=100, bool verbose=false);
-
-    virtual void fsolve(arma::vec& x, const VecFunc& f) = 0;
-};
-```
-
-### Broyden's Method
-This solver is similar to Newton's method, but does not require the jacobian matrix to be evaluated at every step; instead, the solver takes rank 1 updates of the inverse of the estimated Jacobian using the secant equations [(wikipedia)](https://en.wikipedia.org/wiki/Broyden%27s_method). Providing a jacobian function does improve the scheme (especially at initialization), but this solver requires far fewer Jacobian evaluations than Newton's method. If none is provided the initial jacobian is computed using finite differencing as this drastically improves the convergence.
-```cpp
-class Broyd : public QausiNewton {
-    public:
-    explicit Broyd(double tol=1e-3, long maxiter=100, bool verbose=false);
-
-    void fsolve(vec& x, const VecFunc& f, const MatFunc& jacobian) override;
-    void fsolve(vec& x, const VecFunc& f) override;
-};
-```
-
-### Levenberg-Marquardt Trust Region/Damped Least Squares
-This solver performs Newton like iterations, replacing the Jacobian with a damped least squares version [(wikipedia)](https://en.wikipedia.org/wiki/Levenberg%E2%80%93Marquardt_algorithm). The jacobian is updated with Broyden's rank 1 updates of the Jacobian itself (rather than the inverse). Just like Broyden's method, providing a jacobian function is helpful but not necessary. When a jacobian is not provided, it will be approximated by finite-differences.
-```cpp
-class LmLSQR : public QausiNewton {
-        public:
-        explicit LmLSQR(double tol=1e-3, long maxiter=100, bool verbose=false);
-
-        void set_damping_parameters(double tau, double nu);
-
-        void fsolve(vec& x, const VecFunc& f, const MatFunc& jacobian) override;
-        void fsolve(vec& x, const VecFunc& f) override;
-    };
-```
-This solver has two tuneable parameters affecting convergence $\tau$ and $\nu$. The search direction is determined by $(J^T J + \tau I)^{-1} \nabla f$, the provided value of $\tau$ is an initial guess, as the algorithm searches for an optimal value as it proceeds. The default value is `1.0e-2`. The parameter $\nu$ is a part of the line search procedure for an optimal $\tau$, if a smaller step is necessary then we set
-$$\tau_{k+1} = \nu \tau_k.$$ 
-The default value is `2.0`. Both values must be positive and can be set with `set_damping_parameters`.
-
-### Fixed Point Iteration with Anderson Mixing
-Solves problems of the form $x = g(x)$. It is possible to solve a subclass of these problems using fixed point iteration i.e. $x_{n+1} = g(x_n)$, but more generally we can solve these systems using Anderson accelaration:
-$$x_{n+1} = \sum_{i=p}^n c_i g(x_i),$$
-where $1 \leq p \leq n$ and $\sum c_i = 0.$
-```cpp
-class MixFPI : public NonLinSolver {
-    public:
-    explicit MixFPI(
-        int steps_to_remember=5,
-        double tol=1e-3,
-        long maxiter=100, 
-        bool verbose=false
-    );
-
-    void fix(arma::vec& x, const VecFunc& f);
-};
-```
-The parameter `steps_to_remember` is equal to $n-p$, i.e. the number of previous values to use in the updating strategy.
-
-### fzero
-Adaptively selects between secant method, and inverse interpolation to find a *simple* root of a single variable function in the interval `[a,b]`.
-```cpp
-double fzero(const function<double(double)>& f, double a, double b, double tol=1e-8);
-```
-
-### Secant
-Uses the secant as the approximation for the derivative used in Newton's method. Attempts to bracket solution for faster convergence, so providing an interval rather than two initial guesses is best.
-```cpp
-double secant(const function<double(double)>& f, double a, double b, double tol=1e-8);
-```
-
-### Bisection method
-Uses the bisection method to find the solution to a nonlinear equation within an interval.
-```cpp
-double bisect(const function<double(double)>& f, double a, double b, double tol=1e-8);
-```
-
-## Nonlinear Optimization
-
-### fminbnd
-provided a continuous function $f:(a,b)\rightarrow\mathbb{R}$ which is not necessarily continuous at the end points, we can find a local minimum of $f$ within a small number of steps (the number of function evaluations bounded by $\approx 2.88[\log_2 \frac{b-a}{\epsilon}]^2\approx 100$ function evaluations, when we select $\texttt{tol}=\epsilon=10^{-8}\times(b-a)$). The method:
-```cpp
-double fminbnd(const function<double(double)>& f, double a, double b, double tol=1e-8);
-```
-solves the problem:
-$$\text{fminbnd}(f,a,b) = \mathrm{argmin}_{x\in(a,b)} f$$
-using the algorithm provided by Brent (1972).
-
-### fminsearch
-provided a continuous and finite function $f:\mathbb{R}\rightarrow\mathbb{R}$ which is not-necessarily continuous or finite at $\pm\infty$, we can attempt to find a local minimum of $f$ near $x_0$ ussually within a small number of iterations (and likely to converge quickly for strongly convex $f$). The method:
-```cpp
-double fminsearch(const function<double(double)>& f, double x0, double alpha=0);
-```
-solves the problem $\text{fminsearch}(f,x_0)=\mathrm{argmin}_{\text{near }x_0}f$ using the Nelder-Mead algorithm restricted to one dimension. The parameter `alpha` specifies an initial step size for the algorithm in the positive direction. If one is not provided (or a non-positive value is provided) then $\alpha=\max\{\epsilon,\epsilon\times\left|x_0\right|\}$ where $\epsilon\approx 10^{-8}$.
-
-### Multivariate Minimization
-
-The following optimizers inherit from the virtual class:
-```cpp
-class GradientOptimizer : public NonLinSolver {
-    public:
-    const vec& grad;
-    explicit GradientOptimizer(double tol=1e-3, long maxiter=100, bool verbose=false);
-
-    virtual void minimize(vec& x, const dFunc& f, const VecFunc& grad_f) = 0;
-};
-```
-The function `minimize` solves the problem:
-$$\min_x f(x)$$
-And stores the solution in `x`. The input `grad_f`$=\nabla f$. The member `grad` is the gradient at the final point.
-
-### Broyden–Fletcher–Goldfarb–Shanno algorithm
-Uses the BFGS algorithm for minimization using the strong Wolfe conditions. This method uses symmetric rank 1 updates to the inverse of the hessian using the secant equation with the further constraint that the hessian remain symmetric positive definite.
-```cpp
-class BFGS : public GradientOptimizer {
-    public:
-    const arma::mat& inv_hessian;
-    explicit BFGS(
-        double tol=1e-3,
-        long maxiter=100,
-        bool verbose=false,
-        double wolfe1=1e-4,
-        double wolfe2=0.9
-    );
-
-    void use_cgd();
-    void use_chol();
-
-    void enable_finite_differences();
-    void disable_finite_differences();
-
-    void minimize(vec& x, const dFunc& f, const VecFunc& grad_f) override;
-    void minimize(vec& x, const dFunc& f, const VecFunc& grad_f, const MatFunc& hessian);
-};
-```
-The functions `enable/disable_finite_differences` allows the user to specify whether to approximate the initial hessian by finite diferences, which is disabled by default, so instead the initial hessian is set to the identity matrix.
-
-The parameters `wolfe_c1`, `wolfe_c2` are the traditional paramters of the strong wolfe conditions:
-$$f(x_k + \alpha_k p_k) \leq f(x_k) + c_1 \alpha_k p_k^T\nabla f(x_k)$$
-and 
-$$-p_k^T\nabla f(x_k + \alpha_k p_k) \leq -c_2 p_k^T\nabla f(x_k).$$
-The default values are `wolfe_c1 = 1e-4` and `wolfe_c2 = 0.9`.
-
-Similarly to Newton and Quasi-Newton methods the Hessian can be inverted iteratively or directly, this time using the Cholesky decomposition when the Hessian is positive definite. The method rarely requires matrix inversion, and ideally never inverts the Hessian at all.
-
-**note:** like Broyden's method, `BFGS` stores the inverse hessian in memory, this may become inneficient in space and time when the problem is sufficiently large.
-
-### Limited Memory BFGS
-Uses the limited memory BFGS algorithm, which differs from BFGS by storing a limited number of previous values of `x` and `grad_f(x)` rather than a full matrix. The number of steps stored can be specified by `steps`.
-
-```cpp
-class LBFGS : public GradientOptimizer {
-    public:
-    explicit LBFGS(
-        long steps=5,
-        double tol=1e-3,
-        long max_iter=100,
-        bool verbose=false,
-        double wolfe1=1e-4,
-        double wolfe2=0.9
-    );
-    
-    void minimize(vec& x, const dFunc& f, const VecFunc& grad_f) override;
-};
-```
-
-### Momentum Gradient Descent
-This class implements gradient descent in three ways.
-* GD with line search for step size
-* GD with constant step size
-* GD with constant step size and Nestrov momentum.
-
-```cpp
-class MomentumGD :public GradientOptimizer {
-    public:
-    const double& damping_parameter;
-    const double& step_size;
-
-    explicit MomentumGD(double tol=1e-3, long maxiter=1000, bool verbose=false);
-
-    void set_step_size(double alpha, double damping_p=0.90);
-
-    void minimize(vec& x, const dFunc& f, const VecFunc& grad_f) override;
-};
-```
-The parameter `damping_param` has a good explaination found in this [article](https://distill.pub/2017/momentum/) where the author refers to it as $\beta$. Setting this value to 0 is equivalent to traditional gradient descent.
-
-The step size can be specified by `alpha` this can improve performance over the adaptive line minimization when the gradient is easy to evaluate but the may require more iterations until convergence.
-
-Calling `set_step_size` and setting `alpha` and `damping_param` disables line minimization which is otherwise used by default.
-
-### Nelder-Mead Gradient Free Minimization
-The [Nelder-Mead method](https://en.wikipedia.org/wiki/Nelder%E2%80%93Mead_method) is a derivative free method that constructs a simplex in n dimensions and iteratively updates its vertices in the direction where the function decreases in value. This method is ideal for low dimensional problems (e.g. 2,3, 10 dimensions, maybe not 100, though). The simplex is initialized using a guess $x_0$ of the argmin of the objective function, the vertices are initialized according to:
-$$v_i = x_0 + \alpha u_i$$ 
-where $u_i$ are columns of a random orthogonal matrix generated using:
-```cpp
-int n = x.n_elem;
-mat U = orth(randn(n,n));
-```
-This is done to guarantee the simplex is spread out, moreover the direction is random (as oposed to, e.g., the coordinate directions) to avoid pathological cases.
-
-```cpp
-class NelderMead : public NonLinSolver {
-    public:
-    explicit NelderMead(double tol=1e-3, long maxiter=1000, bool verbose=false);
-
-    void set_step_size(double s);
-    void set_expansion_param(double e);
-    void set_contraction_param(double c);
-    void set_shrinking_param(double s);
-    void set_initial_simplex_size(double s);
-
-    void minimize(vec& x, const dFunc& f);
-};
-```
-The function `set_step_size` sets the scaling of the reflection step, the default value is 1. The function `set_expansion_param` sets the scaling of the expanding step, the default value is 2. The function `set_contraction_param` sets the scaling of the contraction step, the default value is 0.5. The function `set_shrinking_param` sets the scaling of the shrinking step, the default value is 0.5. All of these parameters are explained [here](http://www.scholarpedia.org/article/Nelder-Mead_algorithm).
-
-The parameter `initial_simplex_size` is the value $\alpha$ as desribed in the simplex initialization procedure discussed above.
-
-### Genetic Maximization Algorithm
-This method uses a genetic algorithm for _**maximization**_.
-```cpp
-class GeneticOptimizer : public NonLinSolver {
-    public:
-    explicit GeneticOptimizer(long seed=0, double tol=1e-1, long maxiter=100);
-
-    void set_search_radius(double r);
-
-    void set_population_size(long popsize);
-
-    void set_diversity_parameters(
-        double reproduction=0.5,
-        double mutation=0.5,
-        double diversity=0.2,
-        long cutoff=30
-    );
-
-    void maximize(
-        vec& x,
-        const dFunc& f,
-        const vec& lower_bound,
-        const vec& upper_bound
-    );
-    void maximize(vec& x, const dFunc& f);
-};
-```
-This method has a variety of parameters for updating the population of parameters to minimize with respect to:
-* `population_size` : number of samples.
-* `reproduction` : parameter for geometric probability distribution of "reproducing agents". i.e. if `reproduction` is close to 1, then only the most fit will reproduce and the algorithm will converge more quickly at the cost of possibly not optimal results (such a getting stuck at local maxima). If `reproduction` is close to 0, then most members will be able to participate at the cost of slower convergence. default value = 0.5.
-* `mutation` : rate at which to introduce random perturbation to the population. Values close to 1 result in a population with higher variance resulting in slower convergence. Values close to 0 result in a population with higher variance resulting in faster convergence at the cost possible not optimal results (such as getting stuck at local optima).
-* `diversity` : rate at which we encourage diversity. A higher value means agents further from optimality will have a higher change of reproduction which increases the chance of leaving local minima.
-* `cutoff` : number of iterations after which we stop incentivising variance in the population. A lower value means quicker convergence at the cost possible not optimal results (such as getting stuck at local optima).
-
-We can use this method for both box constrained and unconstrained maximization.
 
 ## Interpolation
 ### Polynomials
@@ -1500,7 +1168,350 @@ class KernelSmooth : public KernelEstimator, public Regressor {
 ```
 The model is initialized by specifying a kernel as described in [kernel estimators](#kernel-estimators). A bandwidth can be specified with `bdw` or one is selected with `bw::grid_mse`.
 
-The `score` method evaluates the $R^2$ between `predict(x)` and `y`. 
+The `score` method evaluates the $R^2$ between `predict(x)` and `y`.
+
+# `numerics::optimization` Documentation
+The following section is an overview of the namespace `numerics::optimization` which implements a variety of methods for linear and nonlinear root finding and optimization.
+
+## Linear Root Finding and Optimization
+The header file `optimization.hpp` declares the following types for convinience:
+```cpp
+typedef function<vec(const vec&)>       VecFunc;    // R^n -> R^k
+typedef function<mat(const vec&)>       MatFunc;    // R^n -> R^{k x n}
+typedef function<double(const vec&)>    dFunc;      // R^n -> R
+```
+### Conjugate Gradient Method
+Armadillo features a very robust `solve()` and `spsolve()` direct solvers for linear systems, but in the case where less precise solutions of very large systems (especially sparse systems) iterative solvers may be more efficient. The functions `cgd()` solve systems of linear equations $A \mathbf{x}=\mathbf{b}$ when $A$ is symmetric positive definite (sparse or dense), or in the least squares sense $A^TA\mathbf{x}=A^T\mathbf{b}$ by conjugate gradient method. The righthand side $b$ can be either a single column vector or a matrix.
+```cpp
+void cgd(mat& x, const mat& A, const mat& b, double tol = 1e-3, int max_iter = 0);
+void cgd(mat& x, const sp_mat& A, const mat& b, double tol = 1e-3, int max_iter = 0);
+```
+if `max_iter <= 0`, then `max_iter = b.n_rows`.
+
+### Linear Programming
+
+For solving linear __*maximization*__ problems with linear constraints, we have the simplex algorithm that computes solutions using partial row reduction of linear system of equations. The simplex method solves problems of the form:
+$$\max_x f^T x$$
+$$A x \preceq b$$
+```cpp
+double simplex(arma::vec& x, const arma::vec& f, const arma::mat& A, const arma::vec& b);
+```
+The function returns the __*maximum*__ value within a convex polygon defined by $A x\preceq b$. The argument of the maximum is stored in `x`.
+
+## Nonlinear Root Finding
+All of the nonlinear solver inherit from the `nlsolver` class:
+```cpp
+class NonLinSolver {
+    public:
+    const double& tol;
+    const u_long& max_iter;
+    const u_long& n_iter;
+    const short& exit_flag;
+
+    explicit NonLinSolver(double tol, long maxiter, bool verbose);
+    
+    void set_tol(double t);
+    void set_max_iter(long m);
+    std::string get_exit_flag() const;
+};
+```
+All of the solvers have `tol` speicifications which varies in interpretation for each method, but it is essentially a small parameter that determines convergence. In general, `tol` is either
+$$\|x_{k+1} - x_k\|_\infty < \texttt{tol},$$
+or
+$$\|f(x_{k+1})\|_\infty < \texttt{tol}.$$
+The parameter `maxiter` lets you specify the maximum iterations to compute before stopping the scheme; this parameter also varies from scheme to scheme based on convergence properties and cost per iteration of each method.
+
+If `verbose == true`, then the solver will display a progress bar showing the number of iterations complete relative to `max_iter`, and display a message upon completion.
+
+The parameter `exit_flag` takes on values `{-1,0,1,2}` where:
+* -1 : the solver was never given a problem to solve, e.g. `fsolve` was never called.
+* 0 : the solver successfully converged.
+* 1 : the maximum number of iterations was reached.
+* 2 : a NaN or Infinite value was encountered during a function evaluation.
+
+The function `get_exit_flag` will provide a string which explains why the solver stopped, i.e. one of the options above.
+
+### Newton's method
+This is an implementation of Newton's method for systems of nonlinear equations. A jacobian function of the system of equations is required. As well as a good initial guess:
+```cpp
+class Newton : public NonLinSolver {
+    public:
+    const vec& fval;
+    const mat& Jacobian;
+
+    explicit Newton(double tol=1e-3, long maxiter=100, bool verbose=false);
+
+    void use_cgd();
+    void use_lu();
+
+    virtual void fsolve(vec& x, const VecFunc& f, const MatFunc& jacobian);
+};
+```
+The function `fsolve` solves the system $f(x) = 0$. The initial guess should be stored in `x` and this value will be updated with the solution found by Newton's method. The functions `use_cgd`, and `use_lu` allows the user to specify how to invert the jacobian at each iteration where `use_cgd` toggles the use of conjugate gradient method, while `use_lu` toggles the use of `arma::solve()`; by default Newton's method inverts the jacobian directly.
+
+The solver also stores the final value of $f(x)$ in `fval` for verifying the solution, as well as the final value of the jacobian in `Jacobian`.
+
+There is also a single variable version:
+```cpp
+double newton_1d(const function<double(double)>& f,
+              const function<double(double)>& df,
+              double x,
+              double err = 1e-5);
+```
+### Quasi-Newton Solvers
+The following solvers inherit from the virtual class `QuasiNewton`:
+```cpp
+class QausiNewton : public Newton {
+    public:
+    explicit QausiNewton(double tol=1e-3, long maxiter=100, bool verbose=false);
+
+    virtual void fsolve(arma::vec& x, const VecFunc& f) = 0;
+};
+```
+
+### Broyden's Method
+This solver is similar to Newton's method, but does not require the jacobian matrix to be evaluated at every step; instead, the solver takes rank 1 updates of the inverse of the estimated Jacobian using the secant equations [(wikipedia)](https://en.wikipedia.org/wiki/Broyden%27s_method). Providing a jacobian function does improve the scheme (especially at initialization), but this solver requires far fewer Jacobian evaluations than Newton's method. If none is provided the initial jacobian is computed using finite differencing as this drastically improves the convergence.
+```cpp
+class Broyd : public QausiNewton {
+    public:
+    explicit Broyd(double tol=1e-3, long maxiter=100, bool verbose=false);
+
+    void fsolve(vec& x, const VecFunc& f, const MatFunc& jacobian) override;
+    void fsolve(vec& x, const VecFunc& f) override;
+};
+```
+
+### Levenberg-Marquardt Trust Region/Damped Least Squares
+This solver performs Newton like iterations, replacing the Jacobian with a damped least squares version [(wikipedia)](https://en.wikipedia.org/wiki/Levenberg%E2%80%93Marquardt_algorithm). The jacobian is updated with Broyden's rank 1 updates of the Jacobian itself (rather than the inverse). Just like Broyden's method, providing a jacobian function is helpful but not necessary. When a jacobian is not provided, it will be approximated by finite-differences.
+```cpp
+class LmLSQR : public QausiNewton {
+        public:
+        explicit LmLSQR(double tol=1e-3, long maxiter=100, bool verbose=false);
+
+        void set_damping_parameters(double tau, double nu);
+
+        void fsolve(vec& x, const VecFunc& f, const MatFunc& jacobian) override;
+        void fsolve(vec& x, const VecFunc& f) override;
+    };
+```
+This solver has two tuneable parameters affecting convergence $\tau$ and $\nu$. The search direction is determined by $(J^T J + \tau I)^{-1} \nabla f$, the provided value of $\tau$ is an initial guess, as the algorithm searches for an optimal value as it proceeds. The default value is `1.0e-2`. The parameter $\nu$ is a part of the line search procedure for an optimal $\tau$, if a smaller step is necessary then we set
+$$\tau_{k+1} = \nu \tau_k.$$ 
+The default value is `2.0`. Both values must be positive and can be set with `set_damping_parameters`.
+
+### Fixed Point Iteration with Anderson Mixing
+Solves problems of the form $x = g(x)$. It is possible to solve a subclass of these problems using fixed point iteration i.e. $x_{n+1} = g(x_n)$, but more generally we can solve these systems using Anderson accelaration:
+$$x_{n+1} = \sum_{i=p}^n c_i g(x_i),$$
+where $1 \leq p \leq n$ and $\sum c_i = 0.$
+```cpp
+class MixFPI : public NonLinSolver {
+    public:
+    explicit MixFPI(
+        int steps_to_remember=5,
+        double tol=1e-3,
+        long maxiter=100, 
+        bool verbose=false
+    );
+
+    void fix(arma::vec& x, const VecFunc& f);
+};
+```
+The parameter `steps_to_remember` is equal to $n-p$, i.e. the number of previous values to use in the updating strategy.
+
+### fzero
+Adaptively selects between secant method, and inverse interpolation to find a *simple* root of a single variable function in the interval `[a,b]`.
+```cpp
+double fzero(const function<double(double)>& f, double a, double b, double tol=1e-8);
+```
+
+### Secant
+Uses the secant as the approximation for the derivative used in Newton's method. Attempts to bracket solution for faster convergence, so providing an interval rather than two initial guesses is best.
+```cpp
+double secant(const function<double(double)>& f, double a, double b, double tol=1e-8);
+```
+
+### Bisection method
+Uses the bisection method to find the solution to a nonlinear equation within an interval.
+```cpp
+double bisect(const function<double(double)>& f, double a, double b, double tol=1e-8);
+```
+
+## Nonlinear Optimization
+
+### fminbnd
+provided a continuous function $f:(a,b)\rightarrow\mathbb{R}$ which is not necessarily continuous at the end points, we can find a local minimum of $f$ within a small number of steps (the number of function evaluations bounded by $\approx 2.88[\log_2 \frac{b-a}{\epsilon}]^2\approx 100$ function evaluations, when we select $\texttt{tol}=\epsilon=10^{-8}\times(b-a)$). The method:
+```cpp
+double fminbnd(const function<double(double)>& f, double a, double b, double tol=1e-8);
+```
+solves the problem:
+$$\text{fminbnd}(f,a,b) = \mathrm{argmin}_{x\in(a,b)} f$$
+using the algorithm provided by Brent (1972).
+
+### fminsearch
+provided a continuous and finite function $f:\mathbb{R}\rightarrow\mathbb{R}$ which is not-necessarily continuous or finite at $\pm\infty$, we can attempt to find a local minimum of $f$ near $x_0$ ussually within a small number of iterations (and likely to converge quickly for strongly convex $f$). The method:
+```cpp
+double fminsearch(const function<double(double)>& f, double x0, double alpha=0);
+```
+solves the problem $\text{fminsearch}(f,x_0)=\mathrm{argmin}_{\text{near }x_0}f$ using the Nelder-Mead algorithm restricted to one dimension. The parameter `alpha` specifies an initial step size for the algorithm in the positive direction. If one is not provided (or a non-positive value is provided) then $\alpha=\max\{\epsilon,\epsilon\times\left|x_0\right|\}$ where $\epsilon\approx 10^{-8}$.
+
+### Multivariate Minimization
+
+The following optimizers inherit from the virtual class:
+```cpp
+class GradientOptimizer : public NonLinSolver {
+    public:
+    const vec& grad;
+    explicit GradientOptimizer(double tol=1e-3, long maxiter=100, bool verbose=false);
+
+    virtual void minimize(vec& x, const dFunc& f, const VecFunc& grad_f) = 0;
+};
+```
+The function `minimize` solves the problem:
+$$\min_x f(x)$$
+And stores the solution in `x`. The input `grad_f`$=\nabla f$. The member `grad` is the gradient at the final point.
+
+### Broyden–Fletcher–Goldfarb–Shanno algorithm
+Uses the BFGS algorithm for minimization using the strong Wolfe conditions. This method uses symmetric rank 1 updates to the inverse of the hessian using the secant equation with the further constraint that the hessian remain symmetric positive definite.
+```cpp
+class BFGS : public GradientOptimizer {
+    public:
+    const arma::mat& inv_hessian;
+    explicit BFGS(
+        double tol=1e-3,
+        long maxiter=100,
+        bool verbose=false,
+        double wolfe1=1e-4,
+        double wolfe2=0.9
+    );
+
+    void use_cgd();
+    void use_chol();
+
+    void enable_finite_differences();
+    void disable_finite_differences();
+
+    void minimize(vec& x, const dFunc& f, const VecFunc& grad_f) override;
+    void minimize(vec& x, const dFunc& f, const VecFunc& grad_f, const MatFunc& hessian);
+};
+```
+The functions `enable/disable_finite_differences` allows the user to specify whether to approximate the initial hessian by finite diferences, which is disabled by default, so instead the initial hessian is set to the identity matrix.
+
+The parameters `wolfe_c1`, `wolfe_c2` are the traditional paramters of the strong wolfe conditions:
+$$f(x_k + \alpha_k p_k) \leq f(x_k) + c_1 \alpha_k p_k^T\nabla f(x_k)$$
+and 
+$$-p_k^T\nabla f(x_k + \alpha_k p_k) \leq -c_2 p_k^T\nabla f(x_k).$$
+The default values are `wolfe_c1 = 1e-4` and `wolfe_c2 = 0.9`.
+
+Similarly to Newton and Quasi-Newton methods the Hessian can be inverted iteratively or directly, this time using the Cholesky decomposition when the Hessian is positive definite. The method rarely requires matrix inversion, and ideally never inverts the Hessian at all.
+
+**note:** like Broyden's method, `BFGS` stores the inverse hessian in memory, this may become inneficient in space and time when the problem is sufficiently large.
+
+### Limited Memory BFGS
+Uses the limited memory BFGS algorithm, which differs from BFGS by storing a limited number of previous values of `x` and `grad_f(x)` rather than a full matrix. The number of steps stored can be specified by `steps`.
+
+```cpp
+class LBFGS : public GradientOptimizer {
+    public:
+    explicit LBFGS(
+        long steps=5,
+        double tol=1e-3,
+        long max_iter=100,
+        bool verbose=false,
+        double wolfe1=1e-4,
+        double wolfe2=0.9
+    );
+    
+    void minimize(vec& x, const dFunc& f, const VecFunc& grad_f) override;
+};
+```
+
+### Momentum Gradient Descent
+This class implements gradient descent in three ways.
+* GD with line search for step size
+* GD with constant step size
+* GD with constant step size and Nestrov momentum.
+
+```cpp
+class MomentumGD :public GradientOptimizer {
+    public:
+    const double& damping_parameter;
+    const double& step_size;
+
+    explicit MomentumGD(double tol=1e-3, long maxiter=1000, bool verbose=false);
+
+    void set_step_size(double alpha, double damping_p=0.90);
+
+    void minimize(vec& x, const dFunc& f, const VecFunc& grad_f) override;
+};
+```
+The parameter `damping_param` has a good explaination found in this [article](https://distill.pub/2017/momentum/) where the author refers to it as $\beta$. Setting this value to 0 is equivalent to traditional gradient descent.
+
+The step size can be specified by `alpha` this can improve performance over the adaptive line minimization when the gradient is easy to evaluate but the may require more iterations until convergence.
+
+Calling `set_step_size` and setting `alpha` and `damping_param` disables line minimization which is otherwise used by default.
+
+### Nelder-Mead Gradient Free Minimization
+The [Nelder-Mead method](https://en.wikipedia.org/wiki/Nelder%E2%80%93Mead_method) is a derivative free method that constructs a simplex in n dimensions and iteratively updates its vertices in the direction where the function decreases in value. This method is ideal for low dimensional problems (e.g. 2,3, 10 dimensions, maybe not 100, though). The simplex is initialized using a guess $x_0$ of the argmin of the objective function, the vertices are initialized according to:
+$$v_i = x_0 + \alpha u_i$$ 
+where $u_i$ are columns of a random orthogonal matrix generated using:
+```cpp
+int n = x.n_elem;
+mat U = orth(randn(n,n));
+```
+This is done to guarantee the simplex is spread out, moreover the direction is random (as oposed to, e.g., the coordinate directions) to avoid pathological cases.
+
+```cpp
+class NelderMead : public NonLinSolver {
+    public:
+    explicit NelderMead(double tol=1e-3, long maxiter=1000, bool verbose=false);
+
+    void set_step_size(double s);
+    void set_expansion_param(double e);
+    void set_contraction_param(double c);
+    void set_shrinking_param(double s);
+    void set_initial_simplex_size(double s);
+
+    void minimize(vec& x, const dFunc& f);
+};
+```
+The function `set_step_size` sets the scaling of the reflection step, the default value is 1. The function `set_expansion_param` sets the scaling of the expanding step, the default value is 2. The function `set_contraction_param` sets the scaling of the contraction step, the default value is 0.5. The function `set_shrinking_param` sets the scaling of the shrinking step, the default value is 0.5. All of these parameters are explained [here](http://www.scholarpedia.org/article/Nelder-Mead_algorithm).
+
+The parameter `initial_simplex_size` is the value $\alpha$ as desribed in the simplex initialization procedure discussed above.
+
+### Genetic Maximization Algorithm
+This method uses a genetic algorithm for _**maximization**_.
+```cpp
+class GeneticOptimizer : public NonLinSolver {
+    public:
+    explicit GeneticOptimizer(long seed=0, double tol=1e-1, long maxiter=100);
+
+    void set_search_radius(double r);
+
+    void set_population_size(long popsize);
+
+    void set_diversity_parameters(
+        double reproduction=0.5,
+        double mutation=0.5,
+        double diversity=0.2,
+        long cutoff=30
+    );
+
+    void maximize(
+        vec& x,
+        const dFunc& f,
+        const vec& lower_bound,
+        const vec& upper_bound
+    );
+    void maximize(vec& x, const dFunc& f);
+};
+```
+This method has a variety of parameters for updating the population of parameters to minimize with respect to:
+* `population_size` : number of samples.
+* `reproduction` : parameter for geometric probability distribution of "reproducing agents". i.e. if `reproduction` is close to 1, then only the most fit will reproduce and the algorithm will converge more quickly at the cost of possibly not optimal results (such a getting stuck at local maxima). If `reproduction` is close to 0, then most members will be able to participate at the cost of slower convergence. default value = 0.5.
+* `mutation` : rate at which to introduce random perturbation to the population. Values close to 1 result in a population with higher variance resulting in slower convergence. Values close to 0 result in a population with higher variance resulting in faster convergence at the cost possible not optimal results (such as getting stuck at local optima).
+* `diversity` : rate at which we encourage diversity. A higher value means agents further from optimality will have a higher change of reproduction which increases the chance of leaving local minima.
+* `cutoff` : number of iterations after which we stop incentivising variance in the population. A lower value means quicker convergence at the cost possible not optimal results (such as getting stuck at local optima).
+
+We can use this method for both box constrained and unconstrained maximization. 
 
 # `numerics::ode` Documentation
 ## Table of Contents
@@ -1523,23 +1534,14 @@ The `score` method evaluates the $R^2$ between `predict(x)` and `y`.
 The following are all members of namespace `numerics::ode`.
 
 ## Differentiation Operators
-Given an interval $\Omega=[L,R]$, if we sample $\Omega$ at points $x = \{x_1, \cdots, x_N\}$ we can approximate the continuous operator $\frac{d}{dx}$ at the sampled points with discrete operator $D$. This operator can be applied to any differentiable $f:\Omega\rightarrow\mathbb{R}$ given the function values at the sample points: $y = \{f(x_1),\cdots,f(x_N)\}$ according to: $f'(x) \approx D y$.
+Given an interval $\Omega=[L,R]$, if we sample $\Omega$ at points $x = \{x_1, \cdots, x_N\}$ we can approximate the continuous operator $\frac{d}{dx}$ at the sampled points with the discrete operator $D$. This operator can be applied to any differentiable $f:\Omega\rightarrow\mathbb{R}$ given the function values at the sample points: $y = \{f(x_1),\cdots,f(x_N)\}$ according to: $f'(x) \approx D y$.
 ```cpp
-void diffmat4(arma::mat& D,
-              arma::vec& x,
-              double L, double R,
-              unsigned int sample_points);
-void diffmat2(arma::mat& D,
-              arma::vec& x,
-              double L, double R,
-              unsigned int sample_points);
-void cheb(arma::mat& D,
-          arma::vec& x,
-          double L, double R,
-          unsigned int sample_points);
-void cheb(arma::mat& D, arma::vec& x, unsigned int sample_points);
+void diffmat4(mat& D, vec& x, double L, double R, u_int npts);
+void diffmat2(mat& D, vec& x, double L, double R, u_int npts);
+void cheb(mat& D, vec& x, ouble L, double R, u_int npts);
+void cheb(mat& D, vec& x, u_int npts);
 ```
-In all of these functions the discrete operator is assigned to `D`, and the sample points are assigned to `x`. The parameters `L` and `R` define the end points of the interval $\Omega$. The parameter `sample_points` defines how many points to sample from the interval.
+In all of these functions the discrete operator is assigned to `D`, and the sample points are assigned to `x`. The parameters `L` and `R` define the end points of the interval $\Omega$. The parameter `npts` defines how many points to sample from the interval.
 
 The function `diffmat4` samples the interval uniformly and provides a fourth order error term i.e. error is $\mathcal{O}(N^{-4})$. The resulting operator has a bandwidth of 4. It is also the case that the eigenvalues of $D$ are all of the form $\lambda_k=-b_ki$ where $b_k\geq 0$ and $i=\sqrt{-1}$.
 
@@ -1551,19 +1553,28 @@ In all three cases the $n\times n$ operator has rank $n-1$ which follows from th
 
 A more generic differentiation matrix is offered by the following two functions:
 ```cpp
-arma::rowvec diffvec(const arma::vec& x, double x0, unsigned int k=1);
+rowvec diffvec(const vec& x, double x0, u_int k=1);
 
-diffmat(arma::mat& D, const arma::vec& x, unsigned int k=0, unsigned int bdw=2);
+void diffmat(mat& D, const vec& x, u_int k=1, u_int npt=2);
 
-diffmat(arma::sp_mat& D, const arma::vec& x, unsigned int k=0, unsigned int bdw=2);
+void diffmat(sp_mat& D, const vec& x, u_int k=1, u_int npt=2);
 ```
-Where `diffvec` returns a rowvector $\vec d_k$ such that $\vec d_k\cdot f(\vec x) \approx f^{(k)}(x_0)$.
+Where `diffvec` returns a rowvector $\vec d_k$ such that $\vec d_k\cdot f(\vec x) \approx \frac{d^k}{dx^k}f(x_0)$.
 
-The function `diffmat` produces a differentiation matrix $D$ for any grid of points $x$ (does not need to be uniform or sorted) such that $D_k f(x) \approx f^{(k)}(x)$. Setting the `bdw` parameter will allow the user to select the number of nearby points to use in the approximation, for example if `bdw=2` then for $x_i$, the points $\{x_{i-1},x_i,x_{i+1}\}$ will be used in the approximation. Moreover, expect the error in the approximation to be $\mathcal O(h^{\text{bdw}})$ where $h$ is the maximum spacing in $x$. A special benefit of `diffmat` is that we can find any order derivative, moreover for any $n\times n$ $D_{k}$ we have $\text{rank}(D_k) = n-k$, and the eigenvalues are of the form $\lambda = i^kb$ where $b \geq 0$ and $i = \sqrt{-1}$. (so $D_2$ is positive semi-definite for example).
+The function `diffmat` produces a differentiation matrix $D$ for any grid of points $x$ (does not need to be uniform or sorted) such that $D_k f(x) \approx \frac{d^k}{dx^k}f(x)$. Setting the `npt` parameter will allow the user to select the number of points to use in the approximation, in general, the differentiation matrix will use a differencing scheme:
 
-Given a linear ODE of the form: $y' + \alpha y = f(x)$ and the initial condition: $y(L) = \beta$, we can approximate the solution by solving the linear system: $(D+\alpha I)y = f(x) \land y(L) = \beta$. This can be solved by forward substituting $y(L) = \beta$ into the linear system and solving the rest of the system:
+* on the points $x_{i-1}, x_i$ (backwards differencing) whenever `npt == 2`
+* on the points $x_{i-1},\dots,x_{i+\texttt{npt}-2}$ (forward biased) whenever `npt % 2 == 0`.
+* on the points $x_{i-\lfloor\texttt{npt}/2\rfloor},\dots,x_{i+\lfloor\texttt{npt}/2\rfloor}$ (centeral difference) whenever `npt % 2 != 0`.
+
+An exception is made at the points where these indices fall out of bounds (near the boundaries), in which case the stencil is shifted to the nearest points; requiring that the stencil still use `npt` is essential for preserving the order of the scheme. Moreover, we expect the error in the approximation to be $\mathcal O(h^{\text{npt}-1})$ where $h$ is the maximum spacing in $x$. A special benefit of `diffmat` is that we can find any order derivative, moreover for any $n\times n$ $D_{k}$ we have $\text{rank}(D_k) = n-k$, and the eigenvalues are of the form $\lambda = i^kb$ where $b \geq 0$ and $i = \sqrt{-1}$. (so $D_2$ is negative semi-definite for example).
+
+These matrices are especially useful for solving general linear differential equations.
+
+#### Example
+Consider the linear ODE: $y' + \alpha y = f(x)$ and the initial condition: $y(L) = \beta$, we can approximate the solution by solving the linear system: $(D+\alpha I)y = f(x) \land y(L) = \beta$. This can be solved by forward substituting $y(L) = \beta$ into the linear system and solving the rest of the system:
 ```cpp
-vec f(vec& x) {
+vec f(const vec& x) {
     // do something
 }
 mat D;
@@ -1581,291 +1592,397 @@ vec F = f(x.rows(1,N-1)) - d0.rows(1,N-1)*beta;
 vec y(N);
 y.rows(1,N-1) = solve(A,F);
 ```
-If we have a system of $m$ ODEs, we can solve both initial value problems and boundary value problems using a similar method where instead the operator is replaced with $(D \otimes I_{m,m})$ ($\otimes$ is the Kronecker product) and $f(x)$ is vectorized (if `F` is $n\times m$ then set `F = vectorise(F.t())`). Once a solution $y$ is found it is reshaped so that it is $n\times m$ (if `y` is $n m\times 1$, then set `y = reshape(y,m,n).t()`). For these higher order system both initial value problems and boundary value problems may be solved.
+If we have a system of $m$ ODEs, we can solve both initial value problems and boundary value problems using a similar method where instead the operator is replaced with $(D \otimes I_{m,m})$ ($\otimes$ is the Kronecker product) and $f(x)$ is vectorized (if `F` is $n\times m$ then set `F = vectorise(F.t())`). Once a solution $y$ is found it is reshaped so that it is $n\times m$ (if `y` is $n m\times 1$, then set `y = reshape(y,m,n).t()`). For these larger systems both initial value problems and boundary value problems may be solved.
 
 ## Initial Value Problem Solvers
-We define a system of initial value problem as having the form: $u' = f(t,u)$ with $u(0) = u_0$. Where $t$ is the independent variable and $u(t)$ is the dependent variable and is a row vector. All of the systems solvers are able to handle events. Some of the solvers have error control via adaptive step size selection. For the implicit solvers we can also provide a jacobian matrix $\frac{\partial f}{\partial u}$ to improve solver performance. All implicit solvers use Broyden's method or Newton's method to compute steps.
+We define a system of initial value problem as having the form:
+$$u' = f(t,u), \;\; t_0 \leq t \leq t_f$$
+with
+$$u(0) = u_0.$$
+Where the solution $u(t)$ is vector-valued. All of the solvers handle event detection. Some of the solvers have error control via adaptive step size selection. For the implicit solvers we can also provide a jacobian matrix $\frac{\partial f}{\partial u}$ to potentially improve performance. All implicit solvers use Broyden's method or Newton's method (if the jacobian is provided).
 
-All solver inherit from the `ivp` class:
+The initial value problem solvers inherit from the `InitialValueProblem` virtual class equipped with a `solve_ivp` method, we also define the following types:
 ```cpp
-class ivp {
+typedef function<vec(double,const vec&)> odefunc;
+typedef function<mat(double,const vec&)> odejacobian;
+
+class InitialValueProblem {
     public:
-    unsigned int max_nonlin_iter;
-    double max_nonlin_err;
-    unsigned int stopping_event;
-    
-    void add_stopping_event(const std::function<double(double,const arma::rowvec&)>& event,
-                            event_direction dir = ALL);
+    const long& stopping_event;
+    const vector<double>& t;
+    const vector<vec>& U;
+
+    InitialValueProblem();
+
+    void add_stopping_event(
+        const function<double(double,const vec&)>& event,
+        event_direction dir = event_direction::ALL
+    );
+
+    virtual void solve_ivp(
+        const odefunc& f,
+        double t0,
+        double tf,
+        const vec& U0
+    ) = 0;
 };
 ```
 Events are defined in a [later section](#ivp-events).
 
-All IVP solvers have a function `ode_solve` which, at a higher level, describes the problem to solve and the solution (recall we are solving $u'=f(t,u), u(t_0)=u_0$):
-```cpp
-void ode_solve(f [,J], t, U);
-```
+The member variable `t` and `U` define the dependent variable and solution values, respectively, such that:
+$$\texttt{U[i]} \approx u(\texttt{t[i]}).$$
 
-The parameter `f` is $f(t,u)$.
+Besides the base class `InitialValueProblem`, the solvers are further stratified into three subcategories:
+* `AdaptiveIVP` : variable step size solvers:
+    ```cpp
+    class AdaptiveIVP {
+        public:
+        const double& step_min;
+        const double& max_err;
 
-If `J` is provided, it is the jacobian matrix: $J(t,u) = \frac{\partial f}{\partial u}$. The jacobian may be provided to the implicit solvers, though they perform comparably without.
+        explicit AdaptiveIVP(double tol, double minstep);
+    };
+    ```
+    These solvers adaptively select a step size which is restricted greater than `minstep` to ensure the error is bellow `tol`. The members variables `step_min` and `max_err` are read only copies of `minstep` and `tol` respectively.
+* `StepIVP` : single step size solvers
+    ```cpp
+    class StepIVP {
+        public:
+        const double& step;
+        explicit StepIVP(double step_size);
+    };
+    ```
+    These solvers use a single step size for the entire integration which is specified on initialization with `step_size`. The only time the step size is ever adjusted is at the final step to reach `tf` exactly, and when an event is detected.
+* `ImplicitIVP` : implicit solvers (solve a nonlinear equation at every step)
+    ```cpp
+    class ImplicitIVP {
+        public:
+        const u_long& max_solver_iter;
+        const double& max_solver_err;
 
-The parameter `t` must be initialized to `{t_initial, t_final}`, this parameter will be overwritten with the grid points selected by the solver on the interval.
+        ImplicitIVP();
 
-The parameter `U` should be initialized to $u_0$ as a single row vector. This parameter will be overwritten by the solver so that the pair {`t(i), U.row(i)`} is {$t_i$,$u(t_i)$}.
+        void set_solver_parameters(double tol, long max_iter);
+        
+        virtual void solve_ivp(
+            const odefunc& f,
+            const odejacobian& J,
+            double t0,
+            double tf,
+            const vec& U0
+        ) = 0;
+    };
+    ```
+    These solvers can be either constant or variable step integrators, but simply solve a nonlinear system of equations at each step. To solve these systems, Newton's method (or a variant) is employed, and the tolerance and maximum iterations can be specified for the Newton solver via `tol` and `max_iter` by calling `set_solver_parameters`. These solvers overload `solve_ivp` to additionally accept a jacobian function.
 
 ### Dormand-Prince 4/5
 Fourth order explicit Runge-Kutta solver with adaptive step size for error control.
 ```cpp
-class rk45 : public ivp {
+class rk45 : public InitialValueProblem, public AdaptiveIVP {
     public:
-    double adaptive_step_min; // 0.05
-    double adaptive_step_max; // 0.5
-    double adaptive_max_err; // tol
-    rk45(double tol = 1e-3);
-    void ode_solve(
-        const std::function<arma::rowvec(double,const arma::rowvec&)>& f,
-        arma::vec& t,
-        arma::mat& U);
+    explicit rk45(double tol=1e-4, double minstep=1e-6);
 };
 ```
 
 ### Runge-Kutta Fourth Order
-classical Fourth order explicit Runge-Kutta solver with constant step size.
+The classic fourth order explicit Runge-Kutta solver with constant step size.
 ```cpp
-class rk4 : public ivp {
+class rk4 : public InitialValueProblem, public StepIVP {
     public:
-    double step; // step_size
-    rk4(double step_size = 0.1);
-    void ode_solve(
-        const std::function<arma::rowvec(double,const arma::rowvec&)>& f,
-        arma::vec& t,
-        arma::mat& U);
+    explicit rk4(double step_size=0.01);
 };
 ```
 ### Runge-Kutta Implicit Fourth Order
 Fourth order diagonally implicit Runge-Kutta solver with adaptive step size controlled via a third order approximation. Method is A-stable and L-stable.
 ```cpp
-class rk45i : public ivp {
+class rk45i : public InitialValueProblem, public AdaptiveIVP, public ImplicitIVP {
     public:
-    double adaptive_step_min;
-    double adaptive_step_max;
-    double adaptive_max_err; // tol
-    rk45i(double tol = 1e-3);
-    void ode_solve(
-        const std::function<arma::rowvec(double,const arma::rowvec&)>& f,
-        arma::vec& t, 
-        arma::mat& U);
-    void ode_solve(
-        const std::function<arma::rowvec(double,const arma::rowvec&)>& f,
-        const std::function<arma::mat(double,const arma::rowvec&)>& jacobian,
-        arma::vec& t,
-        arma::mat& U);
+    explicit rk45i(double tol=1e-4, double minstep=1e-6);
 };
 ```
-This object accepts a jacobian matrix.
 
 ### Runge-Kutta Implicit Fifth Order
 Fifth order semi-implicit Runge-Kutta solver with constant step size. Method is A-stable and L-stable.
 ```cpp
-class rk5i : public ivp {
+class rk5i : public InitialValueProblem, public StepIVP, public ImplicitIVP {
     public:
-    double step;
-    rk5i(double step_size = 0.1);
-    void ode_solve(
-        const std::function<arma::rowvec(double,const arma::rowvec&)>& f,
-        arma::vec& t,
-        arma::mat& U);
-    void ode_solve(
-        const std::function<arma::rowvec(double,const arma::rowvec&)>& f,
-        const std::function<arma::mat(double,const arma::rowvec&)>& jacobian,
-        arma::vec& t,
-        arma::mat& U);
+    explicit rk5i(double step_size = 0.01);
 };
 ```
-This object accepts a jacobian matrix.
 
 ### Backwards Euler
 First order implicit Euler's method with constant step size. (Euler's method is not accurate but very stable):
 ```cpp
-class am1 : public ivp {
+class am1 : public InitialValueProblem, public StepIVP, public ImplicitIVP {
     public:
-    double step; // step_size
-    am1(double step_size = 0.1);
-    void ode_solve(
-        const std::function<arma::rowvec(double,const arma::rowvec&)>& f,
-        arma::vec& t,
-        arma::mat& U);
-    void ode_solve(
-        const std::function<arma::rowvec(double,const arma::rowvec&)>& f,
-        const std::function<arma::mat(double, const arma::vec&)>& jacobian,
-        arma::vec& t,
-        arma::mat& U);
+    explicit am1(double step_size = 0.01);
 };
 ```
-This object accepts a jacobian matrix.
 
 ### Adams-Moulton Second Order
 Second order implicit linear multistep method with constant step size. (Will likely be replaced by a B-stable alternative)
 ```cpp
-class am2 : public ivp {
+class am2 : public InitialValueProblem, public StepIVP, public ImplicitIVP {
     public:
-    double step; // step_size
-    am2(double step_size = 0.1);
-    void ode_solve(
-        const std::function<arma::rowvec(double,const arma::rowvec&)>& f,
-        arma::vec& t,
-        arma::mat& U);
-    void ode_solve(
-        const std::function<arma::rowvec(double,const arma::rowvec&)>& f,
-        const std::function<arma::mat(double, const arma::rowvec&)>& jacobian,
-        arma::vec& t,
-        arma::mat& U);
+    explicit am2(double step_size = 0.01);
 };
 ```
-This object accepts a jacobian matrix.
 
 ### IVP Events
-The function:
+All IVP solvers can handle events during integration which will trigger the solver to stop. These events are indicated to the solver via:
 ```cpp
 enum class event_direction {
     NEGATIVE = -1,
     ALL = 0,
     POSITIVE = 1
 };
-void add_stopping_event(const std::function<double(double,const arma::rowvec&)>& event,
-                        event_direction dir);
+void add_stopping_event(
+    const function<double(double,const vec&)>& event,
+    event_direction dir
+);
 ```
-Allows the the user to add an event function which acts as a secondary stopping criterion for the solver. An event function specifies to the solver that whenever $\text{event}(t_k,u_k) = 0$ the solver should stop. We can further constrain the stopping event by controlling the sign of $\text{event}(t_{k-1},u_{k-1})$. e.g. if `dir = NEGATIVE`, the solver will stop iff: $\text{event}(t_k,u_k) = 0$ __*and*__ $\text{event}(t_{k-1},u_{k-1}) < 0$.
+An event function specifies to the solver that whenever $\texttt{event}(t_k,u_k) = 0$ the solver should stop. We can further constrain the stopping event by controlling the sign of $\text{event}(t_{k-1},u_{k-1})$. e.g. if `dir = NEGATIVE`, the solver will stop iff: $\texttt{event}(t_k,u_k) = 0$ __*and*__ $\texttt{event}(t_{k-1},u_{k-1}) < 0$.
 
-The `ivp` member `stopping_event` will be set to the event index (of the events added) that stopped it. e.g. if the third event function added stops the solver, then `stopping_event = 2`.
+Multiple events can be added via this function, and all of them will checked during integration.
+
+The `InitialValueProblem` member variable `stopping_event` will be set to the event index (of the events added) that stopped it. e.g. if the third event function added stops the solver, then `stopping_event = 2`.
 
 ## Boundary Value Problems Solver
-We can solve boundary value problems using finite difference methods. A procedure for simple linear problems was described in the [operators section](#differentiation-operators), but the following methods are far more generalized. Our problem is defined as follows:
+We can solve boundary value problems using finite difference methods. A procedure for simple linear problems was described in the [operators section](#differentiation-operators), but the following methods are applicable to a far wider set of problems:
+$$u'(x) = f(x,u),\;\; x\in\Omega=(L,R)$$
+With boundary conditions
+$$g(u(L),u(R)) = 0.$$
+The solution $u$ is vector-valued. Assuming the problem is well posed, the solvers implemented in the following sections approximate the solution by collocation, i.e. the approximation solves the BVP closely on a finite set of points in `[L,R]`. The values of the solution are found using Newton's method. In order to solve this problem, the solvers require an initial guess of the solution; the quality of this initial guess can improve the rate at which a solution is found. One method for providing an initial guess is by solving the linearized problem $u' = \big(\frac{\partial f}{\partial u}\big|_{u=u_0}\big)\cdot u$ where $u_0$ should be either $u(L)$ or $u(R)$. Moreover, it is ideal if the initial function satisfies the boundary conditions.
 
-Given interval domain $\Omega = [L,R]$, and _**system**_ of ODEs $u' = f(x,u)$ with boundary conditions $g(u)=0$ on $\partial\Omega$ which is equivalently defined: $g(u(L),u(R)) = 0$. This general problem is solved, if possible, using Newton's method which requires an initial guess of the solution. One method for providing an initial guess is by solving the linearized problem $u' = \big(\frac{\partial f}{\partial u}\big|_{u=u_0}\big)\cdot u$ where $u_0$ should be either $u(L)$ or $u(R)$. Moreover, it is ideal if the initial function satisfies the boundary conditions.
+#### Example 
+$$u'' = \sin u,\;\; x\in[0,1]$$
+Subject to:
+$$u(0) = 1$$
+$$u(1) = 0$$
+First we set up the problem as a system of first order ODEs in compatibility with our solver:
+$$u' = v$$
+$$v' = \sin u$$
+and the boundary conditions:
+$$g(u(0), u(1)) = \begin{bmatrix} u(0) - 1 \\ u(1) \end{bmatrix}.$$
+We find an initial condition by solving the linearized problem:
+$$u' = v$$
+$$v'=\left(\frac{d}{du}\sin(u)\big|_{u=1}\right)u = \cos(1)u$$
+The linearized ODE has the solution:
+$$u(x) = b(e^{-a(x-2)} - e^{ax})$$
+$$v(x) = -ba(e^{a(x-2)}+e^{ax})$$
+where $a=\sqrt{\cos 1}, b = e^{2\sqrt a} - 1$.
 
-For example, given interval $\Omega=[0,1]$. if one of the equations is $u'' = sin(u)$ with boundary condition $u(0)=1$ and $u(1)=0$. Set up the problem as a system of first order ODEs: $u' = v$ and $v' = sin(u)$, with the same boundary conditions. Then, solve instead $u' = v \land v'=(\frac{d}{du}sin(u)\big|_{u=1})u = cos(1)u$. The linearized solution is then $u(x) = b(e^{-a(x-2)} - e^{ax}) \land v(x) = -ba(e^{a(x-2)}+e^{ax})$ where $a=\sqrt{\cos 1}, b = e^{2\sqrt a} - 1$.
-
-The `bvp` class:
+#### Solver Structure
+All BVP solvers inherit from the virtual class `BoundaryValueProblem`, we also define the types (see also [initial value problems](#initial-value-problem-solvers)):
 ```cpp
-class bvp {
+typedef function<vec(double,const vec&)> odefunc;
+typedef function<mat(double,const vec&)> odejacobian;
+typedef function<vec(const vec&, const vec&)> boundary_conditions;
+
+template<class SolutionT> 
+class BoundaryValueProblem {
     public:
-    unsigned int max_iterations; // maximum iterations for Newton's method
-    double tol; // stopping criteria
-    int num_iterations(); // returns the number of iterations needed by the solver
+    const u_long& num_iter;
+    const vec& x;
+    const mat& u;
+    const mat& du;
+    const vector<SolutionT>& solution;
+
+    explicit BoundaryValueProblem(double tol, long max_iter);
+
+    virtual void solve_bvp(
+        const odefunc& f,
+        const boundary_conditions& bc,
+        const vec& x,
+        const mat& U
+    ) = 0;
+    virtual void solve_bvp(
+        const odefunc& f,
+        const odejacobian& J,
+        const boundary_conditions& bc,
+        const vec& x,
+        const :mat& U
+    ) = 0;
+
+    mat operator()(const vec& x) const;
+    vec operator()(double x) const;
+
+    string get_exit_flag();
 };
 ```
+The class is constructed by specifying `tol` which indicates the tolerance for error which is solver specific, and `max_iter` which is the maximum acceptible number of iterations for the solver.
 
-### Variable Order Method
-We first introduce a method finite differencing where the order of the polynomial interpolation from the difference formula is derived may be selected by the user. For uniformly spaced data, the method should be $\mathcal O(h^\text{order})$ where $h$ is the spacing. It is required that `order > 1`.
+The template `SolutionT` defines the approximation (polynomials, etc.) and is uses for continuous evaluation of the solution. The solution along with its derivative is stored in `u` and `du` respectively which are the values of the collocation defined on grid points `x`, so
+$$\texttt{u.col(i)}\approx u(\texttt{x[i]}).$$
+
+The solution may be evaluated anywhere on `[L,R]` with the call method (`operator()`).
+
+The method `solve_bvp` solves the boundary value problem using an initial grid `x` and an initial guess `U`. It is overloaded to accept the jacobian of `f`. The member variable `num_iter` is the number of iterations needed by Newton's method to converge to a solution. The function `get_exit_flag` produces a message indicating the reason for stopping Newton's method, this outputs one of:
+* `"solution successfully found over the specified domain."`
+* `"solution could not be found within specified error tolerance."`
+* `"NaN or infinite value encountered."`
+* `"could not solve system of linear equations."`
+
+### k-Order Finite Difference Method
+We first introduce the method of finite differences where the derivatives of the solution are approximated by nearby values. The finite difference scheme is determined using [the `diffmat` function](#differentiation-operators) over the grid specified by `x` during the call to `solve_bvp` where the number of nearby values `k` (called `npt` in `diffmat`) is specified on construction. For uniformly spaced data, the method should be $\mathcal O(h^\texttt{k-1})$ where $h$ is the spacing. It is required that `k > 1`.
 
 ```cpp
-class bvp_k : public bvp
+class BVPk : public BoundaryValueProblem<PieceWisePoly> {
+    public:
+    explicit BVPk(int k=4, double tol=1e-5, long max_iter=100);
+};
 ```
-We initialize the solver:
-```cpp
-bvp_k::bvp_k(unsigned int order = 4, double tolerance = 1e-5);
-```
-where `order` is the order of the interpolating polynomial - 1, and `tolerance` initializes `tol`.
+In `BVPk`, the `tol` parameter is for the stopping criteria:
+$$\left\|U^{k+1} - U^{k}\right\|_\infty \leq \texttt{tol}$$
+where $U^k$ is the approximation at the k-th Newton step. Each Newton step solves a sparse system of linear equations, so the cost per iteration is approximately:
+$$\mathcal{O}(\texttt{k}\cdot\texttt{n}\cdot\texttt{d})$$
+Where `n=x.n_elem`, and `d` is the dimension of the problem, i.e. `d=U.n_rows`.
 
-We solve a boundary value problem with:
-```cpp
-void bvp_k::ode_solve(
-    arma::vec& x,
-    arma::mat& U,
-    const std::function<arma::rowvec(double,const arma::rowvec&)>& odefun,
-    const std::function<arma::vec(const arma::rowvec&, const arma::rowvec&)>& bc
-    );
-
-void bvp_k::ode_solve(
-    arma::vec& x,
-    arma::mat& U,
-    const std::function<arma::rowvec(double,const arma::rowvec&)>& odefun,
-    const std::function<arma::mat(double, const arma::rowvec&)>& jacobian,
-    const std::function<arma::vec(const arma::rowvec&, const arma::rowvec&)>& bc
-    );
-```
-We are solving $u'=f(x,u)\land g(u(L),u(R)) = 0$, so `odefun` corresponds to $f$, and `bc` corresponds to $g$. The function `jacobian` corresponds to the derivative of $f$ with respect to $u$, i.e. $\frac{\partial f}{\partial u}$. It is necessary that `x` is initialized to a grid of points (of length $n$) with `x[0]`$=L$ and `x[n-1]`$=R$. The grid `x` should be sorted. The solver will solve the BVP at these grid points, so make sure this grid is dense. It is recommended that `U` is initialized to a guess of the initial problem (purhaps as outlined above), but this is not necessary. Regardless, the matrix must be initialized, this may achieved simply by setting `U = zeros(n,dim)` where `dim` is the dimension of the system of ODEs. The solution will overwrite `U`.
+The solution type is a [`PieceWisePoly` object](#piecewise-polynomials) with constant boundary value extrapolation.
 
 ### Chebyshev Spectral Method
-This method uses a spectrally converging method, where the BVP is solved at Chebyshev nodes scaled to the interval. Because the points are specific, an initial guess must be provided as a function that may be evaluated.
+This method uses polynomial interpolation to achieve an exponentially converging scheme. The BVP is solved at Chebyshev nodes scaled to the interval of interest. Because the points are specific, the initial guess is interpolated (linearly) to infer the initial solution (the initial solution can have any number of points). 
 
 ```cpp
-class bvp_cheb : public bvp
+class BVPCheb : public BoundaryValueProblem<Polynomial> {
+    public:
+    explicit BVPCheb(long num_points = 32, double tol=1e-5, long max_iter=100);
+};
 ```
-We initialize the solver:
-```cpp
-bvp_cheb::bvp_cheb(unsigned int num_points = 32, double tolerance = 1e-5);
-```
-Where `num_points` is the number of points to use in the approximation, and `tolerance` initializes `tol`. Note that for problems with analytic solutions, `bvp_cheb` converges spectrally, thus only few points are ever needed (e.g. <50 points, while `bvp_k` may require >1000 points for a sufficiently accurate approximation).
+Where `num_points` is the number of points to use in the approximation. Note that for problems with analytic solutions, `bvp_cheb` converges exponentially, thus only few points are ever needed (e.g. <50 points, while `BVPk` may require >1000 points for a comparable approximation).
 
-We solve a boundary value problem with:
-```cpp
-void ode_solve(
-    arma::vec& x,
-    arma::mat& U,
-    const std::function<arma::rowvec(double,const arma::rowvec&)>& odefun,
-    const std::function<arma::vec(const arma::rowvec&, const arma::rowvec&)>& bc,
-    const std::function<arma::rowvec(double)>& guess
-    );
+In `BVPCheb`, the `tol` parameter is for the stopping criteria:
+$$\left\|U^{k+1} - U^{k}\right\|_\infty \leq \texttt{tol}$$
+where $U^k$ is the approximation at the k-th Newton step. Each Newton step solves a dense system of linear equations, so the cost per iteration is approximately:
+$$\mathcal{O}\left((\texttt{num\_points}\cdot\texttt{d})^3\right)$$
+Where `d` is the dimension of the problem, i.e. `d=U.n_rows`.
 
-void ode_solve(
-    arma::vec& x,
-    arma::mat& U,
-    const std::function<arma::rowvec(double,const arma::rowvec&)>& odefun,
-    const std::function<arma::mat(double, const arma::rowvec&)>& jacobian,
-    const std::function<arma::vec(const arma::rowvec&, const arma::rowvec&)>& bc,
-    const std::function<arma::rowvec(double)>& guess
-    );
-```
-Where `odefun`, `jacobian`, and `bc` are just as in `bvp_k`. With `bvp_cheb`, the parameter `x` should be initialized to a vector of length 2 and represent the boundaries of the interval, i.e. `x = {L,R}`. The matrix `U` may be empty. The parameter `guess` is an initial guess of $u(x)$, but may just return a row of zeros you have no guess. It is important that `guess(x).n_elem = dim` for all `x`$\in[L,R]$, where `dim` is the dimension of the system of ODEs. Both `x` and `U` will be set to the Chebyshev grid and approximate solution. This solution may be interpolated using a polynomial to get an approximation of the solution everywhere on the interval.
+The solution type is a [`Polynomial` object](#polynomials).
+
 
 ### Lobatto IIIa method
-This method uses a 4th order Lobatto IIIa collocation formula.
-```cpp
-class bvpIIIa : public bvp
-```
-We initialize the solver:
-```cpp
-bvpIIIa::bvpIIIa(double tolerance = 1e-5);
-```
-where `tolerance` initializes `tol`.
+This method uses a 4th order Lobatto IIIa collocation formula to construct a uniformly accurate solution with respect to the L2-norm by refining the grid at every iteration of the algorithm. The approximation is a C1 piece-wise cubic polynomial which collocates the solution at each grid point
+$$x_j$$
+and at each of the points:
+$$\frac{x_{j-1}+x_j}{2}$$
 
-We solve a boundary value problem with:
+The class is defined:
 ```cpp
-void bvp_k::ode_solve(
-    arma::vec& x,
-    arma::mat& U,
-    const std::function<arma::rowvec(double,const arma::rowvec&)>& odefun,
-    const std::function<arma::vec(const arma::rowvec&, const arma::rowvec&)>& bc
-    );
-
-void bvp_k::ode_solve(
-    arma::vec& x,
-    arma::mat& U,
-    const std::function<arma::rowvec(double,const arma::rowvec&)>& odefun,
-    const std::function<arma::mat(double, const arma::rowvec&)>& jacobian,
-    const std::function<arma::vec(const arma::rowvec&, const arma::rowvec&)>& bc
-    );
+class BVP3a : public BoundaryValueProblem<PieceWisePoly> {
+    public:
+    explicit BVP3a(double tol=1e-3, long max_iter=100);
+};
 ```
-Which is treated exactly in the same way as `bvp_k`. This method may be slower than `bvp_k` but is typically more stable (preferable for stiff problems).
+In `BVP3a`, the parameter `tol` is for the stopping criteria:
+$$\int_{x_{j-1}}^{x_j} \|\hat u'(x) - u'(x)\|_2^2\, dx = \int_{x_{j-1}}^{x_j} \|\hat u'(x) - f(x,\hat u)\|_2^2\, dx < \texttt{tol}$$
+for each $j$. Where $\hat u$ is the piecewise-cubic approximation. The integral is approximated by the five-point Gauss-Lobatto quadrature rule. The grid is adaptively modified such that for any interval $(x_{j-1}, x_j)$ where the integrated error is greater than `tol` is subdivided into two intervals.
+
+Each Newton step solves a sparse system of linear equations, so the cost per iteration is approximately:
+$$\mathcal{O}(\texttt{n}\cdot\texttt{d})$$
+Where `n=x.n_elem` (though `x` changes between iterations), and `d` is the dimension of the problem, i.e. `d=U.n_rows`.
+
+The solution type is a [`PieceWisePoly` object](#piecewise-polynomials) with constant boundary value extrapolation.
 
 ### Poisson Solver
-Given a rectangular region $\Omega$ in the $x,y$ plane, we can numerically solve the Poisson/Helmholtz equation $(\nabla^2 + k^2) u = f(x,y)$ with boundary conditions $u(x,y)=g(x,y)$ on $\partial\Omega$ using similar procedures to solving linear ODEs.
+Given a rectangular region $\Omega=[x_L,x_R]\times[y_L,y_R]$ in the $x,y$ plane, we can numerically approximate the Poisson/Helmholtz equation
+$$(\nabla^2 + k^2) u = f(x,y)$$
+with boundary conditions
+$$u(x,y)=g(x,y),\;\;(x,y)\in\partial\Omega$$
+using similar procedures to solving linear ODEs.
 
 We solve the problem with the function:
 ```cpp
 void poisson_helmholtz_2d(
-    arma::mat& X,
-    arma::mat& Y,
-    arma::mat& U,
-    const std::function<arma::mat(const arma::mat&, const arma::mat&)>& f,
-    const std::function<arma::mat(const arma::mat&, const arma::mat&)>& bc,
+    mat& X,
+    mat& Y,
+    mat& U,
+    const function<mat(const mat&, const mat&)>& f,
+    const function<mat(const mat&, const mat&)>& bc,
     double eig = 0,
     int num_grid_points = 32);
 ```
-We initialize `X` with the bounds in $x$, i.e. `X = {xLB, xUB}`, and the same for `Y`, i.e. `Y = {yLB, yUB}`. The matrix `U` does not need to be intialized. The function `bc` should equal `g(x,y)`. The parameter `eig` is $k$, which is `0` by default corresponding to Poisson's equation.
+We initialize `X` with the bounds in $x$, i.e. `X = {xL, xR}`, and the same for `Y`, i.e. `Y = {yL, yR}`. The matrix `U` does not need to be intialized. The function `bc` should equal `g(x,y)`. The parameter `eig` is $k$, which is `0` by default corresponding to Poisson's equation.
 
 `X,Y,U` will be overwritten with the grid points solved for.
 
-The parameter `num_grid_points` is the number of grid points along each axis, meaning the total number of points solved for will be `num_grid_points`^2. This solver uses the Chebyshev spectral order method only. The solver is take $\mathcal O(n^6)$ with respect to `num_grid_points`.
+The parameter `num_grid_points` is the number of grid points along each axis, meaning the total number of points solved for will be `num_grid_points`^2. This solver uses the Chebyshev spectral method only. The solver takes
+$$\mathcal O(\texttt{num\_grid\_points}^6).$$
+
+# `numerics::neuralnet` Documentation
+The following section provides an overview of the namespace `numerics::nueralnet` which implements feed forward neural network models for solving deep-learning tasks.
+
+A dense feed forward networks is composed of fully connected layers with each layer taking the output of the previous layer, multiplying them by weights adding a bias and applying an activation function.
+
+## Layers
+The most fundemental structure to the network are the individual layers. These layers are defined according to the following function.
+```cpp
+class Layer {
+    public:
+    string name;
+    const u_long& input_shape;
+    const u_long& units;
+
+    const mat& weights;
+    const mat& bias;
+    const mat& cached_output;
+
+    explicit Layer(u_long outshape);
+    explicit Layer(u_long inshape, u_long outshape);
+
+    Layer(const Layer& L);
+
+    void set_activation(const string& activation);
+    void set_activation(const Activation& activation);
+    void set_weights(const mat& w);
+    void set_bias(const mat& b);
+    void disable_training_weights();
+    void enable_training_weight();
+    void disable_training_bias();
+    void enable_training_bias();
+};
+```
+An instance of a `Layer` is initialized by setting the `input_shape` with `inshape` and `units` with `outshape`. These values indicate the the number of inputs the layer should expect, and the number of outputs it should produce. If `Layer` is initialized with only one input, it is assumed that it is the `outshape` and the `inshape` will be inferred when compiled in a model. A layer computes the following:
+$$\texttt{activation}(X w + b)$$
+
+* `activation` is set by `set_activation` which can be either an activation function, or the name of an existing activation function. For example, it can be set by `"relu"` or by `Relu()`. By default, the activation is `"linear"`.
+* w indicates the `weights` which has shape `input_shape` by `units`. Its value can be set by calling  `set_weights`. The value of `weights` can be locked by calling `disable_training_weights` which will prevent an `Optimizer` from updating its values until `enable_training_weights` is called.
+* b indicates the `bias` which has shape 1 by `units`. Its value can be set by calling `set_bias`. The value of `bias` can be locked by calling `disable_training_bias` which will prevent an `Optimizer` from updating its values until `enable_training_bias` is called.
+
+The parameter `cached_output` is the output of the layer from when the layer was called last.
+
+## Models
+A feed forward network can be constructed via the class:
+```cpp
+class Model {
+    public:
+    const u_long& total_parameters;
+    const vector<Layer>& layers;
+
+    Model();
+    explicit Model(Layer& input_layer);
+    Model(const Model& model);
+
+    void set_loss(const string& loss);
+    void set_loss(const Loss& loss);
+    void set_l2(double l2);
+    void set_l1(double l1);
+    
+    void set_optimizer(const string& optim);
+    void set_optimizer(const Optimizer& optim);
+
+    void attach(const Layer& L);
+    void compile();
+
+    void save(const string& fname);
+    void load(const string& fname);
+
+    void fit(
+        const mat& x,
+        const mat& y,
+        const fit_parameters& fitp = fit_parameters()
+    );
+
+    mat predict(mat x) const;
+};
+```
+This class stores a vector of `Layer` instances, a read only view is accessed via `layers`.

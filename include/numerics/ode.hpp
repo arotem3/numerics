@@ -5,68 +5,6 @@ namespace ode {
     typedef std::function<arma::vec(double,const arma::vec&)> odefunc;
     typedef std::function<arma::mat(double,const arma::vec&)> odejacobian;
     typedef std::function<arma::vec(const arma::vec&, const arma::vec&)> boundary_conditions;
-
-    class ODESolution {
-        friend class am1;
-        friend class am2;
-        friend class rk4;
-        friend class rk45;
-        friend class rk45i;
-        friend class rk5i;
-        friend class BVPk;
-        friend class BVPCheb;
-        friend class BVP3a;
-        protected:
-        u_long _dim;
-        std::vector<double> _tvec;
-        std::vector<arma::vec> _Uvec;
-        arma::vec _t;
-        arma::mat _U;
-        int _flag;
-
-        void _prepare() {
-            if (_t.is_empty()) {
-                _t = arma::conv_to<arma::vec>::from(_tvec);
-                _U.set_size(_Uvec.size(), _dim);
-                for (u_long i=0; i < _Uvec.size(); ++i) {
-                    _U.row(i) = _Uvec.at(i).as_row();
-                }
-            } else {
-                _tvec.clear(); _Uvec.clear();
-                for (u_long i=0; i < _t.n_elem; ++i) {
-                    _tvec.push_back(_t(i));
-                    _Uvec.push_back(_U.row(i).as_col());
-                }
-            }
-        }
-
-        public:
-        const arma::vec& t;
-        const arma::mat& solution;
-        const std::vector<double>& tvec;
-        const std::vector<arma::vec>& solvec;
-        const int& exit_flag;
-
-        explicit ODESolution(u_long dim) : t(_t), solution(_U), tvec(_tvec), solvec(_Uvec), exit_flag(_flag) {
-            if (dim == 0) throw std::runtime_error("ODESolution: require solution dimension (=" + std::to_string(dim) + ") > 0");
-            _dim = dim;
-            _flag = 0;
-        }
-
-        std::string get_exit_flag() {
-            std::string flag;
-            if (_flag == 0) {
-                flag = "solution successfully found over the specified domain.";
-            } else if (_flag == 1) {
-                flag = "solution could not be found within specified error tolerance.";
-            } else if (_flag == 2) {
-                flag = "NaN or infinite value encountered.";
-            } else if (_flag == 3) {
-                flag = "could not solve system of linear equations.";
-            }
-            return flag;
-        }
-    };
     // --- IVP events ------------ //
     enum class event_direction {
         NEGATIVE = -1,
@@ -93,10 +31,16 @@ namespace ode {
         void _check_range(double t0, double tf) {
             if (tf <= t0) throw std::runtime_error("(" + std::to_string(t0) + ", " + std::to_string(tf) + ") does not define a valid interval");
         }
+
+        std::vector<double> _t;
+        std::vector<arma::vec> _U;
+
         public:
         const long& stopping_event;
+        const std::vector<double>& t;
+        const std::vector<arma::vec>& U;
 
-        InitialValueProblem() : stopping_event(_stopping_event) {
+        InitialValueProblem() : t(_t), U(_U), stopping_event(_stopping_event) {
             _stopping_event = -1;
         }
 
@@ -105,7 +49,7 @@ namespace ode {
             event_dirs.push_back(dir);
         }
 
-        virtual ODESolution ode_solve(const odefunc& f, double t0, double tf, const arma::vec& U0) = 0;
+        virtual void solve_ivp(const odefunc& f, double t0, double tf, const arma::vec& U0) = 0;
     };
 
     class AdaptiveIVP {
@@ -141,7 +85,7 @@ namespace ode {
             _max_solver_err = t;
             _max_solver_iter = m;
         }
-        virtual ODESolution ode_solve(const odefunc& f, const odejacobian& J, double t0, double tf, const arma::vec& U0) = 0;
+        virtual void solve_ivp(const odefunc& f, const odejacobian& J, double t0, double tf, const arma::vec& U0) = 0;
     };
 
     class StepIVP {
@@ -177,7 +121,7 @@ namespace ode {
          * --- f  : f(t,u) [t must be the first variable, u the second].
          * --- t0, tf : t-range for solution.
          * --- U0  : initial value u(t0). */
-        ODESolution ode_solve(const odefunc& f, double t0, double tf, const arma::vec& U0) override;
+        void solve_ivp(const odefunc& f, double t0, double tf, const arma::vec& U0) override;
     };
 
     class rk45i : public InitialValueProblem, public AdaptiveIVP, public ImplicitIVP {
@@ -188,14 +132,14 @@ namespace ode {
          * --- f  : f(t,u) [t must be the first variable, u the second].
          * --- t0, tf : t-range for solution.
          * --- U0  : initial value u(t0). */
-        ODESolution ode_solve(const odefunc& f, double t0, double tf, const arma::vec& U0) override;
+        void solve_ivp(const odefunc& f, double t0, double tf, const arma::vec& U0) override;
         /* adaptive diagonally implicit runge kutta O(K^4) method for any explicit first order system of ODEs.
          * our equations are of the form u'(t) = f(t,u).
          * --- f  : f(t,u) [t must be the first variable, u the second].
          * --- J : J(t,u) jacobian of f, i.e. df/du
          * --- t0, tf : t-range for solution.
          * --- U0  : initial value u(t0). */
-        ODESolution ode_solve(const odefunc& f, const odejacobian& J, double t0, double tf, const arma::vec& U0) override;
+        void solve_ivp(const odefunc& f, const odejacobian& J, double t0, double tf, const arma::vec& U0) override;
     };
 
     class rk4 : public InitialValueProblem, public StepIVP {
@@ -206,7 +150,7 @@ namespace ode {
          * --- f  : f(t,u) [t must be the first variable, u the second].
          * --- t0, tf : t-range for solution.
          * --- U0  : initial value u(t0). */
-        ODESolution ode_solve(const odefunc& f, double t0, double tf, const arma::vec& U0) override;
+        void solve_ivp(const odefunc& f, double t0, double tf, const arma::vec& U0) override;
     };
 
     class rk5i : public InitialValueProblem, public StepIVP, public ImplicitIVP {
@@ -217,14 +161,14 @@ namespace ode {
          * --- f  : f(t,u) [t must be the first variable, u the second].
          * --- t0, tf : t-range for solution.
          * --- U0  : initial value u(t0). */
-        ODESolution ode_solve(const odefunc& f, double t0, double tf, const arma::vec& U0) override;
+        void solve_ivp(const odefunc& f, double t0, double tf, const arma::vec& U0) override;
         /* diagonally implicit runge kutta O(K^5) method for any explicit first order system of ODEs.
          * our equations are of the form u'(t) = f(t,u).
          * --- f  : f(t,u) [t must be the first variable, u the second].
          * --- J : J(t,u) jacobian of f, i.e. df/du
          * --- t0, tf : t-range for solution.
          * --- U0  : initial value u(t0). */
-        ODESolution ode_solve(const odefunc& f, const odejacobian& J, double t0, double tf, const arma::vec& U0) override;
+        void solve_ivp(const odefunc& f, const odejacobian& J, double t0, double tf, const arma::vec& U0) override;
     };
 
     class am1 : public InitialValueProblem, public StepIVP, public ImplicitIVP {
@@ -235,14 +179,14 @@ namespace ode {
          * --- f  : f(t,u) [t must be the first variable, u the second].
          * --- t0, tf : t-range for solution.
          * --- U0  : initial value u(t0). */
-        ODESolution ode_solve(const odefunc& f, double t0, double tf, const arma::vec& U0) override;
+        void solve_ivp(const odefunc& f, double t0, double tf, const arma::vec& U0) override;
         /* implicit Euler method O(k) for any explicit first order system of ODEs.
          * our equations are of the form u'(t) = f(t,u).
          * --- f  : f(t,u) [t must be the first variable, u the second].
          * --- J : J(t,u) jacobian of f, i.e. df/du
          * --- t0, tf : t-range for solution.
          * --- U0  : initial value u(t0). */
-        ODESolution ode_solve(const odefunc& f, const odejacobian& J, double t0, double tf, const arma::vec& U0) override;
+        void solve_ivp(const odefunc& f, const odejacobian& J, double t0, double tf, const arma::vec& U0) override;
     };
 
     class am2 : public InitialValueProblem, public StepIVP, public ImplicitIVP {
@@ -253,14 +197,14 @@ namespace ode {
          * --- f  : f(t,u) [t must be the first variable, u the second].
          * --- t0, tf : t-range for solution.
          * --- U0  : initial value u(t0). */
-        ODESolution ode_solve(const odefunc& f, double t0, double tf, const arma::vec& U0) override;
+        void solve_ivp(const odefunc& f, double t0, double tf, const arma::vec& U0) override;
         /* Adams-Multon O(k^2) method for any explicit first order system of ODEs.
          * our equations are of the form u'(t) = f(t,u).
          * --- f  : f(t,u) [t must be the first variable, u the second].
          * --- J  : jacobian of f, i.e. J = df/du
          * --- t0, tf : t-range for solution.
          * --- U0  : initial value u(t0). */
-        ODESolution ode_solve(const odefunc& f, const odejacobian& J, double t0, double tf, const arma::vec& U0) override;
+        void solve_ivp(const odefunc& f, const odejacobian& J, double t0, double tf, const arma::vec& U0) override;
     };
     // --- BVPs ------------------- //
     template<class SolutionT>
@@ -299,8 +243,8 @@ namespace ode {
             _max_iter = max_iter;
             _flag = 0;
         }
-        virtual void ode_solve(const odefunc& f, const boundary_conditions& bc, const arma::vec& x, const arma::mat& U) = 0;
-        virtual void ode_solve(const odefunc& f, const odejacobian& J, const boundary_conditions& bc, const arma::vec& x, const arma::mat& U) = 0;
+        virtual void solve_bvp(const odefunc& f, const boundary_conditions& bc, const arma::vec& x, const arma::mat& U) = 0;
+        virtual void solve_bvp(const odefunc& f, const odejacobian& J, const boundary_conditions& bc, const arma::vec& x, const arma::mat& U) = 0;
         arma::mat operator()(const arma::vec& x) const {
             arma::mat out(_sol.size(), x.n_elem);
             for (u_long i=0; i < _sol.size(); ++i) {
@@ -342,14 +286,14 @@ namespace ode {
          * --- bc : bc(u[0], u[n-1]) == 0, boundary conditions function.
          * --- x  : x values, must be initialized (the solver will solve the bvp at these points), and must be sorted.
          * --- U  : u values, must be initialized, zeros should be fine, but an initial guess is ideal. */
-        void ode_solve(const odefunc& f, const boundary_conditions& bc, const arma::vec& x, const arma::mat& U) override;
+        void solve_bvp(const odefunc& f, const boundary_conditions& bc, const arma::vec& x, const arma::mat& U) override;
         /* solves general systems of  (potentially) nonlinear boudary value problems.
          * --- f  : u'(x) = f(x,u) is a vector valued function.
          * --- J  : jacobian of f, i.e. J = df/du
          * --- bc : bc(u[0], u[n-1]) == 0, boundary conditions function.
          * --- x  : x values, must be initialized (the solver will solve the bvp at these points), and must be sorted.
          * --- U  : u values, must be initialized, zeros should be fine, but an initial guess is ideal. */
-        void ode_solve(const odefunc& f, const odejacobian& J, const boundary_conditions& bc, const arma::vec& x, const arma::mat& U) override;
+        void solve_bvp(const odefunc& f, const odejacobian& J, const boundary_conditions& bc, const arma::vec& x, const arma::mat& U) override;
     };
     
     class BVPCheb : public BoundaryValueProblem<Polynomial> {
@@ -366,14 +310,14 @@ namespace ode {
          * --- bc : bc(u[0], u[n-1]) == 0, boundary conditions function.
          * --- x  : x values, must be initialized (the solver will solve the bvp at these points), and must be sorted.
          * --- U  : u values, must be initialized, zeros should be fine, but an initial guess is ideal. */
-        void ode_solve(const odefunc& f, const boundary_conditions& bc, const arma::vec& x, const arma::mat& U) override;
+        void solve_bvp(const odefunc& f, const boundary_conditions& bc, const arma::vec& x, const arma::mat& U) override;
         /* solves general systems of  (potentially) nonlinear boudary value problems.
          * --- f  : u'(x) = f(x,u) is a vector valued function.
          * --- J  : jacobian of f, i.e. J = df/du
          * --- bc : bc(u[0], u[n-1]) == 0, boundary conditions function.
          * --- x  : x values, must be initialized (the solver will solve the bvp at these points), and must be sorted.
          * --- U  : u values, must be initialized, zeros should be fine, but an initial guess is ideal. */
-        void ode_solve(const odefunc& f, const odejacobian& jacobian, const boundary_conditions& bc, const arma::vec& x, const arma::mat& U) override;
+        void solve_bvp(const odefunc& f, const odejacobian& jacobian, const boundary_conditions& bc, const arma::vec& x, const arma::mat& U) override;
     };
 
     class BVP3a : public BoundaryValueProblem<PieceWisePoly> {
@@ -384,14 +328,14 @@ namespace ode {
          * --- bc : bc(u[0], u[n-1]) == 0, boundary conditions function.
          * --- x  : x values, must be initialized (the solver will solve the bvp at these points), and must be sorted.
          * --- U  : u values, must be initialized, zeros should be fine, but an initial guess is ideal. */
-        void ode_solve(const odefunc& f, const boundary_conditions& bc, const arma::vec& x, const arma::mat& U) override;
+        void solve_bvp(const odefunc& f, const boundary_conditions& bc, const arma::vec& x, const arma::mat& U) override;
         /* solves general systems of  (potentially) nonlinear boudary value problems.
          * --- f  : u'(x) = f(x,u) is a vector valued function.
          * --- J  : jacobian of f, i.e. J = df/du
          * --- bc : bc(u[0], u[n-1]) == 0, boundary conditions function.
          * --- x  : x values, must be initialized (the solver will solve the bvp at these points), and must be sorted.
          * --- U  : u values, must be initialized, zeros should be fine, but an initial guess is ideal. */
-        void ode_solve(const odefunc& f, const odejacobian& J, const boundary_conditions& bc, const arma::vec& x, const arma::mat& U) override;
+        void solve_bvp(const odefunc& f, const odejacobian& J, const boundary_conditions& bc, const arma::vec& x, const arma::mat& U) override;
     };
 
     // --- PDEs -------------------- //
