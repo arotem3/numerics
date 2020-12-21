@@ -23,8 +23,8 @@ template<typename eT> class CycleQueue {
     std::vector<eT> _data;
 
     public:
-    const std::vector<eT>& data;
-    explicit CycleQueue(u_long size) : data(_data) {
+    // const std::vector<eT>& data;
+    explicit CycleQueue(u_long size) /* : data(_data) */ {
         if (size < 1) throw std::runtime_error("cannot initialize CycleQueue to empty size");
         _max_elem = size;
         _size = 0;
@@ -71,30 +71,28 @@ template<typename eT> class CycleQueue {
         if (_size == 0) {
             throw std::range_error("cannot access back of empty queue.");
         }
-        return _data.at(_size-1);
+        return _data.at(mod(_head - 1, _size));
     }
 
     const eT& back() const {
         if (_size == 0) {
             throw std::range_error("cannot access back of empty queue.");
         }
-        return _data.at(_size-1);
+        return _data.at(mod(_head - 1, _size));
     }
 
     eT& front() {
         if (_size == 0) {
             throw std::range_error("cannot access back of empty queue.");
         }
-        u_long ind = mod(_head - 1, _size);
-        return _data.at(ind);
+        return _data.at(mod(_head-_size,_size));
     }
 
     const eT& front() const {
         if (_size == 0) {
             throw std::range_error("cannot access back of empty queue.");
         }
-        u_long ind = mod(_head - 1, _size);
-        return _data.at(ind);
+        return _data.at(mod(_head-_size,_size));
     }
 
     u_long size() const {

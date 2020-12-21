@@ -17,7 +17,7 @@ int main() {
     numerics::PolyFeatures poly(3);
     arma::mat Xp3 = poly.fit_predict(X);
     numerics::LogisticRegression model;
-    model.set_lambda(1e-2);
+    // model.set_lambda(1e-2);
     model.fit(Xp3,y);
 
     arma::vec xgrid = arma::linspace(-M_PI,M_PI,1000);

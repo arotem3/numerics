@@ -2,54 +2,75 @@
 
 // g++ -Wall -g -o newton newton_ex.cpp -O3 -lnumerics -larmadillo
 
-using namespace numerics;
+const std::string methods[] = {"newton","broyden","lm","trust"};
+bool in_methods(const std::string& s) {
+    return (std::count(methods, methods+4, s) > 0);
+}
+
+arma::vec f(const arma::vec& v) {
+    arma::vec fv = {0,0,0};
+    double x = v(0), y = v(1), z = v(2);
+    fv(0) = 4*std::pow(x,3) - std::pow(y,2)*z;
+    fv(1) = -2*z*y*z + y;
+    fv(2) = 2*z - x*std::pow(y,2);
+    return fv;
+}
+
+arma::mat J(const arma::vec& v) {
+    double x = v(0);
+    double y = v(1);
+    double z = v(2);
+    arma::mat Jac = {{ 12*x*x, -2*y*z, -y*y},
+                    {-2*y*z,  -2*x*z+1, -2*x*y},
+                    {-y*y,    -2*x*y,  2}};
+    return Jac;
+}
 
 int main() {
-    arma::arma_rng::set_seed_random();
-
-    auto f = [](const arma::vec& x) -> arma::vec { // function
-        arma::vec y = {0,0,0};
-        double a = x(0), b = x(1), c = x(2);
-        y(0) = 4*a*a*a - b*b*c;
-        y(1) = -2*a*b*c+b;
-        y(2) = 2*c - a*b*b;
-        return y;
-    };
-
-    auto J = [](const arma::vec& v) -> arma::mat { // Jacobian
-        double x = v(0);
-        double y = v(1);
-        double z = v(2);
-        arma::mat Jac = {{ 12*x*x, -2*y*z, -y*y},
-                       {-2*y*z,  -2*x*z+1, -2*x*y},
-                       {-y*y,    -2*x*y,  2}};
-        return Jac;
-    };
-
     std::cout << "In this file you can test the nonlinear solvers: Newton's method, Broyden's method, and Levenberg-Marquardt." << std::endl
-              << "we will try to find roots of f(x,y,z) = [4x^3 - z*y^2; -2xyz+y; 2z-x*y^2]" << std::endl
+              << "Consider, f(x,y,z) = [4x^3 - z*y^2; -2xyz+y; 2z-x*y^2]" << std::endl
               << "We will use a random initial guess." << std::endl
-              << "we also know there are 5 possible roots:" << std::endl
-              << "\t[0,0,0]\n\t[-0.707,-1.414,-0.707]\n\t[-0.707,1.414,-0.707]\n\t[0.707,-1.414,0.707]\n\t[0.707,1.414,0.707]" << std::endl;
+              << "The solvers are:" << std::endl
+              << "\t'newton' : Newton's method with line search." << std::endl
+              << "\t'broyden' : Inexact Newton's method with line search using Broyden's update for the jacobian." << std::endl
+              << "\t'lm' : Levenberg-Marquardt algorithm for nonlinear least-squares." << std::endl
+              << "\t'trust' : Trust-region method constrained to 2D subspace minimization." << std::endl
+              << "solver: ";
+    
+    std::string choice;
+    do {
+        std::cin >> choice;
+        if (in_methods(choice)) break;
+        else {
+            std::cout << "solver must be one of {";
+            for (std::string m : methods) std::cout << m << ",";
+            std::cout << "}, try again.\nsolver: ";
+        }
+    } while (true);
+    
+    arma::arma_rng::set_seed_random();
     arma::vec x = arma::randn(3);
 
-    // numerics::optimization::Newton fsolver(1e-4,100,true); std::cout << "using Newton's method..." << std::endl;
-    numerics::optimization::Broyd fsolver(1e-4,100,true); std::cout << std::endl << "using Broyden's method..." << std::endl;
-    // numerics::optimization::LmLSQR fsolver(1e-4,100,true); std::cout << "using Levenberg-Marquardt least squares..." << std::endl;
+    numerics::optimization::QausiNewton *fsolver;
+
+    if (choice == "newton") fsolver = new numerics::optimization::Newton();
+    else if (choice == "broyden") fsolver = new numerics::optimization::Broyden();
+    else if (choice == "lm") fsolver = new numerics::optimization::LmLSQR();
+    else fsolver = new numerics::optimization::TrustNewton();
 
     clock_t t = clock();
-    fsolver.fsolve(x,f,J);
-    // fsolver.fsolve(f,x); // broyd and lmlsqr do not need a jacobian function
+    // fsolver->fsolve(x,f,J);
+    fsolver->fsolve(x, f); // broyd and lmlsqr do not need a jacobian function
     t = clock() - t;
 
     arma::vec F = f(x);
-    std::string flag = fsolver.get_exit_flag();
+    std::string flag = fsolver->get_exit_flag();
 
     std::cout << "results:" << std::endl << std::fixed << std::setprecision(4)
               << "\troot:       [" << x(0) << ",   " << x(1) << ",   " << x(2) << "]" << std::endl
               << "\tf(root):    [" << F(0) << ",   " << F(1) << ",   " << F(2) << "]" << std::endl
               << "\ttime: " << (float)t/CLOCKS_PER_SEC << " secs" << std::endl
-              << "\ttotal iterations needed: " << fsolver.n_iter << std::endl
+              << "\ttotal iterations needed: " << fsolver->n_iter << std::endl
               << "\texit flag: " << flag << std::endl;
     
     return 0;

@@ -19,22 +19,14 @@ void numerics::optimization::NelderMead::minimize(arma::vec& x, const dFunc& f) 
     }
 
     int worst, scndw, best;
-    int k = 0;
+    _n_iter = 0;
     VerboseTracker T(_max_iter);
     if (_v) T.header();
-    do {
+    while (true) {
         arma::uvec ind = arma::sort_index(yy);
         worst = ind(m);
         scndw = ind(m-1);
         best  = ind(0);
-
-        if (k >= _max_iter) {
-            _exit_flag = 1;
-            _n_iter += k;
-            x = xx.col(best);
-            if (_v) T.max_iter_flag();
-            return;
-        }
 
         // reflect x(worst) accross center
         arma::vec c = arma::mean(xx.cols(ind.rows(0,m-1)),1);
@@ -82,12 +74,31 @@ void numerics::optimization::NelderMead::minimize(arma::vec& x, const dFunc& f) 
                 }
             }
         }
-        if (_v) T.iter(k, yy(best));
-        k++;
-    } while (arma::norm(xx.col(worst) - xx.col(best),"inf") > _tol);
-    int i = yy.index_min();
+        if (_v) T.iter(_n_iter, yy(best));
+        _n_iter++;
+
+        double ftol = _ftol*std::max(1.0, std::abs<double>(yy(best)));
+        if (std::abs(yy(best) - yy(worst)) < ftol) {
+            _exit_flag = 0;
+            if (_v) T.success_flag();
+            break;
+        }
+
+        double xtol = _xtol*std::max(1.0, arma::norm(xx.col(best)));
+        if (arma::norm(xx.col(worst) - xx.col(best),"inf") > xtol) {
+            _exit_flag = 1;
+            if (_v) T.success_flag();
+            break;
+        }
+
+        if (_n_iter >= _max_iter) {
+            _exit_flag = 2;
+            if (_v) T.max_iter_flag();
+            break;
+        }
+
+
+    }
+    u_int i = yy.index_min();
     x = xx.col(i);
-    _exit_flag = 0;
-    _n_iter += k;
-    if (_v) T.success_flag();
 }

@@ -1,35 +1,18 @@
 #include <numerics.hpp>
 
-void numerics::ode::rk4::solve_ivp(const odefunc& f, double t0, double tf, const arma::vec& U0) {
-    _check_range(t0, tf);
-    _check_step(t0, tf);
-    double k = _step;
+double numerics::ode::rk4::_step(double k, double& t1, arma::vec& u1, arma::vec& f1, const odefunc& f, const odejacobian* jacobian) {
+    const arma::vec& u = _prev_u.back();
+    const double& t = _prev_t.back();
 
-    _t.clear(); _U.clear();
-    _t.push_back(t0);
-    _U.push_back(U0);
-
-    arma::vec k1, k2, k3, k4;
-
-    unsigned long long i = 1;
-    while (_t.back() < tf) {
-        double tt = _next_t(k, _t.at(i-1), tf);
-        
-        k1 = k * f(tt, _U.at(i-1));
-        k2 = k * f(tt + k/2, _U.at(i-1) + k1/2);
-        k3 = k * f(tt + k/2, _U.at(i-1) + k2/2);
-        k4 = k * f(tt, _U.at(i-1) + k3);
-        arma::vec rk4 = _U.at(i-1) + (k1 + 2*k2 + 2*k3 + k4)/6;
-        
-        double kk = event_handle(_t.at(i-1), _U.at(i-1), tt, rk4, k);
-        if (0 < kk && kk < k) {
-            k = kk;
-            continue;
-        }
-
-        _U.push_back(std::move(rk4));
-        _t.push_back(tt);
-        ++i;
-        if (kk == 0) break; // event stop
+    arma::vec v = k*_prev_f.back();
+    arma::vec p = u + rk4b[0]*v;
+    for (short i=1; i < 5; ++i) {
+        v = rk4a[i]*v + k*f(t+rk4c[i]*k, p);
+        p += rk4b[i]*v;
     }
+    
+    t1 = t + k;
+    u1 = std::move(p);
+    f1 = f(t1,u1);
+    return _cstep;
 }

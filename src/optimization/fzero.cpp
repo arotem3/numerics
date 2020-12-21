@@ -1,24 +1,35 @@
 #include "numerics.hpp"
 
-double numerics::optimization::newton_1d(const std::function<double(double)>& f, const std::function<double(double)>& df, double x, double err) {
-    err = std::abs(err); if (err <= 0) err = 1e-12;
+double numerics::optimization::newton_1d(const std::function<double(double)>& f, const std::function<double(double)>& df, double x, double tol) {
+    if (tol <= 0) throw std::invalid_argument("error bound should be strictly positive, but tol=" + std::to_string(tol));
     int max_iter = 100;
     
-    double s;
-    long long k = 0;
+    double s=tol/2;
+    u_long k = 0;
+    double fx, fp;
     do {
         if (k >= max_iter) { // too many iterations
-            std::cerr <<  "newton() failed: too many iterations needed to converge." << std::endl
+            std::cerr << "newton_1d() failed: too many iterations needed to converge." << std::endl
                       << "returing current best estimate."
                       << "!!!---not necessarily a good estimate---!!!" << std::endl
                       << "|f(x)| = " << std::abs(f(x)) << " > tolerance" << std::endl << std::endl;
-            return NAN;
+            return x;
         }
-        s = -f(x)/df(x);
+        fx = f(x);
+        fp = df(x);
+        if (std::abs(fp) < tol/2) s *= -fx/(fx - f(x-s));
+        else s = -fx/fp;
         x += s;
         k++;
-    } while (std::abs(s) > err);
+    } while ((std::abs(fx) > tol) && (std::abs(s) > tol));
     return x;
+}
+
+double numerics::optimization::newton_1d(const std::function<double(double)>& f, double x, double tol) {
+    auto df = [&](double u) -> double {
+        return deriv(f, u, tol/2, true, 2);
+    };
+    return newton_1d(f, df, x, tol);
 }
 
 double numerics::optimization::secant(const std::function<double(double)>& f, double a, double b, double tol) {
@@ -28,36 +39,42 @@ double numerics::optimization::secant(const std::function<double(double)>& f, do
     int k = 2;
     if (std::abs(fa) < tol) return a;
     if (std::abs(fb) < tol) return b;
-    
-    double c = (a+b)/2;
-    double fc = f(c); k++;
 
-    while (std::abs(fc) > tol && std::abs(b-a) > tol) {
+    while (true) {
         if (k >= max_iter) { // too many iterations
             std::cerr << "secant() error: could not converge within " << max_iter << " function evaluations." << std::endl
                       << "\treturing current best estimate."
                       << "!!!---not necessarily a good estimate---!!!" << std::endl
-                      << "|f(x)| = " << std::abs(fc) << " > tolerance" << std::endl << std::endl;
-            break;
+                      << "|f(x)| = " << std::min(std::abs(fa), std::abs(fb)) << " > tolerance" << std::endl << std::endl;
+            return (std::abs(fa) < std::abs(fb)) ? a : b;
         }
-        double v;
+        double c;
 
-        if (fc > 0) v = c - fc*(c-a)/(fc-fa);
-        else v = b - fb*(b-c)/(fb-fc);
-        
-        double fv = f(v); k++;
-        
-        if (fv < 0) {
-            a = c;
-            fa = fc;
+        double rel = std::max( std::max(std::abs<double>(fb), std::abs<double>(fa)), 1.0);
+        if (std::abs(fa - fb) < 1e-10*rel) c = (a + b) / 2;
+        else c = b - fb*(b-a)/(fb-fa);
+
+        double fc = f(c); k++;
+
+        if (std::abs(fc) < tol) return c;
+
+        if (fa*fb < 0) {
+            if (fb*fc < 0) {
+                a = c; fa = fc;
+            } else {
+                b = c; fb = fc;
+            }
         } else {
-            b = c;
-            fb = fc;
+            if (std::abs(fa) < std::abs(fb)) {
+                b = c; fb = fc;
+            } else {
+                a = c; fa = fc;
+            }
         }
-        c = v;
-        fc = fv;
+
+        rel = std::max( std::max(std::abs<double>(a), std::abs<double>(b)), 1.0);
+        if (std::abs(a - b) < rel*tol) return (a+b)/2;
     }
-    return c;
 }
 
 double numerics::optimization::bisect(const std::function<double(double)>& f, double a, double b, double tol) {

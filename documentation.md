@@ -1181,10 +1181,10 @@ typedef function<mat(const vec&)>       MatFunc;    // R^n -> R^{k x n}
 typedef function<double(const vec&)>    dFunc;      // R^n -> R
 ```
 ### Conjugate Gradient Method
-Armadillo features a very robust `solve()` and `spsolve()` direct solvers for linear systems, but in the case where less precise solutions of very large systems (especially sparse systems) iterative solvers may be more efficient. The functions `cgd()` solve systems of linear equations $A \mathbf{x}=\mathbf{b}$ when $A$ is symmetric positive definite (sparse or dense), or in the least squares sense $A^TA\mathbf{x}=A^T\mathbf{b}$ by conjugate gradient method. The righthand side $b$ can be either a single column vector or a matrix.
+Armadillo features a very robust `solve()` and `spsolve()` direct solvers for linear systems, but in the case where less precise solutions of very large systems (especially sparse systems) iterative solvers may be more efficient. The functions `pcg()` solve systems of linear equations $A \mathbf{x}=\mathbf{b}$ when $A$ is symmetric positive definite (sparse or dense), or in the least squares sense $A^TA\mathbf{x}=A^T\mathbf{b}$ by conjugate gradient method. The righthand side $b$ can be either a single column vector or a matrix.
 ```cpp
-void cgd(mat& x, const mat& A, const mat& b, double tol = 1e-3, int max_iter = 0);
-void cgd(mat& x, const sp_mat& A, const mat& b, double tol = 1e-3, int max_iter = 0);
+void pcg(mat& x, const mat& A, const mat& b, double tol = 1e-3, int max_iter = 0);
+void pcg(mat& x, const sp_mat& A, const mat& b, double tol = 1e-3, int max_iter = 0);
 ```
 if `max_iter <= 0`, then `max_iter = b.n_rows`.
 
@@ -1241,13 +1241,13 @@ class Newton : public NonLinSolver {
 
     explicit Newton(double tol=1e-3, long maxiter=100, bool verbose=false);
 
-    void use_cgd();
+    void use_pcg();
     void use_lu();
 
     virtual void fsolve(vec& x, const VecFunc& f, const MatFunc& jacobian);
 };
 ```
-The function `fsolve` solves the system $f(x) = 0$. The initial guess should be stored in `x` and this value will be updated with the solution found by Newton's method. The functions `use_cgd`, and `use_lu` allows the user to specify how to invert the jacobian at each iteration where `use_cgd` toggles the use of conjugate gradient method, while `use_lu` toggles the use of `arma::solve()`; by default Newton's method inverts the jacobian directly.
+The function `fsolve` solves the system $f(x) = 0$. The initial guess should be stored in `x` and this value will be updated with the solution found by Newton's method. The functions `use_pcg`, and `use_lu` allows the user to specify how to invert the jacobian at each iteration where `use_pcg` toggles the use of conjugate gradient method, while `use_lu` toggles the use of `arma::solve()`; by default Newton's method inverts the jacobian directly.
 
 The solver also stores the final value of $f(x)$ in `fval` for verifying the solution, as well as the final value of the jacobian in `Jacobian`.
 
@@ -1272,9 +1272,9 @@ class QausiNewton : public Newton {
 ### Broyden's Method
 This solver is similar to Newton's method, but does not require the jacobian matrix to be evaluated at every step; instead, the solver takes rank 1 updates of the inverse of the estimated Jacobian using the secant equations [(wikipedia)](https://en.wikipedia.org/wiki/Broyden%27s_method). Providing a jacobian function does improve the scheme (especially at initialization), but this solver requires far fewer Jacobian evaluations than Newton's method. If none is provided the initial jacobian is computed using finite differencing as this drastically improves the convergence.
 ```cpp
-class Broyd : public QausiNewton {
+class Broyden : public QausiNewton {
     public:
-    explicit Broyd(double tol=1e-3, long maxiter=100, bool verbose=false);
+    explicit Broyden(double tol=1e-3, long maxiter=100, bool verbose=false);
 
     void fsolve(vec& x, const VecFunc& f, const MatFunc& jacobian) override;
     void fsolve(vec& x, const VecFunc& f) override;
@@ -1383,7 +1383,7 @@ class BFGS : public GradientOptimizer {
         double wolfe2=0.9
     );
 
-    void use_cgd();
+    void use_pcg();
     void use_chol();
 
     void enable_finite_differences();

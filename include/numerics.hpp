@@ -36,8 +36,8 @@ namespace numerics {
     #include <numerics/data_science.hpp>
     #include <numerics/derivatives.hpp>
     #include <numerics/integrals.hpp>
-    #include <numerics/ode.hpp>
     #include <numerics/optimization.hpp>
+    #include <numerics/ode.hpp>
 }
 
 #endif

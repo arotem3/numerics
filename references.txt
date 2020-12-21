@@ -37,4 +37,8 @@ algorithms:
 
 [14] D. Sculley. "Web-scale k-means clustering". ACM, 2010.
 
+[15] J. Nocedal, S. Wright "Numerical Optimization". Springer, 1999.
+
+[16] Y. Saad "Iterative Methods for Sparse Linear Systems". SIAM, 2003.
+
 [*] a lot of Wikipedia...

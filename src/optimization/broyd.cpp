@@ -1,93 +1,28 @@
 #include <numerics.hpp>
 
-void numerics::optimization::Broyd::fsolve(arma::vec& x, const VecFunc& f) {
-    _check_loop_parameters();
-    arma::vec F1,dx,y;
+bool numerics::optimization::Broyden::_step(arma::vec& dx, arma::vec& F1, const arma::vec& x, const VecFunc& f, const MatFunc* jacobian) {
+    if (_J.has_nan()) return false;
+
+    bool success = arma::solve(dx, _J, -_F);
+    if (not success) {
+        if (jacobian == nullptr) _J = approx_jacobian(f, x);
+        else _J = (*jacobian)(x);
+
+        success = arma::solve(dx, _J, -_F);
+        if (not success) return false;
+    }
     
-    _F = f(x);
-    _J = approx_jacobian(f,x);
+    auto line_f = [&F1,&x,&f,&dx](double a) -> double {
+        F1 = f(x + a*dx);
+        return arma::norm(F1);
+    };
+    if (line_f(1.0) > 0.99*arma::norm(_F)) {
+        double a = fminbnd(line_f, 0.0, 1.0, 1e-2);
+        dx *= a;
+    }
 
-    u_long k = 0;
-    VerboseTracker T(_max_iter);
-    if (_v) T.header("max|f|");
-    do {
-        if (k >= _max_iter) {
-            _exit_flag = 1;
-            _n_iter += k;
-            if (_v) T.max_iter_flag();
-            return;
-        }
+    arma::vec y = F1 - _F;
+    _J += (y - _J*dx)*dx.t() / arma::dot(dx, dx);
 
-        if (_v) T.iter(k, arma::norm(_F,"inf"));
-
-        dx = arma::solve(_J, -_F);
-        x += dx;
-
-        F1 = f(x);
-        if (F1.has_nan() || F1.has_inf()) {
-            _exit_flag = 2;
-            _n_iter += k;
-            if (_v) T.nan_flag();
-            return;
-        }
-
-        y = (F1 - _F);
-        _J += (y - _J*dx)*dx.t() / arma::dot(dx,dx);
-        _F = F1;
-
-        if (_F.has_nan() || _F.has_inf() || _J.has_nan() || _J.has_inf()) {
-            _F = f(x);
-            _J = approx_jacobian(f,x);
-        }
-        k++;
-    } while (arma::norm(_F,"inf") > _tol);
-    _n_iter += k;
-    _exit_flag = 0;
-    if (_v) T.success_flag();
-}
-
-void numerics::optimization::Broyd::fsolve(arma::vec& x, const VecFunc& f, const MatFunc& jacobian) {
-    _check_loop_parameters();
-    arma::vec F1,dx,y;
-    
-    _F = f(x);
-    _J = jacobian(x);
-
-    u_long k = 0;
-    VerboseTracker T(_max_iter);
-    if (_v) T.header("max|f|");
-    do {
-        if (k >= _max_iter) {
-            _exit_flag = 1;
-            _n_iter += k;
-            if (_v) T.max_iter_flag();
-            return;
-        }
-
-        if (_v) T.iter(k, arma::norm(_F,"inf"));
-
-        dx = arma::solve(_J, -_F);
-        x += dx;
-
-        F1 = f(x);
-        if (F1.has_nan() || F1.has_inf()) {
-            _exit_flag = 2;
-            _n_iter += k;
-            if (_v) T.nan_flag();
-            return;
-        }
-
-        y = (F1 - _F);
-        _J += (y - _J*dx)*dx.t() / arma::dot(dx,dx);
-        _F = F1;
-
-        if (_F.has_nan() || _F.has_inf() || _J.has_nan() || _J.has_inf()) {
-            _F = f(x);
-            _J = jacobian(x);
-        }
-        k++;
-    } while (arma::norm(_F,"inf") > _tol);
-    _n_iter += k;
-    _exit_flag = 0;
-    if (_v) T.success_flag();
+    return true;
 }

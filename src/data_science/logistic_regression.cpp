@@ -35,39 +35,39 @@ arma::vec grad_serial(const arma::mat& yh, const arma::vec& coefs, const arma::r
     return out;
 }
 
-void fit_logreg(arma::rowvec& b, arma::mat& w, const arma::mat& x, const arma::mat& y, double L) {
-    u_long size = b.n_elem + w.n_elem;
-
-    arma::vec p = arma::zeros(size);
-    p(arma::span(0, b.n_elem-1)) = b.as_col();
-    p(arma::span(b.n_elem, b.n_elem + w.n_elem - 1)) = w.as_col();
+void fit_logreg(arma::mat& w, const arma::sp_mat& I, const arma::mat& P, const arma::mat& y, double L) {
+    u_long n = P.n_cols-1;
 
     auto f = [&](const arma::vec& coefs) -> double {
-        arma::mat yh;
-        mult_coefs_serial(yh, coefs, b, w, x);
-        double cnorm = 0;
-        arma::uword start = b.n_elem;
-        for (u_long i=start; i < coefs.n_elem; ++i) cnorm += std::pow(coefs(i),2);
+        arma::mat W = arma::reshape(coefs, n+1, y.n_cols);
 
-        return 0.5*L*cnorm - arma::accu(yh % y);
+        arma::mat yh = P * W;
+        numerics::softmax_inplace(yh);
+
+        return 0.5*L*arma::trace(W.t()*I*W) - arma::accu(yh % y);
     };
 
     auto grad_f = [&](const arma::vec& coefs) -> arma::vec {
-        arma::mat yh;
-        mult_coefs_serial(yh, coefs, b, w, x);
-        return grad_serial(yh, coefs, b, w, x, y, L);
+        arma::mat W = arma::reshape(coefs, n+1, y.n_cols);
+        
+        arma::mat yh = P * W;
+        numerics::softmax_inplace(yh);
+
+        arma::mat df = L*I*W - P.t()*(y - yh);
+
+        return df.as_col();
     };
 
-    numerics::optimization::LBFGS fmin;
-    fmin.minimize(p, f, grad_f);
+    arma::vec coefs = w.as_col();
 
-    b = p.subvec(0, b.n_elem-1).as_row();
-    w = arma::reshape(p.subvec(b.n_elem, b.n_elem + w.n_elem - 1), arma::size(w));
+    numerics::optimization::TrustMin fmin;
+    fmin.minimize(coefs, f, grad_f);
+
+    w = arma::reshape(coefs, n+1, y.n_cols);
 }
 
-arma::mat pred_logreg(const arma::rowvec& b, const arma::mat& w, const arma::mat& x) {
-    arma::mat yh = x*w;
-    yh.each_row() += b;
+arma::mat pred_logreg(const arma::mat& w, const arma::mat& P) {
+    arma::mat yh = P*w;
     numerics::softmax_inplace(yh);
     return yh;
 }
@@ -80,21 +80,26 @@ void numerics::LogisticRegression::fit(const arma::mat& x, const arma::uvec& y) 
     _encoder.fit(y);
     arma::mat onehot = _encoder.encode(y);
 
-    _b = arma::zeros(1, onehot.n_cols);
-    _w = arma::zeros(x.n_cols, onehot.n_cols);
+    u_long n = x.n_cols;
+    arma::mat P(nobs, n+1);
+    arma::sp_mat I = arma::speye(n+1,n+1); I(0,0) = 0;
+    P.col(0).ones();
+    P.cols(1,n) = x;
+
+    arma::mat W = arma::zeros(n+1, onehot.n_cols);
 
     if (_lambda < 0) {
         u_short nfolds = 5;
         if (nobs / nfolds < 50) nfolds = 3;
         KFolds2Arr<double,double> split(nfolds);
-        split.fit(x, onehot);
+        split.fit(P, onehot);
 
         auto cv = [&](double L) -> double {
             L = std::pow(10.0, L);
             double score = 0;
             for (u_short i=0; i < nfolds; ++i) {
-                fit_logreg(_b, _w, split.trainX(i), split.trainY(i), L);
-                arma::mat p = pred_logreg(_b, _w, split.testX(i));
+                fit_logreg(W, I, split.trainX(i), split.trainY(i), L);
+                arma::mat p = pred_logreg(W, split.testX(i));
                 score -= accuracy_score(_encoder.decode(split.testY(i)), _encoder.decode(p));
             }
             return score;
@@ -103,7 +108,9 @@ void numerics::LogisticRegression::fit(const arma::mat& x, const arma::uvec& y) 
         _lambda = std::pow(10.0, _lambda);
     }
 
-    fit_logreg(_b, _w, x, onehot, _lambda);
+    fit_logreg(W, I, P, onehot, _lambda);
+    _b = W.row(0);
+    _w = W.rows(1,n);
 }
 
 arma::mat numerics::LogisticRegression::predict_proba(const arma::mat& x) const {

@@ -45,32 +45,34 @@ add_library(numerics SHARED
         src/interpolation/sinc_interp.cpp
         src/interpolation/polynomials.cpp
 
-        src/ode/am1.cpp
         src/ode/am2.cpp
         src/ode/bvp_k.cpp
         src/ode/bvp_cheb.cpp
         src/ode/bvpIIIa.cpp
         src/ode/cheb.cpp
         src/ode/diffmat.cpp
-        src/ode/ivp_events.cpp
+        src/ode/ivp.cpp
         src/ode/rk4.cpp
         src/ode/rk5i.cpp
         src/ode/rk45.cpp
-        src/ode/rk45i.cpp
+        src/ode/rk34i.cpp
         src/ode/poisson2d.cpp
 
+        src/optimization/quasi_newton.cpp
+        src/optimization/gradient_optimizer.cpp
         src/optimization/bfgs.cpp
         src/optimization/broyd.cpp
-        src/optimization/cgd.cpp
+        src/optimization/pcg.cpp
+        src/optimization/gmres.cpp
         src/optimization/fzero.cpp
         src/optimization/fmin.cpp
-        src/optimization/gen_optim.cpp
         src/optimization/lbfgs.cpp
         src/optimization/lmlsqr.cpp
         src/optimization/mgd.cpp
         src/optimization/mix_fpi.cpp
         src/optimization/nelder_mead.cpp
         src/optimization/newton.cpp
+        src/optimization/trust_newton.cpp
         src/optimization/simplex.cpp
         src/optimization/wolfe_step.cpp
         

@@ -5,12 +5,6 @@ namespace ode {
     typedef std::function<arma::vec(double,const arma::vec&)> odefunc;
     typedef std::function<arma::mat(double,const arma::vec&)> odejacobian;
     typedef std::function<arma::vec(const arma::vec&, const arma::vec&)> boundary_conditions;
-    // --- IVP events ------------ //
-    enum class event_direction {
-        NEGATIVE = -1,
-        ALL = 0,
-        POSITIVE = 1
-    };
 
     // --- Utility ---------------- //
     arma::rowvec diffvec(const arma::vec& x, double x0, uint k=1);
@@ -23,189 +17,191 @@ namespace ode {
     // --- IVPs ------------------- //
     class InitialValueProblem {
         protected:
+        double _event_tol;
         long _stopping_event;
-        std::vector<event_direction> event_dirs;
+        std::vector<bool> _inc;
+        std::vector<bool> _dec;
         std::vector<std::function<double(double, const arma::vec&)>> events;
-        double event_handle(double prev_t, const arma::vec& prev_U, double t, const arma::vec& V, double k);
+
+        CycleQueue<arma::vec> _prev_u;
+        CycleQueue<arma::vec> _prev_f;
+        CycleQueue<double> _prev_t;
+        std::unique_ptr<optimization::QausiNewton> solver;
         
-        void _check_range(double t0, double tf) {
-            if (tf <= t0) throw std::runtime_error("(" + std::to_string(t0) + ", " + std::to_string(tf) + ") does not define a valid interval");
-        }
+        u_long _solver_miter;
+        double _solver_xtol, _solver_ftol;
 
         std::vector<double> _t;
         std::vector<arma::vec> _U;
+
+        double _event_handle(double t1, const arma::vec& u1);
+        
+        void _check_range(double t0, arma::vec& T);
+
+        virtual double _initial_step_size() = 0;
+        virtual double _step(double k, double& t1, arma::vec& u1, arma::vec& f1, const odefunc& f, const odejacobian* jacobian) = 0;
+        void _update_solution(double& t1, arma::vec& u1, arma::vec& f1, bool full, bool is_grid_val);
+        
+        void _solve(const odefunc& f, const odejacobian* J, double t0, arma::vec T, const arma::vec& U0, bool full);
 
         public:
         const long& stopping_event;
         const std::vector<double>& t;
         const std::vector<arma::vec>& U;
 
-        InitialValueProblem() : t(_t), U(_U), stopping_event(_stopping_event) {
-            _stopping_event = -1;
-        }
+        explicit InitialValueProblem(double event_tol, int n_step);
 
-        void add_stopping_event(const std::function<double(double,const arma::vec&)>& event, event_direction dir = event_direction::ALL) {
-            events.push_back(event);
-            event_dirs.push_back(dir);
-        }
+        void add_stopping_event(const std::function<double(double,const arma::vec&)>& event, const std::string& dir = "all");
 
-        virtual void solve_ivp(const odefunc& f, double t0, double tf, const arma::vec& U0) = 0;
+        void solve_ivp(const odefunc& f, double t0, double tf, const arma::vec& U0, bool full=true);
+        void solve_ivp(const odefunc& f, double t0, arma::vec T, const arma::vec& U0, bool full=false);
+        void solve_ivp(const odefunc& f, const odejacobian& J, double t0, double tf, const arma::vec& U0, bool full=true);
+        void solve_ivp(const odefunc& f, const odejacobian& J, double t0, arma::vec T, const arma::vec& U0, bool full=false);
+
+        void as_mat(arma::vec& tt, arma::mat& uu);
     };
 
-    class AdaptiveIVP {
+    struct ivpOpts {
+        double atol;
+        double rtol;
+        double minstep;
+        double solver_xtol;
+        double solver_ftol;
+        long solver_miter;
+        double event_tol;
+        double cstep;
+
+        ivpOpts() {
+            atol = 1e-6;
+            rtol = 1e-3;
+            minstep = 1e-6;
+            solver_xtol = 1e-8;
+            solver_ftol = 1e-8;
+            solver_miter = 100;
+            event_tol = 1e-4;
+            cstep = 0.01;
+        }
+    };
+
+    class AdaptiveIVP : public InitialValueProblem {
         protected:
-        double _step_min;
-        double _max_err;
+        double _rtol;
+        double _atol;
+        double _min_step;
+
+        double _initial_step_size() override {
+            return std::min(100 * _min_step,1e-2);
+        }
+
+        virtual void _next_step_size(double& k, double res, double tol) = 0;
 
         public:
-        const double& step_min;
-        const double& max_err;
-
-        explicit AdaptiveIVP(double tol, double minstep) : step_min(_step_min), max_err(_max_err) {
-            _step_min = minstep;
-            _max_err = tol;
+        explicit AdaptiveIVP(double rtol, double atol, double minstep, double event_tol, int n) : InitialValueProblem(event_tol, n) {
+            if (minstep < 0) throw std::invalid_argument("minstep (=" + std::to_string(minstep) + ") must be non-negative.");
+            if (rtol <= 0) throw std::invalid_argument("rtol (=" + std::to_string(rtol) + ") must be positive.");
+            if (atol <= 0) throw std::invalid_argument("rtol (=" + std::to_string(rtol) + ") must be positive.");
+            _min_step = minstep;
+            _rtol = rtol;
+            _atol = _atol;
         }
     };
 
-    class ImplicitIVP {
+    class CStepIVP : public InitialValueProblem {
         protected:
-        u_long _max_solver_iter;
-        double _max_solver_err;
+        double _cstep;
+
+        double _initial_step_size() override {return _cstep;}
 
         public:
-        const u_long& max_solver_iter;
-        const double& max_solver_err;
-
-        ImplicitIVP() : max_solver_iter(_max_solver_iter), max_solver_err(_max_solver_err) {
-            _max_solver_iter = 500;
-            _max_solver_err = 1e-8;
-        }
-
-        void set_solver_parameters(double t, long m) {
-            _max_solver_err = t;
-            _max_solver_iter = m;
-        }
-        virtual void solve_ivp(const odefunc& f, const odejacobian& J, double t0, double tf, const arma::vec& U0) = 0;
-    };
-
-    class StepIVP {
-        protected:
-        double _step;
-        double _next_t(double& k, double t, double tf) {
-            double tt = t + k;
-            if (tt > tf) {
-                tt = tf;
-                k = tf - t;
+        explicit CStepIVP(double step, double event_tol, int n) : InitialValueProblem(event_tol, n) {
+            if (step <= 0) {
+                throw std::invalid_argument("step (=" + std::to_string(step) + ") must be positive");
             }
-            return tt;
-        }
-        void _check_step(double t0, double tf) {
-            if (_step > tf - t0) throw std::runtime_error("step size (=" + std::to_string(_step) + ") exceeds domain range tf (=" + std::to_string(tf) + ") - t0 (=" + std::to_string(t0) + ") = " + std::to_string(tf-t0));
-        }
-
-        public:
-        const double& step;
-        explicit StepIVP(double step_size) : step(_step) {
-            if (step_size <= 0) {
-                throw std::invalid_argument("step (=" + std::to_string(step_size) + ") must be positive");
-            }
-            _step = step_size;
+            _cstep = step;
         }
     };
 
-    class rk45 : public InitialValueProblem, public AdaptiveIVP {
+    class rk45 : public AdaptiveIVP {
+        protected:
+        void _next_step_size(double& k, double res, double tol) override;
+
+        double _step(double k, double& t1, arma::vec& u1, arma::vec& f1, const odefunc& f, const odejacobian* jacobian) override;
+        
         public:
-        explicit rk45(double tol=1e-4, double minstep=1e-6) : AdaptiveIVP(tol,minstep) {}
-        /* Dormand Prince adaptive runge kutta O(K^4) method for any explicit first order system of ODEs.
-         * our equations are of the form u'(t) = f(t,u).
-         * --- f  : f(t,u) [t must be the first variable, u the second].
-         * --- t0, tf : t-range for solution.
-         * --- U0  : initial value u(t0). */
-        void solve_ivp(const odefunc& f, double t0, double tf, const arma::vec& U0) override;
+        /* Dormand Prince adaptive Runge-Kutta fourth order method.
+        * see pg 178 of "Solving Ordinary Differential Equations I" by E. Hairer, and G. Wanner */
+        explicit rk45(const ivpOpts& opts={}) : AdaptiveIVP(opts.rtol, opts.atol, opts.minstep, opts.event_tol, 1) {
+            _solver_xtol = 1.0;
+            _solver_ftol = 1.0;
+            _solver_miter = 1;
+        }
     };
 
-    class rk45i : public InitialValueProblem, public AdaptiveIVP, public ImplicitIVP {
+    class rk34i : public AdaptiveIVP {
+        protected:
+        void _next_step_size(double& k, double res, double tol) override;
+        arma::vec _v_solve(double tv, double k, const arma::vec& z, arma::vec& f1, const odefunc& f, const odejacobian* jacobian);
+
+        double _step(double k, double& t1, arma::vec& u1, arma::vec& f1, const odefunc& f, const odejacobian* jacobian) override;
+        
         public:
-        explicit rk45i(double tol=1e-4, double minstep=1e-6) : AdaptiveIVP(tol,minstep) {}
-        /* adaptive diagonally implicit runge kutta O(K^4) method for any explicit first order system of ODEs.
-         * our equations are of the form u'(t) = f(t,u).
-         * --- f  : f(t,u) [t must be the first variable, u the second].
-         * --- t0, tf : t-range for solution.
-         * --- U0  : initial value u(t0). */
-        void solve_ivp(const odefunc& f, double t0, double tf, const arma::vec& U0) override;
-        /* adaptive diagonally implicit runge kutta O(K^4) method for any explicit first order system of ODEs.
-         * our equations are of the form u'(t) = f(t,u).
-         * --- f  : f(t,u) [t must be the first variable, u the second].
-         * --- J : J(t,u) jacobian of f, i.e. df/du
-         * --- t0, tf : t-range for solution.
-         * --- U0  : initial value u(t0). */
-        void solve_ivp(const odefunc& f, const odejacobian& J, double t0, double tf, const arma::vec& U0) override;
+        /* Diagonally implicit adaptive fourth order method.
+        * pg 107 in "Solving Ordinary Differential Equations II" by E. Hairer, G. Wanner */
+        explicit rk34i(const ivpOpts& opts={}) : AdaptiveIVP(opts.rtol, opts.atol, opts.minstep, opts.event_tol, 1) {
+            _solver_miter = opts.solver_miter;
+            _solver_xtol = opts.solver_xtol;
+            _solver_ftol = opts.solver_ftol;
+        }
     };
 
-    class rk4 : public InitialValueProblem, public StepIVP {
+    class rk4 : public CStepIVP {
+        protected:
+        const double rk4a[5] = {0.0, -567301805773.0/1357537059087.0, -2404267990393.0/2016746695238.0, -3550918686646.0/2091501179385.0, -1275806237668.0/842570457699.0};
+        const double rk4b[5] = {1432997174477.0/9575080441755.0, 5161836677717.0/13612068292357.0, 1720146321549.0/2090206949498.0, 3134564353537.0/4481467310338.0, 2277821191437.0/14882151754819.0};
+        const double rk4c[5] = {0.0, 1432997174477.0/9575080441755.0, 2526269341429.0/6820363962896.0, 2006345519317.0/3224310063776.0, 2802321613138.0/2924317926251.0};
+
+        double _step(double k, double& t1, arma::vec& u1, arma::vec& f1, const odefunc& f, const odejacobian* jacobian) override;
+
         public:
-        explicit rk4(double step_size=0.01) : StepIVP(step_size) {}
-        /* runge kutta O(K^4) method for any explicit first order system of ODEs.
-         * our equations are of the form u'(t) = f(t,u).
-         * --- f  : f(t,u) [t must be the first variable, u the second].
-         * --- t0, tf : t-range for solution.
-         * --- U0  : initial value u(t0). */
-        void solve_ivp(const odefunc& f, double t0, double tf, const arma::vec& U0) override;
+        /* Five stage fourth order low storage rk4,
+        * see "Fourth-order 2N-storage Runge-Kutta schemes" M.H. Carpenter and C. Kennedy */
+        explicit rk4(const ivpOpts& opts={}) : CStepIVP(opts.cstep, opts.event_tol, 1) {
+            _solver_xtol = 1.0;
+            _solver_ftol = 1.0;
+            _solver_miter = 1;
+        }
     };
 
-    class rk5i : public InitialValueProblem, public StepIVP, public ImplicitIVP {
+    class rk5i : public CStepIVP {
+        protected:
+        arma::vec _solve_v2(double k, double t, const arma::vec& z, const odefunc& f, const odejacobian* jacobian);
+        arma::vec _solve_v3(double k, double t, const arma::vec& z, const odefunc& f, const odejacobian* jacobian);
+
+        double _step(double k, double& t1, arma::vec& u1, arma::vec& f1, const odefunc& f, const odejacobian* jacobian) override;
+
         public:
-        explicit rk5i(double step_size = 0.01) : StepIVP(step_size) {}
-        /* diagonally implicit runge kutta O(K^5) method for any explicit first order system of ODEs.
-         * our equations are of the form u'(t) = f(t,u).
-         * --- f  : f(t,u) [t must be the first variable, u the second].
-         * --- t0, tf : t-range for solution.
-         * --- U0  : initial value u(t0). */
-        void solve_ivp(const odefunc& f, double t0, double tf, const arma::vec& U0) override;
-        /* diagonally implicit runge kutta O(K^5) method for any explicit first order system of ODEs.
-         * our equations are of the form u'(t) = f(t,u).
-         * --- f  : f(t,u) [t must be the first variable, u the second].
-         * --- J : J(t,u) jacobian of f, i.e. df/du
-         * --- t0, tf : t-range for solution.
-         * --- U0  : initial value u(t0). */
-        void solve_ivp(const odefunc& f, const odejacobian& J, double t0, double tf, const arma::vec& U0) override;
+        /* an L-stable diagonally implicit three stage fifth order method.
+        * see "Numerical Methods for Ordinary Differential Equations" by J. C. Butcher */
+        explicit rk5i(const ivpOpts& opts={}) : CStepIVP(opts.cstep, opts.event_tol, 1) {
+            _solver_miter = opts.solver_miter;
+            _solver_xtol = opts.solver_xtol;
+            _solver_ftol = opts.solver_ftol;
+        }
     };
 
-    class am1 : public InitialValueProblem, public StepIVP, public ImplicitIVP {
+    class am2 : public CStepIVP {
+        protected:
+        double _step(double k, double& t1, arma::vec& u1, arma::vec& f1, const odefunc& f, const odejacobian* jacobian) override;
+
         public:
-        explicit am1(double step_size = 0.01) : StepIVP(step_size) {}
-        /* implicit Euler method O(k) for any explicit first order system of ODEs.
-         * our equations are of the form u'(t) = f(t,u).
-         * --- f  : f(t,u) [t must be the first variable, u the second].
-         * --- t0, tf : t-range for solution.
-         * --- U0  : initial value u(t0). */
-        void solve_ivp(const odefunc& f, double t0, double tf, const arma::vec& U0) override;
-        /* implicit Euler method O(k) for any explicit first order system of ODEs.
-         * our equations are of the form u'(t) = f(t,u).
-         * --- f  : f(t,u) [t must be the first variable, u the second].
-         * --- J : J(t,u) jacobian of f, i.e. df/du
-         * --- t0, tf : t-range for solution.
-         * --- U0  : initial value u(t0). */
-        void solve_ivp(const odefunc& f, const odejacobian& J, double t0, double tf, const arma::vec& U0) override;
+        /* second order Adam-Moulton method (trapezoid rule). */
+        explicit am2(const ivpOpts& opts={}) : CStepIVP(opts.cstep, opts.event_tol, 1) {
+            _solver_miter = opts.solver_miter;
+            _solver_xtol = opts.solver_xtol;
+            _solver_ftol = opts.solver_ftol;
+        }
     };
 
-    class am2 : public InitialValueProblem, public StepIVP, public ImplicitIVP {
-        public:
-        explicit am2(double step_size = 0.01) : StepIVP(step_size) {}
-        /* Adams-Multon O(k^2) method for any explicit first order system of ODEs.
-         * our equations are of the form u'(t) = f(t,u).
-         * --- f  : f(t,u) [t must be the first variable, u the second].
-         * --- t0, tf : t-range for solution.
-         * --- U0  : initial value u(t0). */
-        void solve_ivp(const odefunc& f, double t0, double tf, const arma::vec& U0) override;
-        /* Adams-Multon O(k^2) method for any explicit first order system of ODEs.
-         * our equations are of the form u'(t) = f(t,u).
-         * --- f  : f(t,u) [t must be the first variable, u the second].
-         * --- J  : jacobian of f, i.e. J = df/du
-         * --- t0, tf : t-range for solution.
-         * --- U0  : initial value u(t0). */
-        void solve_ivp(const odefunc& f, const odejacobian& J, double t0, double tf, const arma::vec& U0) override;
-    };
     // --- BVPs ------------------- //
     template<class SolutionT>
     class BoundaryValueProblem {
