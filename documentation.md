@@ -161,7 +161,7 @@ The output is either a set of integers between 0 and n-1 refering to the index a
 ## Quadrature and Finite Differences
 
 ### Integration
-If we simply need a decent approximation of an integral of a function $f:[a,b]\to\R$, then `integrate()` is more than sufficient:
+If we simply need a decent approximation of an integral of a function $f:[a,b]\to\mathbb{R}$, then `integrate()` is more than sufficient:
 ```cpp
 double integrate(const function<double(double)>& f, double a, double b, const string& method="lobatto");
 ```

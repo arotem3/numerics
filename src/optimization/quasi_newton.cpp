@@ -23,7 +23,8 @@ void numerics::optimization::QausiNewton::_solve(arma::vec& x, const VecFunc& f,
             return;
         }
         double xtol = _xtol*std::max(1.0, arma::norm(x,"inf"));
-        double df = arma::norm(F1 - _F, "inf");
+        // double df = arma::norm(F1 - _F, "inf");
+        double df = std::abs(arma::norm(F1,1) - arma::norm(_F,1));
         double ftol = _ftol*std::max(1.0, arma::norm(_F,"inf"));
 
         x += dx;

@@ -88,7 +88,7 @@ int main() {
 
     if (method == -1) {
         numerics::ode::BVPCheb sol(N);
-        sol.ode_solve(f,bc,x,U);
+        sol.solve_bvp(f,bc,x,U);
         x_sol = sol.x;
         U_sol = sol.u;
         uu = sol(xx);
@@ -96,7 +96,7 @@ int main() {
         flag = sol.get_exit_flag();
     } else if (method == -2) {
         numerics::ode::BVP3a sol;
-        sol.ode_solve(f,bc,x,U);
+        sol.solve_bvp(f,bc,x,U);
         x_sol = sol.x;
         U_sol = sol.u;
         uu = sol(xx);
@@ -104,7 +104,7 @@ int main() {
         flag = sol.get_exit_flag();
     } else {
         numerics::ode::BVPk sol(method);
-        sol.ode_solve(f,bc,x,U);
+        sol.solve_bvp(f,bc,x,U);
         x_sol = sol.x;
         U_sol = sol.u;
         uu = sol(xx);

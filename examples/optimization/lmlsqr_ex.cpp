@@ -43,7 +43,6 @@ int main() {
     };
 
     numerics::optimization::LmLSQR lm(1e-3,100,true);
-    lm.use_lu();
     // lm.fsolve(b_hat,f,J); // specify jacobian
     lm.fsolve(b_hat,f); // compute jacobian by finite differences and Broyden updates
     std::string flag = lm.get_exit_flag();

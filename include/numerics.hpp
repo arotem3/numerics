@@ -29,13 +29,14 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <numerics/utility.hpp>
+#include <numerics/integrals.hpp>
+#include <numerics/interpolation.hpp>
+#include <numerics/derivatives.hpp>
+
 namespace numerics {
-    #include <numerics/utility.hpp>
-    #include <numerics/interpolation.hpp>
     #include <numerics/neural_network.hpp>
     #include <numerics/data_science.hpp>
-    #include <numerics/derivatives.hpp>
-    #include <numerics/integrals.hpp>
     #include <numerics/optimization.hpp>
     #include <numerics/ode.hpp>
 }

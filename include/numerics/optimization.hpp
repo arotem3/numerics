@@ -2,176 +2,6 @@
 #define NUMERICS_OPTIMIZATION_HPP
 
 namespace optimization {
-    class VerboseTracker {
-        protected:
-        u_long max_iter;
-        
-        public:
-        VerboseTracker(u_long m) {
-            max_iter = m;
-        }
-        void header(const std::string& name="loss") {
-            std::cout << "|" << std::right << std::setw(6) << std::setfill(' ') << "iter"
-                    << "|" << std::right << std::setw(20) << std::setfill(' ') << "progress"
-                    << "|" << std::right << std::setw(12) << std::setfill(' ') << name
-                    << "|\n";
-        }
-
-        void iter(u_long iter, double fval) {
-            std::string bar;
-            float p = (float)iter/max_iter;
-            for (int i=0; i < 20*p-1; ++i) bar += "=";
-            bar += ">";
-            std::cout << "|" << std::right << std::setw(6) << std::setfill(' ') << iter
-                    << "|" << std::left << std::setw(20) << std::setfill(' ') << bar
-                    << "|" << std::scientific << std::setprecision(4) << std::right << std::setw(12) << std::setfill(' ') << fval
-                    << "|\r" << std::flush;
-        }
-
-        void success_flag() {
-            std::cout << std::endl << "---converged to solution within tolerance---\n";
-        }
-
-        void max_iter_flag() {
-            std::cout << std::endl << "---maximum number of iterations reached---\n";
-        }
-
-        void nan_flag() {
-            std::cout << std::endl << "---NaN of Infinite value encountered---\n";
-        }
-
-        void empty_flag() {
-            std::cout << std::endl;
-        }
-    };
-
-    typedef std::function<arma::vec(const arma::vec&)> VecFunc;
-    typedef std::function<arma::mat(const arma::vec&)> MatFunc;
-    typedef std::function<double(const arma::vec&)> dFunc;
-    //--- linear ---//
-
-    /* pcg(x,A,b,[M,(M1,M2)],tol,max_iter) : solves the linear system Ax = b using the preconditioned conjugate gradient method.
-     * --- x : initial guess and solution stored here
-     * --- A : sparse or dense square sympd matrix or function computing A*x
-     * --- b : as in A*x = b
-     * --- M, M1, M2 : precondition matrix, M = M1*M2, or function which computes M(x) = inv(M)*x = inv(M2)*inv(M1)*x
-     * --- tol : stopping criteria for measuring convergence to solution; iteration stops when ||Ax - b||/||b|| < tol
-     * --- max_iter : maximum number of iterations after which the solver will stop regardless of convergence. When max_iter <= 0 ==> max_iter = x.n_elem */
-    bool pcg(arma::vec& x, const arma::mat& A,    const arma::vec& b,                                                 double tol=1e-3, int max_iter=0);
-    bool pcg(arma::vec& x, const arma::mat& A,    const arma::vec& b, const VecFunc& M,                               double tol=1e-3, int max_iter=0);
-    bool pcg(arma::vec& x, const arma::mat& A,    const arma::vec& b, const arma::sp_mat& M,                          double tol=1e-3, int max_iter=0);
-    bool pcg(arma::vec& x, const arma::mat& A,    const arma::vec& b, const arma::sp_mat& M1, const arma::sp_mat& M2, double tol=1e-3, int max_iter=0);
-
-    bool pcg(arma::vec& x, const arma::sp_mat& A, const arma::vec& b,                                                 double tol=1e-3, int max_iter=0);
-    bool pcg(arma::vec& x, const arma::sp_mat& A, const arma::vec& b, const VecFunc& M,                               double tol=1e-3, int max_iter=0);
-    bool pcg(arma::vec& x, const arma::sp_mat& A, const arma::vec& b, const arma::sp_mat& M,                          double tol=1e-3, int max_iter=0);
-    bool pcg(arma::vec& x, const arma::sp_mat& A, const arma::vec& b, const arma::sp_mat& M1, const arma::sp_mat& M2, double tol=1e-3, int max_iter=0);
-
-    bool pcg(arma::vec& x, const VecFunc& A,      const arma::vec& b,                                                 double tol=1e-3, int max_iter=0);
-    bool pcg(arma::vec& x, const VecFunc& A,      const arma::vec& b, const VecFunc& M,                               double tol=1e-3, int max_iter=0);
-    bool pcg(arma::vec& x, const VecFunc& A,      const arma::vec& b, const arma::sp_mat& M,                          double tol=1e-3, int max_iter=0);
-    bool pcg(arma::vec& x, const VecFunc& A,      const arma::vec& b, const arma::sp_mat& M1, const arma::sp_mat& M2, double tol=1e-3, int max_iter=0);
-
-    /* gmres(x, A, b, [M, (M1,M2)], tol, max_iter) : solves the linear system Ax = b using the preconditioned Generalized Minimum RESidual method.
-     * --- x : initial guess, solution is set to this variable
-     * --- A : sparse or dense square matrix, or function which computes A(x) = A*x
-     * --- b : as in Ax = b
-     * --- M, M1, M2 : preconditioning matrix, M = M1*M2, or function which computes M(x) = inv(M)*x = inv(M2)*inv(M1)*x
-     * --- tol : stopping criteria for convergence to solution; iteration stops when ||Ax-b||/||b|| < tol
-     * --- max_iter : maximum number of iterations after which the solver will stop regardless of convergence. When max_iter <= 0 ==> max_iter = x.n_elem */
-    bool gmres(arma::vec& x, const arma::mat& A,    const arma::vec& b,                                                 double tol=1e-3, int restart=0, int maxit=0);
-    bool gmres(arma::vec& x, const arma::mat& A,    const arma::vec& b, const VecFunc& M,                               double tol=1e-3, int restart=0, int maxit=0);
-    bool gmres(arma::vec& x, const arma::mat& A,    const arma::vec& b, const arma::sp_mat& M,                          double tol=1e-3, int restart=0, int maxit=0);
-    bool gmres(arma::vec& x, const arma::mat& A,    const arma::vec& b, const arma::sp_mat& M1, const arma::sp_mat& M2, double tol=1e-3, int restart=0, int maxit=0);
-    
-    bool gmres(arma::vec& x, const arma::sp_mat& A, const arma::vec& b,                                                 double tol=1e-3, int restart=0, int maxit=0);
-    bool gmres(arma::vec& x, const arma::sp_mat& A, const arma::vec& b, const VecFunc& M,                               double tol=1e-3, int restart=0, int maxit=0);
-    bool gmres(arma::vec& x, const arma::sp_mat& A, const arma::vec& b, const arma::sp_mat& M,                          double tol=1e-3, int restart=0, int maxit=0);
-    bool gmres(arma::vec& x, const arma::sp_mat& A, const arma::vec& b, const arma::sp_mat& M1, const arma::sp_mat& M2, double tol=1e-3, int restart=0, int maxit=0);
-    
-    bool gmres(arma::vec& x, const VecFunc& A,      const arma::vec& b,                                                 double tol=1e-3, int restart=0, int maxit=0);
-    bool gmres(arma::vec& x, const VecFunc& A,      const arma::vec& b, const VecFunc& M,                               double tol=1e-3, int restart=0, int maxit=0);
-    bool gmres(arma::vec& x, const VecFunc& A,      const arma::vec& b, const arma::sp_mat& M,                          double tol=1e-3, int restart=0, int maxit=0);
-    bool gmres(arma::vec& x, const VecFunc& A,      const arma::vec& b, const arma::sp_mat& M1, const arma::sp_mat& M2, double tol=1e-3, int restart=0, int maxit=0);
-
-    //--- nonlinear ---//
-    class NonLinSolver {
-        protected:
-        u_long _max_iter;
-        u_long _n_iter;
-        short _exit_flag;
-        double _xtol;
-        double _ftol;
-        bool _v;
-
-        public:
-        const u_long& n_iter;
-        const short& exit_flag;
-        
-        void set_xtol(double xtol) {
-            if (xtol <= 0) {
-                throw std::invalid_argument("require xtol (=" + std::to_string(xtol) + ") > 0.");
-            }
-            _xtol = xtol;
-        }
-
-        void set_ftol(double ftol) {
-            if (ftol <= 0) {
-                throw std::invalid_argument("require ftol (=" + std::to_string(ftol) + ") > 0.");
-            }
-            _ftol = ftol;
-        }
-
-        void set_max_iter(long m) {
-            if (m < 1) {
-                throw std::invalid_argument("require max_iter (=" + std::to_string(m) + ") >= 1.");
-            }
-            _max_iter = m;
-        }
-        
-        std::string get_exit_flag() const {
-            std::string flag = "after " + std::to_string(_n_iter) + " iterations, ";
-            if (_exit_flag == 0) flag += "first order conditions satisfied within ftol.";
-            else if (_exit_flag == 1) flag += "solution could not be improved (step size < xtol).";
-            else if (_exit_flag == 2) flag = "maximum number of iterations reached.";
-            else if (_exit_flag == 3) flag += "NaN or infinite value encountered after ";
-            else flag = "solver never called.";
-            return flag;
-        }
-
-        explicit NonLinSolver(double xtol, double ftol, long maxit, bool verbose) : n_iter(_n_iter), exit_flag(_exit_flag) {
-            set_xtol(xtol);
-            set_ftol(ftol);
-            set_max_iter(maxit);
-            _n_iter = 0;
-            _exit_flag = -1;
-            _v = verbose;
-        }
-    };
-
-    class QausiNewton : public NonLinSolver {
-        protected:
-        arma::vec _F;
-        arma::mat _J;
-
-        virtual void _initialize(const arma::vec& x, const VecFunc& f, const MatFunc* jacobian);
-        virtual bool _step(arma::vec& dx, arma::vec& F1, const arma::vec& x, const VecFunc& f, const MatFunc* jacobian) = 0;
-        void _solve(arma::vec& x, const VecFunc& f, const MatFunc* jacobian);
-
-        public:
-        const arma::vec& fval;
-        const arma::mat& Jacobian;
-
-        explicit QausiNewton(double xtol, double ftol, long maxit, bool v=false) : NonLinSolver(xtol,ftol,maxit,v), fval(_F), Jacobian(_J) {}
-
-        void fsolve(arma::vec& x, const VecFunc& f) {
-            _solve(x, f, nullptr);
-        }
-        void fsolve(arma::vec& x, const VecFunc& f, const MatFunc& jacobian) {
-            _solve(x, f, &jacobian);
-        }
-    };
-
     class Newton : public QausiNewton {
         protected:
         void _initialize(const arma::vec& x, const VecFunc& f, const MatFunc* jacobian) override;
@@ -183,36 +13,27 @@ namespace optimization {
 
     class Broyden : public QausiNewton {
         protected:
+        void _initialize(const arma::vec& x, const VecFunc& f, const MatFunc* jacobian) override;
         bool _step(arma::vec& dx, arma::vec& F1, const arma::vec& x, const VecFunc& f, const MatFunc* jacobian) override;
 
         public:
-        /* initialize Broyden's method nonlinear solver specifying solver tolerance and maximum number of iterations. This object stores function values and jacobian for warm re-start of the solver. */
+        /* initialize Broyden's method nonlinear solver specifying solver
+        tolerance and maximum number of iterations. This object stores function
+        values and jacobian for warm re-start of the solver. The object Jacobian
+        instead stores the current estimate of the inverse of the Jacobian. */
         explicit Broyden(double xtol=1e-6, double ftol=1e-6, long maxit=100, bool v=false) : QausiNewton(xtol, ftol, maxit, v) {}
     };
 
     class LmLSQR : public QausiNewton {
         protected:
-        double _damping_param, _damping_scale, _lam;
+        double _delta;
 
         void _initialize(const arma::vec& x, const VecFunc& f, const MatFunc* jacobian) override;
         bool _step(arma::vec& dx, arma::vec& F1, const arma::vec& x, const VecFunc& f, const MatFunc* jacobian) override;
 
         public:
         /* initialize Levenberg-Marquardt solver initializing tol and max_iter. Solver stores jacobian for warm re-start of solver. */
-        explicit LmLSQR(double xtol=1e-6, double ftol=1e-6, long maxit=100, bool v=false) : QausiNewton(xtol,ftol,maxit, v) {
-            _damping_param = 1e-2;
-            _damping_scale = 2.0;
-        }
-
-        /* specify the initial Levenberg-Marquardt damping parameter and scale:
-            * --- tau : damping parameter, search direction (J'*J + tau*I)^{-1} * grad f
-            * --- nu : scaling parameter, if we need to take a smaller step size we set tau = tau * nu */
-        void set_damping_parameters(double tau, double nu) {
-            if (tau <= 0) throw std::invalid_argument("require tau (=" + std::to_string(tau) + ") > 0");
-            if (nu <= 1) throw std::invalid_argument("require nu (=" + std::to_string(nu) + ") > 1");
-            _damping_param = tau;
-            _damping_scale = nu;
-        }
+        explicit LmLSQR(double xtol=1e-6, double ftol=1e-6, long maxit=100, bool v=false) : QausiNewton(xtol,ftol,maxit, v) {}
     };
 
     class TrustNewton : public QausiNewton {
@@ -251,17 +72,118 @@ namespace optimization {
      * --- f  : function to find root of.
      * --- a,b : bracket for root.
      * --- tol : approximate error and stopping criteria. */
-    double fzero(const std::function<double(double)>& f, double a, double b, double tol = 1e-8);
+    template<typename RealType, class Func>
+    RealType fzero(const Func& f, RealType a, RealType b, RealType tol=1e-6) {
+        const int max_iter = std::min<RealType>(std::pow(std::log2<RealType>((b-a)/tol)+1,2), 1.0e2); // will nearly never happen
+
+        RealType c, d, e, fa, fb, fc, m=0, s=0, p=0, q=0, r=0, t, eps = std::numeric_limits<RealType>::epsilon();
+        int k=0;
+        fa = f(a); k++;
+        fb = f(b); k++;
+        if (std::abs(fa) == 0) return a;
+        if (std::abs(fb) == 0) return b;
+
+        if (fa*fb > 0) {
+            throw std::invalid_argument("fzero() error: provided points do not bracket a simple root.");
+        }
+        
+        c = a; fc = fa; d = b-a; e = d;
+
+        while (true) {
+            if (std::abs(fc) < std::abs(fb)) {
+                a =  b;  b =  c;  c =  a;
+                fa = fb; fb = fc; fc = fa;
+            }
+            m = (c-b)/2;
+            t = 2*std::abs(b)*eps + tol;
+            if (std::abs(m) < t || fb == 0) break; // convergence criteria
+            if (k >= max_iter) {
+                std::cerr << "fzero() error: could not converge within " << max_iter << " function evaluations (the estimated neccessary ammount).\n"
+                        << "returing current best estimate.\n"
+                        << "!!!---not necessarily a good estimate---!!!\n"
+                        << "|dx| = " << std::abs(m) << " > " << tol << "\n";
+                break;
+            }
+
+            if (std::abs(e) < t || std::abs(fa) < std::abs(fb)) { // bisection
+                d = m; e = m;
+            } else {
+                s = fb/fa;
+                if (a == c) { // secant
+                    p = 2*m*s;
+                    q = 1 - s;
+                } else { // inverse quadratic
+                    q = fa/fc;
+                    r = fb/fc;
+                    p = s*(2*m*q*(q-r)-(b-a)*(r-1));
+                    q = (q-1)*(r-1)*(s-1);
+                }
+
+                if (p > 0) q = -q;
+                else p = -p;
+
+                s = e; e = d;
+
+                if (2*p < 3*m*q - std::abs(t*q) && p < std::abs(0.5*s*q)) d = p/q;
+                else {
+                    d = m; e = m;
+                }
+            }
+            a = b; fa = fb;
+
+            if (std::abs(d) > t) b += d;
+            else if (m > 0) b += t;
+            else b -= t;
+
+            fb = f(b); k++;
+
+            if (fb*fc > 0) {
+                c = a; fc = fa;
+                e = b-a; d = e;
+            }
+        }
+        return b;
+    }
     
     /* finds local root of single variable nonlinear functions using newton's method.
      * --- f  : function to find root of.
      * --- df : derivative of f.
      * --- x : point near the root.
      * --- err : approximate error and stopping criteria. */
-    double newton_1d(const std::function<double(double)>& f, const std::function<double(double)>& df, double x, double tol = 1e-8);
+    template<typename RealType, class Func, class Deriv>
+    RealType newton_1d(const Func& f, const Deriv& df, RealType x, RealType tol=1e-6) {
+        if (tol <= 0) throw std::invalid_argument("newton_1d() error: error bound should be strictly positive, but tol=" + std::to_string(tol));
+        constexpr int max_iter = 100;
+        
+        constexpr RealType eps = std::numeric_limits<RealType>::epsilon();
+        u_long k = 0;
+        RealType fx, fp, s;
+        do {
+            if (k >= max_iter) { // too many iterations
+                std::cerr << "newton_1d() failed: too many iterations needed to converge." << std::endl
+                        << "returing current best estimate."
+                        << "!!!---not necessarily a good estimate---!!!" << std::endl
+                        << "|f(x)| = " << std::abs(f(x)) << " > tolerance" << std::endl << std::endl;
+                return x;
+            }
+            fx = f(x);
+            fp = df(x);
+            s = - fx / (fp + eps);
+            x += s;
+            k++;
+        } while ((std::abs(fx) > tol) && (std::abs(s) > tol));
+        return x;
+    }
     
-    double newton_1d(const std::function<double(double)>& f, double x, double tol=1e-8);
-
+    template<typename RealType, class Func>
+    RealType newton_1d(const Func& f, RealType x, RealType tol=1e-6) {
+        auto df = [&](RealType u) -> RealType {
+            static double eps = 2*std::numeric_limits<RealType>::epsilon();
+            return deriv(f, u, u*eps, true, 2);
+        };
+        return newton_1d(f, df, x, tol);
+    }
+    
     /* secant methods for finding roots of single variable functions.
      * for added efficiency we attempt to bracket the root with an auxilary point.
      * --- f  : function to find root of.

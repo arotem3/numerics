@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.10)
 project(numerics)
 
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 20)
 
 find_package(OpenMP)
 
@@ -34,6 +34,7 @@ add_library(numerics SHARED
         src/derivatives/deriv.cpp
         src/derivatives/grad.cpp
         src/derivatives/spectral_deriv.cpp
+        src/derivatives/directional_grad.cpp
 
         src/integrals/chebyshev_integral.cpp
         src/integrals/lobatto_integral.cpp
@@ -44,6 +45,7 @@ add_library(numerics SHARED
         src/interpolation/lagrange_interp.cpp
         src/interpolation/sinc_interp.cpp
         src/interpolation/polynomials.cpp
+        src/interpolation/colloc_poly.cpp
 
         src/ode/am2.cpp
         src/ode/bvp_k.cpp

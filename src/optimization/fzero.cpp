@@ -2,11 +2,11 @@
 
 double numerics::optimization::newton_1d(const std::function<double(double)>& f, const std::function<double(double)>& df, double x, double tol) {
     if (tol <= 0) throw std::invalid_argument("error bound should be strictly positive, but tol=" + std::to_string(tol));
-    int max_iter = 100;
+    constexpr int max_iter = 100;
     
-    double s=tol/2;
+    constexpr double eps = 2*std::numeric_limits<double>::epsilon();
     u_long k = 0;
-    double fx, fp;
+    double fx, fp, s;
     do {
         if (k >= max_iter) { // too many iterations
             std::cerr << "newton_1d() failed: too many iterations needed to converge." << std::endl
@@ -17,8 +17,7 @@ double numerics::optimization::newton_1d(const std::function<double(double)>& f,
         }
         fx = f(x);
         fp = df(x);
-        if (std::abs(fp) < tol/2) s *= -fx/(fx - f(x-s));
-        else s = -fx/fp;
+        s = - fx / (fp + eps);
         x += s;
         k++;
     } while ((std::abs(fx) > tol) && (std::abs(s) > tol));
@@ -27,7 +26,8 @@ double numerics::optimization::newton_1d(const std::function<double(double)>& f,
 
 double numerics::optimization::newton_1d(const std::function<double(double)>& f, double x, double tol) {
     auto df = [&](double u) -> double {
-        return deriv(f, u, tol/2, true, 2);
+        static double eps = 2*std::numeric_limits<double>::epsilon();
+        return deriv(f, u, u*eps, true, 2);
     };
     return newton_1d(f, df, x, tol);
 }

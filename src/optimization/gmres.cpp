@@ -6,7 +6,7 @@ void check_restart_maxit(int& r, int& m, int xn) {
             m = std::min(10, xn);
         }
     } else {
-        if (m > 0) {
+        if ((m > 0) and (r <= 0)) {
             r = xn / m;
         } else {
             r = xn;
@@ -130,6 +130,10 @@ bool _gmres(arma::vec& x, const numerics::optimization::VecFunc& A, const arma::
         success = solve_update(x, Q, H, beta);
         if (not success) break;
     }
+
+    if (arma::norm(b - A(x)) / bnorm < tol) success = true;
+    else success = false;
+
     return success;
 }
 

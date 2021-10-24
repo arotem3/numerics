@@ -12,7 +12,9 @@ bool numerics::optimization::Newton::_step(arma::vec& dx, arma::vec& F1, const a
             double C = std::max(1.0, arma::norm(v)) / h;
             return C * (f(x + v/C) - _F);
         };
-        success = numerics::optimization::gmres(dx, JacMult, -_F, _xtol);
+        success = numerics::optimization::gmres(dx, JacMult, -_F, _xtol, 20, _F.n_elem*10);
+        double err = arma::norm(JacMult(dx)+_F,"inf");
+        if (not success) success = numerics::optimization::gmres(dx, JacMult, -_F, _xtol);
     } else {
         _J = (*jacobian)(x);
         if (_J.has_nan()) return false;

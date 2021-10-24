@@ -1,15 +1,11 @@
 #ifndef NUMERICS_UTILITY_HPP
 #define NUMERICS_UTILITY_HPP
 
-// --- utitility -------------- //
-namespace constants {
-    // --- integral constants
-    const long double lobatto_4pt_nodes[4] = {-1, -0.447213595499958, 0.447213595499958, 1};
-    const long double lobatto_4pt_weights[4] = {0.166666666666667, 0.833333333333333, 0.833333333333333, 0.166666666666667};
-
-    const long double lobatto_7pt_nodes[7] = {-1, -0.468848793470714, -0.830223896278567, 0, 0.830223896278567, 0.468848793470714, 1};
-    const long double lobatto_7pt_weights[7] = {0.047619047619048, 0.431745381209863, 0.276826047361566, 0.487619047619048, 0.276826047361566, 0.431745381209863, 0.047619047619048};
-}
+#include <algorithm>
+#include <vector>
+#include <utility>
+#include <random>
+#include <chrono>
 
 inline int mod(int a, int b) {
     return (a%b + b)%b;
@@ -24,7 +20,7 @@ template<typename eT> class CycleQueue {
 
     public:
     // const std::vector<eT>& data;
-    explicit CycleQueue(u_long size) /* : data(_data) */ {
+    explicit CycleQueue(u_long size) {
         if (size < 1) throw std::runtime_error("cannot initialize CycleQueue to empty size");
         _max_elem = size;
         _size = 0;
@@ -106,12 +102,37 @@ template<typename eT> class CycleQueue {
     }
 };
 
-void meshgrid(arma::mat&, arma::mat&, const arma::vec&, const arma::vec&);
-void meshgrid(arma::mat&, const arma::vec&);
+template <class Vec, typename Real=decltype(Vec::value_type)>
+u_long index_median(const Vec& x) {
+    typedef std::pair<Real,u_long> val_idx;
+    std::vector<val_idx> y(x.size());
+    for (u_long i=0; i < x.size(); ++i) {
+        y[i] = std::make_pair(x[i], i);
+    }
 
-arma::uvec sample_from(int, const arma::vec&, const arma::uvec& labels = arma::uvec());
-int sample_from(const arma::vec&, const arma::uvec& labels = arma::uvec());
+    u_long nhalf = y.size() / 2;
+    std::nth_element(y.begin(), y.begin()+nhalf, y.end(), [](const val_idx& a, const val_idx& b) -> bool {return a.first < b.first;});
+    return y.at(nhalf).second;
+}
 
-uint index_median(const arma::vec& x);
+template <class Vec>
+u_long sample_from(const Vec& pmf, u_long seed=std::chrono::system_clock::now().time_since_epoch().count()) {
+    typedef pmfVec::value_type Real;
+    
+    std::default_random_engine generator(seed);
+    std::uniform_real_distribution<Real> distribution(0.0, 1.0);
+    
+    u_long n = pmf.size();
+    u_long i;
+    Real cmf = 0;
+    Real rval = distribution(generator);
+    for (i = 0; i < n; ++i) {
+        if ((cmf < rval) and (rval <= cmf + pmf[i]))
+            break;
+        cmf += pmf[i];
+    }
+
+    return i;
+}
 
 #endif

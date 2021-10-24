@@ -4,70 +4,58 @@
 #include <unordered_map>
 #include <queue>
 #include <array>
+#include <string>
+#include <stdexcept>
 
 namespace numerics
 {
 
 /* adaptive simpson's method, generally efficient.
- * --- fmap : all function evaluations will be stored here.
- * --- f : function to integrate.
- * --- a,b : interval [a,b] to evaluate integral over.
- * --- tol : error tolerance, i.e. stopping criterion */
-template<typename Real, class Func, class Container>
-Real simpson_integral(Container& fvals, const Func& f, Real a, Real b, Real tol = 1e-6) {
-    if (tol <= 0) throw std::invalid_argument("simpson_integral() error: require tol (=" + std::to_string(tol) + ") > 0");
-    if (b <= a) throw std::invalid_argument("simpson_integral() error: (" + std::to_string(a) + ", " + std::to_string(b) + ") does not define a valid interval");
-
-    Real integral = 0;
-    Real l, c, r, mid1, mid2, h;
-    c = (a + b) / 2;
-    l = (a + c) / 2;
-    r = (c + b) / 2;
-
-    std::queue<std::array<Real,5>> q; q.push({a,l,c,r,b});
-    std::queue<Real> tq; tq.push(tol);
-    while (not q.empty()) {
-        for (Real val : q.front()) {
-            if (fvals.count(val) == 0) fvals[val] = f(val);
-        }
-        auto& [a,l,c,r,b] = q.front();
-        q.pop();
-        tol = tq.front(); tq.pop();
-        
-        h = (b - a) / 2;
-        Real s1 = (1.0/3) * (fvals[a] + 4*fvals[c] + fvals[b]) * h;
-        Real s2 = (1.0/6) * (fvals[a] + 4*fvals[l] + 2*fvals[c] + 4*fvals[r] + fvals[b]) * h;
-        if (std::abs(s2 - s1) < 15*tol) integral += s2;
-        else {
-            mid1 = (a + l)/2; mid2 = (l + c)/2;
-            q.push({a,mid1,l,mid2,c});
-            tq.push(tol/2);
-
-            mid1 = (c + r)/2; mid2 = (r + b)/2;
-            q.push({c,mid1,r,mid2,b});
-            tq.push(tol/2);
-        }
-    }
-    return integral;
-}
-
-/* adaptive simpson's method, generally efficient.
  * --- f : function to integrate.
  * --- a,b : interval [a,b] to evaluate integral over.
  * --- tol : error tolerance, i.e. stopping criterion */
 template<typename Real, class Func>
-Real simpson_integral(const Func& f, Real a, Real b, Real tol=1e-6) {
-    std::unordered_map<Real, Real> fmap;
-    return simpson_integral(fmap, f, a, b, tol);
+Real simpson_integral(const Func& f, Real a, Real b, Real tol = 1e-6) {
+    if (tol <= 0) throw std::invalid_argument("simpson_integral() error: require tol (=" + std::to_string(tol) + ") > 0");
+    if (b <= a) throw std::invalid_argument("simpson_integral() error: (" + std::to_string(a) + ", " + std::to_string(b) + ") does not define a valid interval");
+
+    Real integral = 0;
+    Real m = (a + b) * 0.5f;
+    Real fa = f(a), fb = f(b), fm = f(m);
+    Real h = 0.5f * (b - a);
+    Real s = (1.0f/3) * h * (fa + 4*fm + fb);
+
+    std::queue<std::array<Real,8>> q; // a, c, b, fa, fc, fb, S, tol
+    q.push({a, m, b, fa, fm, fb, s, tol});
+    while (not q.empty()) {
+        auto& [a, m, b, fa, fm, fb, s, tol] = q.front();
+        q.pop();
+
+        Real h = (b - a) * 0.5f;
+        Real m1 = (a + m) * 0.5f, m2 = (m + b) * 0.5f;
+        Real f1 = f(m1), f2 = f(m2);
+        Real s1 = (1.0f/6) * h * (fa + 4*f1 + fm);
+        Real s2 = (1.0f/6) * h * (fm + 4*f2 + fb);
+
+        if (std::abs(s1 + s2 - s) < 15*tol)
+            integral += s1 + s2;
+        else {
+            q.push({a, m1, m, fa, f1, fm, s1, tol*0.5f});
+            q.push({m, m2, b, fm, f2, fb, s2, tol*0.5f});
+        }
+    }
+    
+    return integral;
 }
 
+// Gauss-Lobatto fixed quadrature of order 4
 template<typename Real, class Func>
 inline Real lobatto4(const Func& f, Real a, Real b) {
     static const Real lobatto_4pt_nodes[] = {-1, -0.447213595499958, 0.447213595499958, 1};
     static const Real lobatto_4pt_weights[] = {0.166666666666667, 0.833333333333333, 0.833333333333333, 0.166666666666667};
 
-    Real h = 0.5 * (b - a);
-    Real c = 0.5 * (b + a);
+    Real h = 0.5f * (b - a);
+    Real c = 0.5f * (b + a);
 
     Real S = 0;
     for (int i=0; i < 4; ++i) {
@@ -77,13 +65,14 @@ inline Real lobatto4(const Func& f, Real a, Real b) {
     return S*h;
 }
 
+// Gauss-Lobatto fixed quadrature of order 7
 template<typename Real, class Func>
 inline Real lobatto7(const Func& f, Real a, Real b) {
     static const Real lobatto_7pt_nodes[] = {-1, -0.468848793470714, -0.830223896278567, 0, 0.830223896278567, 0.468848793470714, 1};
     static const Real lobatto_7pt_weights[] = {0.047619047619048, 0.431745381209863, 0.276826047361566, 0.487619047619048, 0.276826047361566, 0.431745381209863, 0.047619047619048};
-    
-    Real h = 0.5 * (b - a);
-    Real c = 0.5 * (b + a);
+
+    Real h = 0.5f * (b - a);
+    Real c = 0.5f * (b + a);
 
     Real S = 0;
     for (int i=0; i < 7; ++i) {
@@ -113,9 +102,9 @@ Real lobatto_integral(const Func& f, Real a, Real b, Real tol=1e-6) {
         Real sum7 = lobatto7(f, a, b);
         if (std::abs(sum4 - sum7) < tol) integral += sum7;
         else {
-            double mid = 0.5*(a+b);
-            q.push({a, mid, tol*0.5});
-            q.push({mid, b, tol*0.5});
+            Real mid = 0.5f*(a+b);
+            q.push({a, mid, tol*0.5f});
+            q.push({mid, b, tol*0.5f});
         }
     }
     return integral;

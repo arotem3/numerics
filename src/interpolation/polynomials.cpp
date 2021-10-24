@@ -25,78 +25,123 @@ void numerics::Polynomial::_set_degree() {
     _deg = _p.n_elem - 1;
 }
 
-numerics::Polynomial::Polynomial(double s) : coefficients(_p), degree(_deg) {
+numerics::Polynomial::Polynomial(Polynomial&& P) : a(_a), b(_b), degree(_deg), coefficients(_p) {
+    _p = std::move(P._p);
+    _deg = std::move(P._deg);
+    _a = std::move(P._a);
+    _b = std::move(P._b);
+}
+
+numerics::Polynomial::Polynomial(double s) : a(_a), b(_b), coefficients(_p), degree(_deg) {
     _p = {s};
+    _a = -1;
+    _b = 1;
     _set_degree();
 }
 
-numerics::Polynomial::Polynomial(const Polynomial& P) : coefficients(_p), degree(_deg) {
+numerics::Polynomial::Polynomial(const Polynomial& P) : a(_a), b(_b), coefficients(_p), degree(_deg) {
     _p = P._p;
+    _a = P._a;
+    _b = P._b;
     _set_degree();
 }
 
 void numerics::Polynomial::operator=(const Polynomial& P) {
     _p = P._p;
+    _a = P._a;
+    _b = P._b;
     _set_degree();
 }
 
-numerics::Polynomial::Polynomial(const arma::vec& p) : coefficients(_p), degree(_deg) {
+numerics::Polynomial::Polynomial(const arma::mat& p, double aa, double bb) : a(_a), b(_b), coefficients(_p), degree(_deg) {
     _p = p;
+    _a = aa;
+    _b = bb;
     _set_degree();
 }
 
-numerics::Polynomial::Polynomial(arma::vec&& p) : coefficients(_p), degree(_deg) {
+numerics::Polynomial::Polynomial(arma::mat&& p, double aa, double bb) : a(_a), b(_b), coefficients(_p), degree(_deg) {
     _p = p;
+    _a = aa;
+    _b = bb;
     _set_degree();
 }
 
-numerics::Polynomial::Polynomial(const arma::vec& x, const arma::vec& y, u_int deg) : coefficients(_p), degree(_deg) {
-    _p = arma::polyfit(x, y, deg);
+numerics::Polynomial::Polynomial(const arma::vec& x, const arma::mat& y, u_int deg) : a(_a), b(_b), coefficients(_p), degree(_deg) {
+    _p.set_size(deg+1, y.n_cols);
+    _a = x.min();
+    _b = x.max();
+    arma::vec xx = 2*(x - _a)/(_b - _a) - 1;
+    for (u_long i=0; i < y.n_cols; ++i) _p.col(i) = arma::polyfit(xx, y.col(i), deg);
     _set_degree();
 }
 
-numerics::Polynomial::Polynomial(const arma::vec& x, const arma::vec& y) : coefficients(_p), degree(_deg) {
+numerics::Polynomial::Polynomial(const arma::vec& x, const arma::mat& y) : a(_a), b(_b), coefficients(_p), degree(_deg) {
     u_int n = x.n_elem;
-    _p = arma::polyfit(x, y, n-1);
+    _p.set_size(n, y.n_cols);
+    _a = x.min();
+    _b = x.max();
+    arma::vec xx = 2*(x - _a)/(_b - _a) - 1;
+    for (u_long i=0; i < y.n_cols; ++i) _p.col(i) = arma::polyfit(xx, y.col(i), n-1);
     _set_degree();
 }
 
-double numerics::Polynomial::operator()(double x) const {
-    arma::vec t = {x};
-    t = polyval(_p, t);
-    return t(0);
+arma::mat numerics::Polynomial::operator()(const arma::vec& x) const {
+    arma::mat out(x.n_elem, _p.n_cols);
+    arma::vec xx = 2*(x - _a)/(_b - _a) - 1;
+    for (u_long i=0; i < _p.n_cols; ++i) out.col(i) = arma::polyval(_p.col(i), xx);
+    return out;
 }
 
-arma::vec numerics::Polynomial::operator()(const arma::vec& x) const {
-    return arma::polyval(_p, x);
+numerics::Polynomial numerics::Polynomial::transform(double aa, double bb) const {
+    double c = (bb - aa) / (_b - _a);
+    double d = aa - c*_a;
+    
+    arma::mat T = arma::zeros(degree + 1, degree + 1);
+    for (u_long i=0; i < degree+1; ++i) {
+        for (u_long j=i; j < degree+1; ++j) {
+            double jchoosei = (i < j-i) ? (i * std::beta(i, j-i+1)) : ((j-i)*std::beta(i+1, j-i));
+            jchoosei = 1 / jchoosei;
+            T(i, j) = jchoosei * std::pow(c, i) * std::pow(d, j-i);
+        }
+    }
+
+    arma::mat pp = arma::reverse(T * arma::reverse(_p));
+    return Polynomial(std::move(pp), aa, bb);
 }
 
 numerics::Polynomial numerics::Polynomial::derivative(u_int k) const {
-    // Polynomial P(polyder(_p,k));
-    return Polynomial(polyder(_p,k));
+    arma::mat dp(_p.n_rows-k, _p.n_cols);
+    for (u_long i=0; i < _p.n_cols; ++i) dp.col(i) = polyder(_p, k) * 2 / (_b - _a);
+    return Polynomial(std::move(dp), _a, _b);
 }
 
-numerics::Polynomial numerics::Polynomial::integral(double c) const {
-    // Polynomial P(polyint(_p, c));
-    return Polynomial(polyint(_p,c));
+numerics::Polynomial numerics::Polynomial::integral() const {
+    arma::mat ip(_p.n_rows+1, _p.n_cols);
+    for (u_long i=0; i < _p.n_cols; ++i) ip.col(i) = polyint(_p.col(i))*(_b - _a) / 2;
+    return Polynomial(std::move(ip), _a, _b);
 }
 
 numerics::Polynomial numerics::Polynomial::operator+(const Polynomial& P) const {
-    u_long k = std::max(P.degree, degree) + 1;
-    arma::vec pplus = arma::zeros(k);
-    pplus.tail(degree+1) += _p;
-    pplus.tail(P.degree+1) += P._p;
-    return Polynomial(std::move(pplus));
+    if (P.coefficients.n_cols != _p.n_cols) {
+        throw std::runtime_error("Polynomial addition error: vector polynomials must have the same number of components");
+    }
+    Polynomial PP = P.transform(_a, _b);
+    u_long k = std::max(PP.degree, degree) + 1;
+    arma::mat pplus = arma::zeros(k, _p.n_cols);
+    pplus.tail_rows(degree+1) += _p;
+    pplus.tail_rows(PP.degree+1) += PP._p;
+    return Polynomial(std::move(pplus), _a, _b);
 }
 
 numerics::Polynomial numerics::Polynomial::operator+(double c) const {
-    Polynomial pplus(_p);
-    pplus._p.tail(1) += c;
+    Polynomial pplus(_p, _a, _b);
+    pplus._p.tail_rows(1) += c;
     return pplus;
 }
 
 numerics::Polynomial numerics::Polynomial::operator-() const {
-    return Polynomial(-_p);
+    return Polynomial(-_p, _a, _b);
 }
 
 numerics::Polynomial numerics::Polynomial::operator-(const Polynomial& P) const {
@@ -110,22 +155,28 @@ numerics::Polynomial numerics::Polynomial::operator-(double c) const {
 }
 
 numerics::Polynomial numerics::Polynomial::operator*(const Polynomial& P) const {
-    return Polynomial(arma::conv(_p, P._p, "full"));
+    if (P.coefficients.n_cols != _p.n_cols) {
+        throw std::runtime_error("Polynomial multiplication error: vector polynomials must have the same number of components");
+    }
+    Polynomial PP = P.transform(_a, _b);
+    arma::mat pprod(_p.n_rows + PP._p.n_rows, _p.n_cols);
+    for (u_long i=0; i < _p.n_cols; ++i) pprod.col(i) = arma::conv(_p, PP._p, "full");
+    return Polynomial(std::move(pprod), _a, _b);
 }
 
 numerics::Polynomial numerics::Polynomial::operator*(double c) const {
-    return Polynomial(_p*c);
+    return Polynomial(_p*c, _a, _b);
 }
 
 numerics::Polynomial& numerics::Polynomial::operator+=(const Polynomial& P) {
-    Polynomial pplus = (*this) + P;
+    Polynomial pplus = (*this) + P.transform(_a, _b);
     _p = std::move(pplus._p);
     _set_degree();
     return *this;
 }
 
 numerics::Polynomial& numerics::Polynomial::operator+=(double c) {
-    _p.tail(1) += c;
+    _p.tail_rows(1) += c;
     return *this;
 }
 
@@ -140,7 +191,7 @@ numerics::Polynomial& numerics::Polynomial::operator-=(double c) {
 }
 
 numerics::Polynomial& numerics::Polynomial::operator*=(const Polynomial& P) {
-    _p = arma::conv(_p,P._p, "full");
+    _p = arma::conv(_p, P.transform(_a, _b)._p, "full");
     _set_degree();
     return *this;
 }
@@ -152,121 +203,31 @@ numerics::Polynomial& numerics::Polynomial::operator*=(double c) {
 
 std::ostream& numerics::operator<<(std::ostream& out, const numerics::Polynomial& p) {
     for (int i=0; i < p.degree+1; ++i) {
-        out << p.coefficients(i);
-        if (i < p.degree) out << " * x";
+        out << p.coefficients.row(i);
+        if (i < p.degree) out << " * (" << 2/(p.b-p.a) << " * x + " << 1 - p.a / (p.b - p.a) << ")";
         if (i < p.degree-1) out << "^" << p.degree-i;
         if (i < p.degree) out << " + ";
     }
     return out;
 }
 
-void numerics::PieceWisePoly::_check_xy(const arma::vec& x, const arma::vec& y) {
-    if (x.n_elem != y.n_elem) {
-        throw std::invalid_argument("dimension mismatch, x.n_elem (=" + std::to_string(x.n_elem) + ") != y.n_rows (=" + std::to_string(y.n_elem) + ")");
-    }
-}
-
-void numerics::PieceWisePoly::_check_x(const arma::vec& x) { // verify no reps in sorted array
-    for (u_long i=0; i < x.n_elem-1; ++i) {
-        if (x(i) == x(i+1)) {
-            throw std::runtime_error("one or more x values are repeting, therefore no cubic interpolation exists for this data");
-        }
-    }
-    _lb = x.front(); _lb -= 1e-8*std::abs(_lb);
-    _ub = x.back(); _ub += 1e-8*std::abs(_ub);
-}
-
-double numerics::PieceWisePoly::_periodic(double t) const {
-    if (t == _ub) return _ub;
-    else {
-        double q = (t - _lb)/(_ub - _lb);
-        q = q - std::floor(q);
-        q = (_ub - _lb) * q + _lb;
-        return q;
-    }
-}
-
-double numerics::PieceWisePoly::_flat_past_boundary(double t) const {
-    if (t <= _lb) return _lb;
-    else if (t >= _ub) return _ub;
-    else return t;
-}
-
-numerics::PieceWisePoly::PieceWisePoly(const std::string& extrapolation, double val) {
-    if (extrapolation == "const") {
-        _extrap = 0;
-        _extrap_val = val;
-    }
-    else if (extrapolation == "boundary") _extrap = 1;
-    else if (extrapolation == "linear") _extrap = 2;
-    else if (extrapolation == "periodic") _extrap = 3;
-    else if (extrapolation == "polynomial") _extrap = 4;
-    else throw std::invalid_argument("extrapolation type (=\"" + extrapolation + "\") must be one of {\"const\",\"linear\",\"periodic\",\"polynomial\"}.");
-}
-
-double numerics::PieceWisePoly::operator()(double t) const {
-    if (_extrap == 3) t = _periodic(t); // periodic evaluation
-    
-    double out=0;
-    if ((_lb <= t) and (t <= _ub)) {
-        for (u_int i=1; i < _x.n_elem; ++i) {
-            if ((_x(i-1) <= t) and (t <= _x(i))) out = _P.at(i-1)(t);
-        }
-    } else if (_extrap == 0) out = _extrap_val; // constant extrapolation set to value
-    else if (_extrap == 1) {
-        if (t < _lb) out = _P.front()(_lb);
-        else out = _P.back()(_ub);
-    } else if (_extrap == 2) { // linear extrapolation
-        if (t < _lb) {
-            double p0 = _P.front()(_lb);
-            Polynomial dp = _P.front().derivative();
-            double p1 = dp(_lb);
-            out = p0 + p1*(t - _lb);
-        } else {
-            double p0 = _P.back()(_ub);
-            Polynomial dp = _P.back().derivative();
-            double p1 = dp(_ub);
-            out = p0 + p1*(t - _ub);
-        }
-    } else { // polynomial extrapolation
-        if (t < _lb) out = _P.front()(t);
-        else out = _P.back()(t);
-    }
-    return out;
-}
-
-arma::vec numerics::PieceWisePoly::operator()(const arma::vec& t) const {
-    arma::vec yh = arma::vec(t.n_elem);
-    for (u_long i=0; i < t.n_elem; ++i) {
-        yh(i) = (*this)(t(i));
-    }
-    return yh;
-}
-
 numerics::PieceWisePoly numerics::PieceWisePoly::derivative(int k) const {
-    PieceWisePoly out = *this;
-    for (u_long i=0; i < _P.size(); ++i) {
-        out._P.at(i) = out._P.at(i).derivative();
+    PieceWisePoly out(_extrapolation_type(_extrap), _extrap_val, _dim);
+    for (const auto& el : _pieces) {
+        out.push(el.second.derivative());
     }
     return out;
 }
 
-std::string _extrapolation_type(short _extrap) {
-    if (_extrap == 0) return "const";
-    else if (_extrap == 1) return "boundary";
-    else if (_extrap == 2) return "linear";
-    else if (_extrap == 3) return "periodic";
-    else return "polynomial";
-}
-
-numerics::PieceWisePoly numerics::PieceWisePoly::integral(double c) const {
-    PieceWisePoly out(*this);
-    double C = c;
-    for (u_long i=0; i < out._P.size(); ++i) {
-        Polynomial poly = out._P.at(i).integral();
-        poly += (C - poly(_x.at(i))); // integrate, subtract value at lower bound of interval, add back C
-        C = poly(_x.at(i+1)); // set C to value fo poly at upper bound as this will be the C for the next piece
-        out._P.at(i) = std::move(poly);
+numerics::PieceWisePoly numerics::PieceWisePoly::integral() const {
+    PieceWisePoly out(_extrapolation_type(_extrap), _extrap_val, _dim);
+    arma::rowvec C = arma::zeros(out._dim);
+    for (const auto& el : _pieces) {
+        Polynomial poly = el.second.integral();
+        C -= poly(arma::vec({poly.a}));
+        poly += C;
+        C = poly(arma::vec({poly.b}));
+        out.push(std::move(poly));
     }
     return out;
 }

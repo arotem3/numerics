@@ -11,7 +11,7 @@ arma::vec numerics::directional_grad(const std::function<arma::vec(const arma::v
 
     arma::vec Jv;
 
-    double C = h / arma::norm(v);
+    double C = h / std::max(1.0, arma::norm(v));
     if (npt == 1) Jv = (f(x+C*v) - f(x)) / C;
     else if (npt == 2) Jv = (f(x+C*v) - f(x-C*v)) / (2*C);
     else if (npt == 4) Jv = (f(x - 2*C*v) - 8*f(x - C*v) + 8*f(x + C*v) - f(x + 2*C*v)) / (12*C);
