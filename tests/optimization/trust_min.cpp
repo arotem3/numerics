@@ -3,12 +3,12 @@
 #include <cmath>
 #include <armadillo>
 #include <valarray>
-#include "numerics/optimization/newton_min.hpp"
+#include "numerics/optimization/trust_min.hpp"
 
-using numerics::optimization::newton_min;
+using numerics::optimization::trust_min;
 using numerics::optimization::OptimizationOptions;
 
-// this test verifies newton_min() by attempting to minimize a non-convex
+// this test verifies trust_min() by attempting to minimize a non-convex
 // function which has one global min, and one local max. We verify that the
 // minimization is performed correctly by starting near the local maximum.
 
@@ -77,15 +77,16 @@ int main()
     int n_failed = 0;
 
     { // test 1: arma, double, no hess
-        arma::vec x = {-0.9,-1.1};
+        arma::vec x =  {-0.9,-1.1};
+        double rel = arma::norm(df(x));
         OptimizationOptions<double> opts;
-        newton_min(x, f<arma::vec>, df<arma::vec>, opts);
+        trust_min(x, f<arma::vec>, df<arma::vec>, opts);
 
-        bool first_order = arma::norm(df(x)) < opts.ftol; // check gradient = 0
+        bool first_order = arma::norm(df(x)) < rel * opts.ftol; // check gradient = 0
         bool second_order = arma::all(arma::eig_sym(H(x)) > 0); // check hessian > 0
 
         if (not first_order and not second_order) {
-            std::cout << "newton_min() failed armadillo double precision hessian free test\n";
+            std::cout << "trust_min() failed armadillo double precision hessian free test\n";
             ++n_failed;
         }
         else
@@ -94,14 +95,15 @@ int main()
 
     { // test 2: arma, single, no hess
         arma::fvec x =  {-0.9f,-1.1f};
+        float rel = arma::norm(df(x));
         OptimizationOptions<float> opts;
-        newton_min(x, f<arma::fvec>, df<arma::fvec>, opts);
+        trust_min(x, f<arma::fvec>, df<arma::fvec>, opts);
 
-        bool first_order = arma::norm(df(x)) < opts.ftol;
+        bool first_order = arma::norm(df(x)) < rel * opts.ftol;
         bool second_order = arma::all(arma::eig_sym(H(x)) > 0);
 
         if (not (first_order and second_order)) {
-            std::cout << "newton_min() failed armadillo single precision hessian free test\n";
+            std::cout << "trust_min() failed armadillo single precision hessian free test\n";
             ++n_failed;
         }
         else
@@ -110,14 +112,15 @@ int main()
 
     { // test 3: arma, double, hess
         arma::vec x =  {-0.9,-1.1};
+        double rel = arma::norm(df(x));
         OptimizationOptions<double> opts;
-        newton_min(x, f<arma::vec>, df<arma::vec>, H<double>, opts);
+        trust_min(x, f<arma::vec>, df<arma::vec>, H<double>, opts);
 
-        bool first_order = arma::norm(df(x)) < opts.ftol;
+        bool first_order = arma::norm(df(x)) < rel * opts.ftol;
         bool second_order = arma::all(arma::eig_sym(H(x)) > 0);
 
         if (not (first_order and second_order)) {
-            std::cout << "newton_min() failed armadillo double precision w/ hessian test\n";
+            std::cout << "trust_min() failed armadillo double precision w/ hessian test\n";
             ++n_failed;
         }
         else
@@ -126,14 +129,15 @@ int main()
 
     { // test 4: arma, float, hess
         arma::fvec x =  {-0.9f,-1.1f};
+        float rel = arma::norm(df(x));
         OptimizationOptions<float> opts;
-        newton_min(x, f<arma::fvec>, df<arma::fvec>, H<float>, opts);
+        trust_min(x, f<arma::fvec>, df<arma::fvec>, H<float>, opts);
 
-        bool first_order = arma::norm(df(x)) < opts.ftol;
+        bool first_order = arma::norm(df(x)) < rel * opts.ftol;
         bool second_order = arma::all(arma::eig_sym(H(x)) > 0);
 
         if (not (first_order and second_order)) {
-            std::cout << "newton_min() failed armadillo single precision w/ hessian test\n";
+            std::cout << "trust_min() failed armadillo single precision w/ hessian test\n";
             ++n_failed;
         }
         else
@@ -142,16 +146,17 @@ int main()
 
     { // test 5: valarray, double
         std::valarray<double> x =  {-0.9,-1.1};
+        double rel = std::sqrt( (df(x)*df(x)).sum() );
         OptimizationOptions<double> opts;
-        newton_min(x, f<std::valarray<double>>, df<std::valarray<double>>, opts);
+        trust_min(x, f<std::valarray<double>>, df<std::valarray<double>>, opts);
 
         arma::vec z(2); z[0] = x[0]; z[1] = x[1];
 
-        bool first_order = arma::norm(df(z)) < opts.ftol; // check gradient = 0
+        bool first_order = arma::norm(df(z)) < rel * opts.ftol; // check gradient = 0
         bool second_order = arma::all(arma::eig_sym(H(z)) > 0); // check hessian > 0
 
         if (not (first_order and second_order)) {
-            std::cout << "newton_min() failed valarray double precision hessian free test\n";
+            std::cout << "trust_min() failed valarray double precision hessian free test\n";
             ++n_failed;
         }
         else
@@ -174,16 +179,17 @@ int main()
 
         Grad g;
         std::valarray<float> x =  {-0.9f,-1.1f};
+        float rel = std::sqrt( (df(x)*df(x)).sum() );
         OptimizationOptions<float> opts;
-        newton_min(x, f<std::valarray<float>>, std::ref(g), opts);
+        trust_min(x, f<std::valarray<float>>, std::ref(g), opts);
 
         arma::vec z(2); z[0] = x[0]; z[1] = x[1];
 
-        bool first_order = arma::norm(df(z)) < opts.ftol; // check gradient = 0
+        bool first_order = arma::norm(df(z)) < rel * opts.ftol; // check gradient = 0
         bool second_order = arma::all(arma::eig_sym(H(z)) > 0); // check hessian > 0
 
         if (not (first_order and second_order and (g.n_evals > 0))) {
-            std::cout << "newton_min() failed valarray float precision hessian free test\n";
+            std::cout << "trust_min() failed valarray float precision hessian free test\n";
             ++n_failed;
         }
         else
@@ -228,14 +234,15 @@ int main()
         };
     
         arma::vec x = 0.5*arma::ones(n); // this produces a negative definite hessian
+        double rel = arma::norm(grad(x));
         OptimizationOptions<double> opts;
-        newton_min(x, fun, grad, hess, opts);
+        auto result = trust_min(x, fun, grad, hess, opts);
 
-        bool first_order = arma::norm(grad(x)) < opts.ftol;
+        bool first_order = arma::norm(grad(x)) < rel * opts.ftol;
         bool second_order = arma::all(arma::eig_sym(arma::mat(hess(x))) > 0);
 
         if (not (first_order and second_order)) {
-            std::cout << "newton_min() failed armadillo double precision w/ sparse hessian test\n";
+            std::cout << "trust_min() failed armadillo double precision w/ sparse hessian test\n";
             ++n_failed;
         }
         else
@@ -279,13 +286,14 @@ int main()
         };
 
         arma::fvec x = 0.5f*arma::ones<arma::fvec>(n);
+        float rel = arma::norm(grad(x));
         OptimizationOptions<float> opts;
-        newton_min(x, fun, grad, hess, opts);
+        trust_min(x, fun, grad, hess, opts);
 
-        bool first_order = arma::norm(grad(x)) < opts.ftol;
+        bool first_order = arma::norm(grad(x)) < rel * opts.ftol;
 
         if (not first_order) {
-            std::cout << "newton_min() failed armadillo single precision w/ hessian operator test\n";
+            std::cout << "trust_min() failed armadillo single precision w/ hessian operator test\n";
             ++n_failed;
         }
         else

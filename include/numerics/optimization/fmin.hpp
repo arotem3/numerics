@@ -101,7 +101,7 @@ real fminsearch(Func f, real x0, real alpha, real tol=1e-4) {
     fx[0]=f(x[0]);
     fx[1]=f(x[1]);
 
-    while (std::abs(x[1] - x[0]) > 2*tol) {
+    while (std::abs(x[1] - x[0]) > 2*tol*std::max<real>({1,x[0],x[1]})) {
         best = (fx[0] < fx[1]) ? (0) : (1);
         worst = not best;
         // attempt reflection step

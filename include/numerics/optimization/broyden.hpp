@@ -29,19 +29,20 @@ public:
     void set_jacobian(arma::Mat<real>&& jac)
     {
         J = std::move(jac);
-        bad_jacobian = !arma::pinv(J, J);
+        bad_jacobian = !arma::inv(J, J); // attempt inverse
+        if (bad_jacobian) // if singular attempt pseudo-inverse
+            bad_jacobian = !arma::pinv(J, J);
     }
 
     template <class Func, class Jac, typename = typename std::enable_if<std::is_invocable<Jac,arma::Col<real>>::value>::type>
     bool operator()(arma::Col<real>& dx, arma::Col<real>& x, arma::Col<real>& F, Func f, Jac jacobian, const OptimizationOptions<real>& opts)
-    {
+    {   
         if (bad_jacobian)
             return false;
         
         dx = -(J*F);
         if (dx.has_nan()) {
-            J = jacobian(x);
-            bad_jacobian = !arma::pinv(J,J);
+            set_jacobian( jacobian(x) );
             if (bad_jacobian)
                 return false;
             

@@ -9,6 +9,7 @@
 #include <complex>
 #include <algorithm>
 #include <string>
+#include <concepts>
 #include <stdexcept>
 
 namespace numerics
@@ -19,7 +20,7 @@ namespace numerics
  * --- h : finite difference step size. method is O(h^npt)
  * --- catch_zero : rounds near zero elements to zero.
  * --- npt : number of points to use in FD, npt = 1 uses f(x) and f(x+h), npt=2,4 do not use f(x) but instead use points f(x +/- h), f(x +/- 2h). Since npt=2 and npt=1 require the same number of f evals, npt 2 is used for its better accuracy. */
-template<class Vec, class Func, typename Real = typename Vec::value_type>
+template<class Vec, std::invocable<Vec> Func, typename Real = typename Vec::value_type>
 Vec jacobian_diag(Func f, const Vec& x, Real h = 100*std::sqrt(std::numeric_limits<Real>::epsilon()), short npt=1)
 {
     u_long m = x.size();
@@ -38,21 +39,43 @@ Vec jacobian_diag(Func f, const Vec& x, Real h = 100*std::sqrt(std::numeric_limi
     return J;
 }
 
+template <class vec, std::invocable<vec> Func, typename real = typename vec::value_type>
+vec hessian_diag(Func f, const vec& x, real h = 100 * std::cbrt(std::numeric_limits<real>::epsilon()))
+{
+    u_long m = x.size();
+    vec B(m);
+    vec y = x;
+    real f0 = f(x);
+    for (u_long i=0; i < m; ++i)
+    {
+        B[i] = -2*f0;
+        real C = h * std::max<real>(std::abs(x[i]), 1);
+        y[i] -= C;
+        B[i] += f(y);
+        y[i] = x[i] + C;
+        B[i] += f(y);
+        B[i] /= C*C; // (f(x-h) - 2*f(x) + f(x+h))/h^2
+        y[i] = x[i];
+    }
+
+    return B;
+}
+
 /* grad(f, x, h, catch_zero, npt) : computes the gradient of a function of multiple variables.
  * --- f  : f(x) whose gradient to approximate.
  * --- x  : vector to evaluate gradient at.
  * --- h  : finite difference step size. method is O(h^npt).
  * --- catch_zero: rounds near zero elements to zero.
  * --- npt : number of points to use in FD, npt = 1 uses f(x) and f(x+h), npt=2,4 do not use f(x) but instead use points f(x +/- h), f(x +/- 2h). npt=1 is the default since it uses n+1 calls to f; npt=2 uses 2*n calls to f, and npt=4 uses 4*n calls to f. */
-template<class Vec, class Func, typename Real = typename Vec::value_type>
+template<class Vec, std::invocable<Vec> Func, typename Real = typename Vec::value_type>
 Vec grad(Func f, const Vec& x, Real h=100*std::sqrt(std::numeric_limits<Real>::epsilon()), short npt=1)
 {
-    uint n = x.size();
+    u_long n = x.size();
     Vec g(n);
     if (npt == 1) { // specialize this instance to minimize repeated calculations.
         std::fill(g.begin(), g.end(), -f(x));
         Vec y = x;
-        for (uint i=0; i < n; ++i) {
+        for (u_long i=0; i < n; ++i) {
             Real e = h*std::max<Real>(std::abs(y[i]), 1.0f);
             y[i] += e;
             g[i] += f(y);
@@ -61,7 +84,7 @@ Vec grad(Func f, const Vec& x, Real h=100*std::sqrt(std::numeric_limits<Real>::e
         }
     } else {
         Vec y = x;
-        for (uint i=0; i < n; ++i) {
+        for (u_long i=0; i < n; ++i) {
             auto ff = [&f,&x,&y,i](Real t) -> Real
             {
                 y[i] = t;
@@ -82,7 +105,7 @@ Vec grad(Func f, const Vec& x, Real h=100*std::sqrt(std::numeric_limits<Real>::e
  * --- h  : finite difference step size; method is O(h^npt).
  * --- abstol: round anyvalue less than abstol to zero.
  * --- npt : number of points to use in FD, npt = 1 uses f(x) and f(x+h), npt=2,4 do not use f(x) but instead use points f(x +/- h), f(x +/- 2h). Since npt=2 and npt=1 require the same number of f evals, npt 2 is used for its better accuracy. */
-template<typename Real, typename Func>
+template<typename Real, std::invocable<Real> Func>
 inline Real deriv(Func f, const Real& x, Real h=100*std::sqrt(std::numeric_limits<Real>::epsilon()), short npt=2) {
     Real df;
     Real e = h*std::max<Real>(std::abs(x), 1.0f);
@@ -123,7 +146,7 @@ namespace __directional_grad
  * --- v  : direction of derivative
  * --- abstol : rounds near zero elements to zero if less than abstol.
  * --- npt : number of points to use in FD. */
-template<class Vec, class Func, typename Real = typename Vec::value_type>
+template<class Vec, std::invocable<Vec> Func, typename Real = typename Vec::value_type>
 Vec directional_grad(Func f, const Vec& x, const Vec& v, Real h=100*std::sqrt(std::numeric_limits<Real>::epsilon()), short npt=2) {
     if (x.size() != v.size()) {
         throw std::invalid_argument(
@@ -135,7 +158,7 @@ Vec directional_grad(Func f, const Vec& x, const Vec& v, Real h=100*std::sqrt(st
 
     Vec Jv(x.size());
 
-    const Real C = h / std::max(Real(1.0f), __directional_grad::norm_impl(x));
+    const Real C = h * std::max(Real(1.0f), __directional_grad::norm_impl(x)) / std::max<Real>(1, __directional_grad::norm_impl(v));
 
     if (npt == 1)
         Jv = (f(x + C*v) - f(x)) / C;
@@ -156,16 +179,16 @@ Vec directional_grad(Func f, const Vec& x, const Vec& v, Real h=100*std::sqrt(st
  * --- h : finite difference step size. method is O(h^npt)
  * --- catch_zero: rounds near zero elements to zero.
  * --- npt : number of number of points to use in FD, npt = 1 uses f(x) and f(x+h), npt=2,4 do not use f(x) but instead use points f(x +/- h), f(x +/- 2h). npt=1 is the default since it uses n+1 calls to f; npt=2 uses 2*n calls to f, and npt=4 uses 4*n calls to f. */
-template<typename Real, class Func>
+template<typename Real, std::invocable<arma::Col<Real>> Func>
 arma::Mat<Real> jacobian(Func f, const arma::Col<Real>& x, Real h=100*std::sqrt(std::numeric_limits<Real>::epsilon()), short npt=1) {
-    uint n = x.size(); // num variables -> num cols
+    u_long n = x.size(); // num variables -> num cols
     if (n < 1) throw std::invalid_argument("approx_jacobian() error: when computing the jacobian, require x.size() (=" + std::to_string(n) + ") >= 1.");
 
     arma::Mat<Real> J;
     if (npt == 1) {
         J = arma::repmat(-f(x), 1, n);
         arma::Col<Real> y = x;
-        for (uint i=0; i < n; ++i) {
+        for (u_long i=0; i < n; ++i) {
             Real e = h * std::max(std::abs(y[i]), Real(1.0f));
             y[i] += e;
             J.col(i) += f(y);
@@ -175,7 +198,7 @@ arma::Mat<Real> jacobian(Func f, const arma::Col<Real>& x, Real h=100*std::sqrt(
     }
     else if (npt == 2) {
         arma::Col<Real> y = x;
-        for (uint i=0; i < n; ++i) {
+        for (u_long i=0; i < n; ++i) {
             Real e = h * std::max(std::abs(y[i]), Real(1.0f));
             y[i] += e;
             arma::Col<Real> df = f(y);
@@ -190,7 +213,7 @@ arma::Mat<Real> jacobian(Func f, const arma::Col<Real>& x, Real h=100*std::sqrt(
     }
     else if (npt == 4) {
         arma::Col<Real> y = x;
-        for (uint i=0; i < x.n_elem; ++i) {
+        for (u_long i=0; i < x.n_elem; ++i) {
             Real e = h * std::max(std::abs(y[i]), Real(1.0f));
             y[i] = x[i] + 2*e;
             arma::Col<Real> df = -f(y);
@@ -215,8 +238,8 @@ arma::Mat<Real> jacobian(Func f, const arma::Col<Real>& x, Real h=100*std::sqrt(
 }
 
 #ifdef NUMERICS_INTERPOLATION_COLLOCPOLY_HPP
-template <typename Real, class Func>
-ChebInterp<Real> spectral_deriv(Func f, Real a, Real b, uint sample_points = 32) {
+template <typename Real, std::invocable<Real> Func>
+ChebInterp<Real> spectral_deriv(Func f, Real a, Real b, u_long sample_points = 32) {
     std::complex<Real> i(0,1); // i^2 = -1
     u_long N = sample_points - 1;
 

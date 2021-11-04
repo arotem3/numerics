@@ -5,6 +5,7 @@
 #include <sstream>
 #include <string>
 #include <type_traits>
+#include <concepts>
 #include <functional>
 
 #if defined(ARMA_INCLUDES) && !defined(NUMERICS_WITH_ARMA)
@@ -80,19 +81,19 @@ namespace __optim_base
 {    
     #ifdef NUMERICS_WITH_ARMA
     template <typename real>
-    real dot_impl(const arma::Mat<real>& x, const arma::Mat<real>& y)
+    inline real dot_impl(const arma::Mat<real>& x, const arma::Mat<real>& y)
     {
         return arma::dot(x, y);
     }
 
     template <typename real>
-    real norm_impl(const arma::Mat<real>& x)
+    inline real norm_impl(const arma::Mat<real>& x)
     {
         return arma::norm(x);
     }
     #endif
 
-    template <class real, typename = typename std::enable_if<std::is_arithmetic<real>::value, real>::type>
+    template <typename real, typename = typename std::enable_if<std::is_arithmetic<real>::value, real>::type>
     real dot_impl(const real& x, const real& y)
     {
         return x*y;
@@ -125,8 +126,14 @@ namespace __optim_base
     {
         return arma::spsolve(x, A, b);
     }
-
     #endif
+
+    template <class vec, std::invocable<vec> Func, typename real = typename vec::value_type>
+    inline vec jac_product(const vec& x, const vec& v, const vec& F, Func f)
+    {
+        real C = 10 * std::sqrt(std::numeric_limits<real>::epsilon()) * std::max<real>(1, norm_impl(x)) / std::max<real>(1, norm_impl(v));
+        return (f(static_cast<vec>(x + C*v)) - F) / C;
+    }
 
     template <class Step, class vec, typename real, class Func, class Jac>
     inline bool step_impl(Step& step, vec& dx, vec& x, vec& F, Func f, Jac jacobian, const OptimizationOptions<real>& opts)
@@ -157,19 +164,18 @@ namespace __optim_base
     {
         VerboseTracker verbose(opts.max_iter);
         if (opts.verbose)
-            verbose.header("max|f|");
+            verbose.header("norm(f)");
 
         vec F = f(x);
         vec dx = 0*x;
-        real f0, f1 = norm_impl(F);
+        real f0 = norm_impl(F);
+        real ftol = std::max<real>(1,f0) * opts.ftol;
         real xtol = opts.xtol * std::max<real>(norm_impl(x), 1.0f);
 
         u_long n_iter = 0;
         ExitFlag flag = NONE;
         while (true)
         {
-            f0 = f1;
-
             bool successful_step = step_impl(step, dx, x, F, std::forward<Func>(f), std::forward<Jac>(jacobian), opts);
 
             if (not successful_step)
@@ -180,16 +186,15 @@ namespace __optim_base
                 break;
             }
 
-            real f1 = norm_impl(F);
-            real df = std::abs(f1 - f0);
+            f0 = norm_impl(F);
 
             x += dx;
             ++n_iter;
 
             if (opts.verbose)
-                verbose.iter(n_iter, f1);
+                verbose.iter(n_iter, f0);
 
-            if (df < opts.ftol)
+            if (f0 < ftol)
             {
                 flag = CONVERGED;
                 if (opts.verbose)
@@ -228,7 +233,9 @@ namespace __optim_base
         if (opts.verbose)
             T.header("f");
         
-        vec dx = 0*x, g;
+        vec dx = 0*x, g = -df(x);
+
+        real gtol = norm_impl(g) * opts.ftol;
 
         u_long n_iter = 0;
         ExitFlag flag = NONE;
@@ -250,7 +257,7 @@ namespace __optim_base
             if (opts.verbose)
                 T.iter(n_iter, f(x));
 
-            if (norm_impl(g) < opts.ftol)
+            if (norm_impl(g) < gtol)
             {
                 flag = CONVERGED;
                 if (opts.verbose)

@@ -6,25 +6,29 @@
 #include <utility>
 #include <random>
 #include <chrono>
+#include <exception>
+
+namespace numerics {
 
 inline int mod(int a, int b) {
     return (a%b + b)%b;
 }
 
-template<typename eT> class CycleQueue {
-    protected:
-    u_long _max_elem;
+template<typename eT>
+class CycleQueue
+{
+protected:
+    const u_long _max_elem;
     u_long _size;
     u_long _head;
     std::vector<eT> _data;
 
-    public:
+public:
     // const std::vector<eT>& data;
-    explicit CycleQueue(u_long size) {
-        if (size < 1) throw std::runtime_error("cannot initialize CycleQueue to empty size");
-        _max_elem = size;
-        _size = 0;
-        _head = 0;
+    CycleQueue(u_long maxsize) : _max_elem(maxsize), _size(0), _head(0)
+    {
+        if (_max_elem < 1)
+            throw std::invalid_argument("CycleQueue error: require size > 0");
     }
 
     void push(const eT& x) {
@@ -117,7 +121,7 @@ u_long index_median(const Vec& x) {
 
 template <class Vec>
 u_long sample_from(const Vec& pmf, u_long seed=std::chrono::system_clock::now().time_since_epoch().count()) {
-    typedef pmfVec::value_type Real;
+    typedef typename Vec::value_type Real;
     
     std::default_random_engine generator(seed);
     std::uniform_real_distribution<Real> distribution(0.0, 1.0);
@@ -135,4 +139,5 @@ u_long sample_from(const Vec& pmf, u_long seed=std::chrono::system_clock::now().
     return i;
 }
 
+}
 #endif
