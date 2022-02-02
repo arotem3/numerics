@@ -5,7 +5,9 @@
 #define NUMERICS_WITH_ARMA
 #endif
 
+#include "numerics/concepts.hpp"
 #include "numerics/optimization/optim_base.hpp"
+#include "numerics/optimization/trust_base.hpp"
 #include "numerics/optimization/gmres.hpp"
 #include "numerics/optimization/fzero.hpp"
 #include "numerics/optimization/fmin.hpp"
@@ -15,236 +17,221 @@
 #include <type_traits>
 
 namespace numerics {
-namespace optimization
-{
+    namespace optimization {
+        namespace __trust_solve {
+            template <class vec, scalar_field_type scalar = typename vec::value_type>
+            inline precision_t<scalar> norm_squared(const vec& f)
+            {
+                return std::real(__vmath::dot_impl(f,f));
+            }
 
-namespace __trust_solve
-{
+            template <class vec, scalar_field_type scalar>
+            class trust_step
+            {
+            public:
+                typedef precision_t<scalar> precision;
 
-template <class vec, typename real = typename vec::value_type>
-inline real norm_squared(const vec& f)
-{
-    return __optim_base::dot_impl(f,f);
-}
+            private:
+                precision model_reduction;
 
-// dot(W*x, W*y)
-template <class vec, typename real = typename vec::value_type>
-real weighted_dot(const vec& x, const vec& W, const vec& y)
-{
-    real wx = 0;
-    for (u_long i=0; i < x.size(); ++i)
-        wx += x[i] * W[i] * W[i] * y[i];
-    return wx;
-}
+                template <std::invocable<vec> Func, std::invocable<vec> Jac>
+                std::tuple<bool,vec,vec> search_dirs(const vec& x, const vec& F, Func f, Jac jacobian)
+                {
+                    auto J = jacobian(x);
+                    vec g = J.t() * F;
 
-#ifdef NUMERICS_WITH_ARMA
-template <typename real>
-inline real weighted_dot(const arma::Col<real>& x, const arma::Col<real>& W, const arma::Col<real>& y)
-{
-    return arma::dot(W%x, W%y);
-}
-#endif
-
-template <class vec, typename real>
-class trust_step
-{
-private:
-    real delta;
-    real delta_max;
-    real model_reduction;
-    vec D;
-
-    template <std::invocable<vec> Func, std::invocable<vec> Jac>
-    std::tuple<bool,vec,vec> search_dirs(const vec& dx, const vec& x, const vec& F, Func f, Jac jacobian)
-    {
-        auto J = jacobian(x);
-        vec g = J.t() * F;
-
-        vec p;
-        bool success = __optim_base::solve_impl(p, J, F);
-        return std::make_tuple(success, std::move(g), std::move(p));
-    }
-
-    template <std::invocable<vec> Func>
-    std::tuple<bool,vec,vec> search_dirs(const vec& dx, const vec& x, const vec& F, Func f, int dummy_jacobian)
-    {
-        auto fnorm = [&f](const vec& z) -> real
-        {
-            return 0.5 * norm_squared(static_cast<vec>(f(z)));
-        };
-
-        vec g = grad(fnorm, x);
-
-        auto JacMult = [&F, &f, x](const vec& v) -> vec
-        {
-            return __optim_base::jac_product(x, v, F, std::forward<Func>(f));
-        };
-
-        vec p = dx;
-        
-        constexpr real t = 100*std::numeric_limits<real>::epsilon();
-        bool success = gmres(p, JacMult, F, static_cast<real(*)(const vec&,const vec&)>(__optim_base::dot_impl), real(0.1), t, 20, x.size()*10);
-        model_reduction = norm_squared(F) - norm_squared(static_cast<vec>(F - JacMult(p)));
-        
-        success = success or (model_reduction < 0); // check if p is still a descent direction for ||f||^2
-
-        return std::make_tuple(success, std::move(g), std::move(p));
-    }
-
-    template <std::invocable<vec> Func>
-    void update_D(const vec& x, Func f)
-    {
-        real minD = std::numeric_limits<real>::infinity();
-        vec D1 = jacobian_diag(std::forward<Func>(f), x);
-
-        for (u_long i=0; i < D.size(); ++i)
-        {
-            D[i] = std::max<real>(D[i], std::abs(D1[i]));
-            minD = std::min<real>(minD, D[i]);
-        }
-
-        if (minD != 1)
-            D /= minD;
-    }
-
-public:
-    template <std::invocable<vec> Func>
-    trust_step(vec& x, Func f, real dxmin)
-    {
-        D = 0*x + 1;
-        auto fnorm = [&](const vec& y) -> real
-        {
-            return norm_squared(static_cast<vec>(f(y)));
-        };
-        
-        vec g = grad(fnorm, x);
-        
-        delta = __optim_base::norm_impl(g);
-        g /= delta;
-
-        delta = 0.1 * std::max<real>(1, delta);
-
-        real f0 = fnorm(x);
-
-        // in this loop, we estimate delta for which a gradient descent step
-        // decreases the value of the model function. Unlike the optimization
-        // version of the trust region method we are not simply minimizing this
-        // function, so instead of keeping this step we defer updating x until
-        // we compute the newton step.
-        while (true)
-        {
-            vec x1 = x - delta*g;
-            if (fnorm(x1) < f0)
-                break;
-            else
-                delta *= 0.75;
-            
-            if (delta < dxmin)
-                break;
-        }
-
-        delta_max = 128 * delta;
-    }
-
-    template <std::invocable<vec> Func, class Jac>
-    bool operator()(vec& dx, vec& x, vec& F, Func f, Jac jacobian, const OptimizationOptions<real>& opts)
-    {
-        vec g, p;
-        bool success;
-        std::tie(success, g, p) = search_dirs(dx, x, F, std::forward<Func>(f), std::forward<Jac>(jacobian));
-
-        // these parameters are used for the two-dimensional subspace problem
-        real a, b, c, d, beta, alpha, gamma;
-
-        if (success) {
-            a = norm_squared(__optim_base::jac_product(x,g,F,f));
-            b = norm_squared(g);
-            c = norm_squared(p);
-            d = norm_squared(F);
-            beta = weighted_dot(g,D,g);
-            alpha = weighted_dot(g,D,p);
-            gamma = weighted_dot(p,D,p);
-        }
-
-        while (true)
-        {
-            bool trust_active = false;
-            if (success) {
-                if (gamma <= delta*delta)
-                    dx = -p;
-                else {
-                    real u0, u1;
-                    auto phi = [&](real tau) -> real
-                    {
-                        tau = tau*tau;
-                        
-                        real P = (a + tau*beta)*(d + tau*gamma) - std::pow(b + tau*alpha, 2);
-                        u0 = (b*d + tau*b*gamma - b*c - tau*alpha*c) / P;
-                        u1 = (-b*b - tau*alpha*b + c*d + tau*gamma*c) / P;
-
-                        real unorm = beta*u0*u0 + 2*alpha*u0*u1 + gamma*u1*u1;
-                        return 1/std::sqrt(unorm) - 1/delta;
-                    };
-                    
-                    newton_1d(phi, real(1.0f));
-                    dx = u0*g + u1*p;
-                    trust_active = true;
+                    vec p;
+                    bool success = __vmath::solve_impl(p, J, F);
+                    return std::make_tuple(success, std::move(g), std::move(p));
                 }
-            } else {
-                dx = g * (-delta / weighted_dot(g, static_cast<vec>(1/D), g));
-            }
 
-            model_reduction = d - norm_squared(static_cast<vec>(F + __optim_base::jac_product(x,dx,F,std::forward<Func>(f))));
+                template <std::invocable<vec> Func>
+                std::tuple<bool,vec,vec> search_dirs(const vec& x, const vec& F, Func f, int dummy_jacobian)
+                {
+                    auto fnorm = [&f](const vec& z) -> precision
+                    {
+                        return precision(0.5) * norm_squared(static_cast<vec>(f(z)));
+                    };
 
-            vec F1 = f(static_cast<vec>(x + dx));
-            real f1 = norm_squared(F1);
+                    vec g = grad(fnorm, x);
 
-            if (f1 < d) {
-                real rho = (d - f1) / model_reduction;
-                if (rho < 0.25)
-                    delta = 0.25 * __optim_base::norm_impl(dx);
-                else if ((rho > 0.75) and trust_active)
-                    delta = std::min<real>(2*delta, delta_max);
-                
-                F = std::move(F1);
-                return true;
+                    auto JacMult = [&F, &f, x](const vec& v) -> vec
+                    {
+                        return __optim_base::jac_product(x, v, F, std::forward<Func>(f));
+                    };
+
+                    vec p = g;
+
+                    precision tol = std::min<precision>(0.5, std::sqrt(f0));
+                    bool success = gmres(p, JacMult, F, static_cast<scalar(*)(const vec&,const vec&)>(__vmath::dot_impl), tol, precision(0), 20, x.size()*10);
+
+                    return std::make_tuple(success, std::move(g), std::move(p));
+                }
+
+            public:
+                precision delta;
+                precision delta_max;
+                precision f0;
+
+                trust_step() {}
+
+                template <std::invocable<vec> Func, class Jac>
+                bool operator()(vec& dx, vec& x, vec& F, Func f, Jac jacobian, const OptimizationOptions<precision>& opts)
+                {
+                    vec g, p;
+                    bool success;
+                    std::tie(success, g, p) = search_dirs(x, F, std::forward<Func>(f), std::forward<Jac>(jacobian));
+
+                    // these parameters are used for the two-dimensional subspace problem
+                    precision a = norm_squared(__optim_base::jac_product(x,g,F,f)),
+                            b = norm_squared(g);
+                    precision c, d;
+
+                    if (success) {
+                        c = std::real(__vmath::dot_impl(g,p));
+                        d = norm_squared(p);
+                    }
+
+                    while (true)
+                    {
+                        bool trust_active = false;
+                        if (success) {
+                            if (d <= delta*delta)
+                                dx = -p;
+                            else {
+                                precision u0, u1;
+                                auto phi = [&](precision tau) -> precision
+                                {
+                                    tau = tau*tau;
+                                    
+                                    precision P = (a + tau*c)*(c + tau*d) - std::pow(b + tau*c, 2);
+                                    u0 = ((c + tau*d)*b - (b + tau*c)*d) / P;
+                                    u1 = ((a + tau*b)*d - (b + tau*c)*b) / P;
+
+                                    precision unorm = b*u0*u0 + 2*c*u0*u1 + d*u1*u1;
+                                    return 1/std::sqrt(unorm) - 1/delta;
+                                };
+                                
+                                newton_1d(phi, precision(1.0f));
+                                dx = u0*g + u1*p;
+                                trust_active = true;
+                            }
+                        } else { // could not produce newton direction, use Cauchy point
+                            precision tau;
+                            if (std::pow(b,3) < std::pow(a*delta, 2)) // line minimum inside trust region
+                                tau = b / a;
+                            else { // line minimum on trust region boundary
+                                trust_active = true;
+                                tau = delta / std::sqrt(b);
+                            }
+                            dx = -tau * g;
+                        }
+
+                        model_reduction = f0 - norm_squared(static_cast<vec>(F + __optim_base::jac_product(x,dx,F,std::forward<Func>(f))));
+
+                        vec F1 = f(static_cast<vec>(x + dx));
+                        precision f1 = norm_squared(F1);
+
+                        if (f1 < f0) {
+                            precision rho = (f0 - f1) / model_reduction;
+                            if (rho < precision(0.25))
+                                delta = precision(0.25) * __vmath::norm_impl(dx);
+                            else if ((rho > precision(0.75)) and trust_active)
+                                delta = std::min<precision>(2*delta, delta_max);
+                            
+                            F = std::move(F1);
+                            f0 = f1;
+                            return true;
+                        }
+                        else
+                            delta /= precision(2.0);
+
+                        if (delta < opts.xtol) {
+                            return false;
+                        }
+                    }
+
+                    return success;
+                }
+
+                template <std::invocable<vec> Func>
+                inline bool operator()(vec& dx, vec& x, vec& F, Func f, const OptimizationOptions<precision>& opts)
+                {
+                    return (*this)(dx, x, F, std::forward<Func>(f), int(), opts);
+                }
+            };
+        } // namespace __trust_solve
+
+        // solves f(x) == 0 using the trust region method. The vector x should be
+        // initialized with a guess of the solution. The global convergence of the
+        // method depends on the quality of the guess. The trust-region subproblem is
+        // solved on a two dimensional subspace spanned by the gradient of ||f||^2 and
+        // an approximate newton direction. The newton direction is found using
+        // restarted gmres.
+        // see:
+        // (2006) Trust-Region Methods. In: Numerical Optimization. Springer Series in
+        // Operations Research and Financial Engineering. Springer, New York, NY.
+        // https://doi-org.proxy1.cl.msu.edu/10.1007/978-0-387-40065-5_4
+        template <class vec, std::invocable<vec> Func, scalar_field_type scalar = typename vec::value_type>
+        inline OptimizationResults<vec> trust_solve(vec& x, Func f, const TrustOptions<precision_t<scalar>>& opts = {})
+        {
+            __trust_solve::trust_step<vec,scalar> step;
+            step.f0 = __trust_solve::norm_squared(f(x));
+            
+            if (opts.delta <= 0) {
+                auto f2 = [&](const vec& x) -> precision_t<scalar>
+                {
+                    return __trust_solve::norm_squared(static_cast<vec>(f(x)));
+                };
+                step.delta = initialize_TR_radius(x, static_cast<vec>(-grad(f2, x)), f2, opts.xtol);
             }
             else
-                delta /= 2.0;
+                step.delta = opts.delta;
+            
+            if (opts.delta_max <= 0)
+                step.delta = 32*step.delta;
+            else
+                step.delta_max = opts.delta_max;
 
-            if (delta < opts.xtol) {
-                return false;
-            }
+            return __optim_base::gen_solve<vec,scalar>(x, std::forward<Func>(f), int(), opts, step);
         }
 
-        return success;
-    }
+        #ifdef NUMERICS_WITH_ARMA
+        // solves f(x) == 0 using the trust region method. The vector x should be
+        // initialized with a guess of the solution. The global convergence of the
+        // method depends on the quality of the guess. The object jacobian(x) returns a
+        // dense or sparse approximation to the jacobian of f(x). The trust-region
+        // subproblem is solved on a two dimensional subspace spanned by the gradient of
+        // ||f||^2 and an approximate newton direction. The newton direction is found
+        // using a direct solve of the jacobian system.
+        // see:
+        // (2006) Trust-Region Methods. In: Numerical Optimization. Springer Series in
+        // Operations Research and Financial Engineering. Springer, New York, NY.
+        // https://doi-org.proxy1.cl.msu.edu/10.1007/978-0-387-40065-5_4
+        template <scalar_field_type scalar, std::invocable<arma::Col<scalar>> Func, std::invocable<arma::Col<scalar>> Jac>
+        inline OptimizationResults<arma::Col<scalar>> trust_solve(arma::Col<scalar>& x, Func f, Jac jacobian, const TrustOptions<precision_t<scalar>>& opts = {})
+        {
+            __trust_solve::trust_step<arma::Col<scalar>,scalar> step;
+            step.f0 = __trust_solve::norm_squared(f(x));
+            
+            if (opts.delta <= 0) {
+                auto f2 = [&](const arma::Col<scalar>& x) -> precision_t<scalar>
+                {
+                    return __trust_solve::norm_squared(static_cast<arma::Col<scalar>>(f(x)));
+                };
+                step.delta = initialize_TR_radius(x, static_cast<arma::Col<scalar>>(-grad(f2, x)), f2, opts.xtol);
+            }
+            else
+                step.delta = opts.delta;
+            
+            if (opts.delta_max <= 0)
+                step.delta = 32*step.delta;
+            else
+                step.delta_max = opts.delta_max;
 
-    template <std::invocable<vec> Func>
-    inline bool operator()(vec& dx, vec& x, vec& F, Func f, const OptimizationOptions<real>& opts)
-    {
-        return (*this)(dx, x, F, std::forward<Func>(f), int(), opts);
-    }
-};
-
-}
-
-template <class vec, std::invocable<vec> Func, typename real = typename vec::value_type>
-inline OptimizationResults<vec, real> trust_solve(vec& x, Func f, const OptimizationOptions<real>& opts = {})
-{
-    __trust_solve::trust_step<vec, real> step(x, std::forward<Func>(f), opts.xtol);
-    return __optim_base::gen_solve(x, std::forward<Func>(f), int(), opts, step);
-}
-
-#ifdef NUMERICS_WITH_ARMA
-template <typename real, std::invocable<arma::Col<real>> Func, std::invocable<arma::Col<real>> Jac>
-inline OptimizationResults<arma::Col<real>,real> trust_solve(arma::Col<real>& x, Func f, Jac jacobian, const OptimizationOptions<real>& opts = {})
-{
-    __trust_solve::trust_step<arma::Col<real>, real> step(x, std::forward<Func>(f), opts.xtol);
-    return __optim_base::gen_solve(x, std::forward<Func>(f), std::forward<Jac>(jacobian), opts, step);
-}
-#endif
-
-}
-}
+            return __optim_base::gen_solve<arma::Col<scalar>,scalar>(x, std::forward<Func>(f), std::forward<Jac>(jacobian), opts, step);
+        }
+        #endif
+    } // namespace optimization
+} // namespace numerics
 #endif

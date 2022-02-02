@@ -6,7 +6,7 @@
 #include "numerics/optimization/trust_min.hpp"
 
 using numerics::optimization::trust_min;
-using numerics::optimization::OptimizationOptions;
+using numerics::optimization::TrustOptions;
 
 // this test verifies trust_min() by attempting to minimize a non-convex
 // function which has one global min, and one local max. We verify that the
@@ -79,7 +79,7 @@ int main()
     { // test 1: arma, double, no hess
         arma::vec x =  {-0.9,-1.1};
         double rel = arma::norm(df(x));
-        OptimizationOptions<double> opts;
+        TrustOptions<double> opts;
         trust_min(x, f<arma::vec>, df<arma::vec>, opts);
 
         bool first_order = arma::norm(df(x)) < rel * opts.ftol; // check gradient = 0
@@ -96,7 +96,7 @@ int main()
     { // test 2: arma, single, no hess
         arma::fvec x =  {-0.9f,-1.1f};
         float rel = arma::norm(df(x));
-        OptimizationOptions<float> opts;
+        TrustOptions<float> opts;
         trust_min(x, f<arma::fvec>, df<arma::fvec>, opts);
 
         bool first_order = arma::norm(df(x)) < rel * opts.ftol;
@@ -113,7 +113,7 @@ int main()
     { // test 3: arma, double, hess
         arma::vec x =  {-0.9,-1.1};
         double rel = arma::norm(df(x));
-        OptimizationOptions<double> opts;
+        TrustOptions<double> opts;
         trust_min(x, f<arma::vec>, df<arma::vec>, H<double>, opts);
 
         bool first_order = arma::norm(df(x)) < rel * opts.ftol;
@@ -130,7 +130,7 @@ int main()
     { // test 4: arma, float, hess
         arma::fvec x =  {-0.9f,-1.1f};
         float rel = arma::norm(df(x));
-        OptimizationOptions<float> opts;
+        TrustOptions<float> opts;
         trust_min(x, f<arma::fvec>, df<arma::fvec>, H<float>, opts);
 
         bool first_order = arma::norm(df(x)) < rel * opts.ftol;
@@ -147,7 +147,7 @@ int main()
     { // test 5: valarray, double
         std::valarray<double> x =  {-0.9,-1.1};
         double rel = std::sqrt( (df(x)*df(x)).sum() );
-        OptimizationOptions<double> opts;
+        TrustOptions<double> opts;
         trust_min(x, f<std::valarray<double>>, df<std::valarray<double>>, opts);
 
         arma::vec z(2); z[0] = x[0]; z[1] = x[1];
@@ -180,7 +180,7 @@ int main()
         Grad g;
         std::valarray<float> x =  {-0.9f,-1.1f};
         float rel = std::sqrt( (df(x)*df(x)).sum() );
-        OptimizationOptions<float> opts;
+        TrustOptions<float> opts;
         trust_min(x, f<std::valarray<float>>, std::ref(g), opts);
 
         arma::vec z(2); z[0] = x[0]; z[1] = x[1];
@@ -235,7 +235,7 @@ int main()
     
         arma::vec x = 0.5*arma::ones(n); // this produces a negative definite hessian
         double rel = arma::norm(grad(x));
-        OptimizationOptions<double> opts;
+        TrustOptions<double> opts;
         auto result = trust_min(x, fun, grad, hess, opts);
 
         bool first_order = arma::norm(grad(x)) < rel * opts.ftol;
@@ -287,7 +287,7 @@ int main()
 
         arma::fvec x = 0.5f*arma::ones<arma::fvec>(n);
         float rel = arma::norm(grad(x));
-        OptimizationOptions<float> opts;
+        TrustOptions<float> opts;
         trust_min(x, fun, grad, hess, opts);
 
         bool first_order = arma::norm(grad(x)) < rel * opts.ftol;

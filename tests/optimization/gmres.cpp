@@ -6,13 +6,14 @@
 #include "numerics/optimization/gmres.hpp"
 
 using numerics::optimization::gmres;
+using namespace std::complex_literals;
 
 int main()
 {
     int n_passed = 0;
     int n_failed = 0;
 
-    { // test 1: double precision, dense
+    { // double precision, dense
         int n = 100;
         arma::mat A = arma::randn(n,n) / n;
         A.diag() += 1.0;
@@ -28,7 +29,7 @@ int main()
         else ++n_passed;
     }
 
-    { // test 2: single precision, dense
+    { // single precision, dense
         int n = 100;
         arma::fmat A = arma::randn<arma::fmat>(n,n) / n;
         A.diag() += 1.0f;
@@ -44,7 +45,7 @@ int main()
         else ++n_passed;
     }
 
-    { // test 3: double precision, sparse
+    { // double precision, sparse
         int n = 100;
         arma::mat B = arma::zeros(n,n);
         B.diag().fill(3);
@@ -67,7 +68,7 @@ int main()
         else ++n_passed;
     }
 
-    { // test 4: single precision, sparse
+    { // single precision, sparse
         int n = 100;
         arma::fmat B = arma::zeros<arma::fmat>(n,n);
         B.diag().fill(3);
@@ -90,7 +91,7 @@ int main()
         else ++n_passed;
     }
 
-    { // test 5, double precision, valarray
+    { // double precision, valarray
         int n = 100;
         std::valarray<double> b(1.0, n);
         std::valarray<double> x(0.0, n);
@@ -119,7 +120,7 @@ int main()
         else ++n_passed;
     }
 
-    { // test 6: double precision, tensor-equation
+    { // double precision, tensor-equation
         int n = 100;
         arma::mat b = arma::ones(n,2);
 
@@ -148,7 +149,7 @@ int main()
         else ++n_passed;
     }
 
-    { // test 7: single precision, dennse, preconditioned
+    { // single precision, dennse, preconditioned
         int n = 100;
         arma::fmat B = arma::zeros<arma::fmat>(n,n);
         B.diag().fill(3);
@@ -180,6 +181,30 @@ int main()
             ++n_failed;
         }
         else ++n_passed;
+    }
+
+    { // complex double precision, sparse
+        int n = 100;
+        arma::cx_mat B = arma::zeros<arma::cx_mat>(n,n);
+        B.diag().fill(3.0);
+        B.diag(-1).fill(1.0i);
+        B.diag(1).fill(1.0i);
+
+        arma::uvec p = arma::randperm(n);
+
+        arma::sp_cx_mat A(B.cols(p));
+        A.diag() += 5.0+5.0i;
+
+        arma::cx_vec b = arma::ones<arma::cx_vec>(n);
+        arma::cx_vec x = arma::zeros<arma::cx_vec>(n);
+
+        bool success = gmres(x, A, b, 0.0, 0.001, n/10, n);
+        if (arma::norm(A*x - b) > 0.01) {
+            std::cout << "armadillo sparse complex double precision test failed\n";
+            ++n_failed;
+        }
+        else
+            ++n_passed;
     }
 
     std::cout << n_passed << "/" << n_passed + n_failed << " tests passed\n";

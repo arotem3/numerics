@@ -4,15 +4,16 @@
 #include "numerics/optimization/mixFPI.hpp"
 
 using numerics::optimization::mixFPI;
-using numerics::optimization::OptimizationOptions;
+using numerics::optimization::mixFPI_Options;
+using namespace std::complex_literals;
 
 template <typename real>
 arma::Col<real> f(const arma::Col<real>& v)
 {
     real x = v[0], y = v[1];
     arma::Col<real> fv(2);
-    fv[0] = x*y - 1;
-    fv[1] = 0.6*y;
+    fv[0] = x*y - real(1);
+    fv[1] = real(0.6)*y;
     return fv;
 }
 
@@ -24,8 +25,8 @@ int main()
     { // test 1: double
         arma::vec x = {5.0,3.0};
 
-        OptimizationOptions<double> opts;
-        mixFPI<5>(x, f<double>, opts);
+        mixFPI_Options<double> opts;
+        mixFPI(x, f<double>, opts);
         
         if (arma::norm(x - f(x)) > opts.ftol)
         {
@@ -39,8 +40,8 @@ int main()
     { // test 2: float
         arma::fvec x = {5.0f,3.0f};
 
-        OptimizationOptions<float> opts;
-        mixFPI<5>(x, f<float>, opts);
+        mixFPI_Options<float> opts;
+        mixFPI(x, f<float>, opts);
         
         if (arma::norm(x - f(x)) > opts.ftol)
         {
@@ -48,6 +49,20 @@ int main()
             ++n_failed;
         }
         else
+            ++n_passed;
+    }
+
+    { // complex double
+        arma::cx_vec x = {5.0+1.0i, 3.0+0.0i};
+
+        mixFPI_Options<double> opts;
+        mixFPI(x, f<arma::cx_double>, opts);
+
+        if (arma::norm(x - f(x)) > opts.ftol)
+        {
+            std::cout << "mixFPI complex double precision test failed" << std::endl;
+            ++n_failed;
+        } else
             ++n_passed;
     }
 

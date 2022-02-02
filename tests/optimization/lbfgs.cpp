@@ -5,7 +5,7 @@
 #include "numerics/optimization/lbfgs.hpp"
 
 using numerics::optimization::lbfgs;
-using numerics::optimization::OptimizationOptions;
+using numerics::optimization::LBFGS_Options;
 
 // this test verifies lbfgs() by attempting to minimize a non-convex function
 // which has one global min, and one local max. We verify that the minimization
@@ -77,7 +77,7 @@ int main()
 
     { // test 1: arma, double, no hess
         arma::vec x =  {-0.9,-1.1};
-        OptimizationOptions<double> opts;
+        LBFGS_Options<double> opts;
         lbfgs(x, f<arma::vec>, df<arma::vec>, opts);
 
         bool first_order = arma::norm(df(x)) < opts.ftol; // check gradient = 0
@@ -93,7 +93,7 @@ int main()
 
     { // test 2: arma, single, no hess
         arma::fvec x =  {-0.9f,-1.1f};
-        OptimizationOptions<float> opts;
+        LBFGS_Options<float> opts;
         lbfgs(x, f<arma::fvec>, df<arma::fvec>, opts);
 
         bool first_order = arma::norm(df(x)) < opts.ftol;
@@ -109,7 +109,7 @@ int main()
 
     { // test 3: valarray, double
         std::valarray<double> x =  {-0.9,-1.1};
-        OptimizationOptions<double> opts;
+        LBFGS_Options<double> opts;
         lbfgs(x, f<std::valarray<double>>, df<std::valarray<double>>, opts);
 
         arma::vec z(2); z[0] = x[0]; z[1] = x[1];
@@ -141,7 +141,7 @@ int main()
 
         Grad g;
         std::valarray<float> x =  {-0.9f,-1.1f};
-        OptimizationOptions<float> opts;
+        LBFGS_Options<float> opts;
         lbfgs(x, f<std::valarray<float>>, std::ref(g), opts);
 
         arma::vec z(2); z[0] = x[0]; z[1] = x[1];

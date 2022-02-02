@@ -79,9 +79,10 @@ int main()
     { // test 1: arma, double, no hess
         arma::vec x = {-0.9,-1.1};
         OptimizationOptions<double> opts;
+        double rtol = opts.ftol * std::max<double>(1.0, arma::norm(df(x)));
         newton_min(x, f<arma::vec>, df<arma::vec>, opts);
 
-        bool first_order = arma::norm(df(x)) < opts.ftol; // check gradient = 0
+        bool first_order = arma::norm(df(x)) < rtol; // check gradient = 0
         bool second_order = arma::all(arma::eig_sym(H(x)) > 0); // check hessian > 0
 
         if (not first_order and not second_order) {
@@ -95,9 +96,10 @@ int main()
     { // test 2: arma, single, no hess
         arma::fvec x =  {-0.9f,-1.1f};
         OptimizationOptions<float> opts;
+        float rtol = opts.ftol * std::max<float>(1.0, arma::norm(df(x)));
         newton_min(x, f<arma::fvec>, df<arma::fvec>, opts);
 
-        bool first_order = arma::norm(df(x)) < opts.ftol;
+        bool first_order = arma::norm(df(x)) < rtol;
         bool second_order = arma::all(arma::eig_sym(H(x)) > 0);
 
         if (not (first_order and second_order)) {
@@ -111,9 +113,10 @@ int main()
     { // test 3: arma, double, hess
         arma::vec x =  {-0.9,-1.1};
         OptimizationOptions<double> opts;
+        double rtol = opts.ftol * std::max<double>(1.0, arma::norm(df(x)));
         newton_min(x, f<arma::vec>, df<arma::vec>, H<double>, opts);
 
-        bool first_order = arma::norm(df(x)) < opts.ftol;
+        bool first_order = arma::norm(df(x)) < rtol;
         bool second_order = arma::all(arma::eig_sym(H(x)) > 0);
 
         if (not (first_order and second_order)) {
@@ -127,9 +130,10 @@ int main()
     { // test 4: arma, float, hess
         arma::fvec x =  {-0.9f,-1.1f};
         OptimizationOptions<float> opts;
+        float rtol = opts.ftol * std::max<float>(1.0, arma::norm(df(x)));
         newton_min(x, f<arma::fvec>, df<arma::fvec>, H<float>, opts);
 
-        bool first_order = arma::norm(df(x)) < opts.ftol;
+        bool first_order = arma::norm(df(x)) < rtol;
         bool second_order = arma::all(arma::eig_sym(H(x)) > 0);
 
         if (not (first_order and second_order)) {
@@ -142,12 +146,14 @@ int main()
 
     { // test 5: valarray, double
         std::valarray<double> x =  {-0.9,-1.1};
+        std::valarray<double> df0 = df(x);
         OptimizationOptions<double> opts;
+        double rtol = opts.ftol * std::max<double>(1.0, std::sqrt(df0[0]*df0[0] + df0[1]*df0[1]));
         newton_min(x, f<std::valarray<double>>, df<std::valarray<double>>, opts);
 
         arma::vec z(2); z[0] = x[0]; z[1] = x[1];
 
-        bool first_order = arma::norm(df(z)) < opts.ftol; // check gradient = 0
+        bool first_order = arma::norm(df(z)) < rtol; // check gradient = 0
         bool second_order = arma::all(arma::eig_sym(H(z)) > 0); // check hessian > 0
 
         if (not (first_order and second_order)) {
@@ -174,12 +180,14 @@ int main()
 
         Grad g;
         std::valarray<float> x =  {-0.9f,-1.1f};
+        std::valarray<float> df0 = df(x);
         OptimizationOptions<float> opts;
+        double rtol = opts.ftol * std::max<float>(1.0, std::sqrt(df0[0]*df0[0] + df0[1]*df0[1]));
         newton_min(x, f<std::valarray<float>>, std::ref(g), opts);
 
         arma::vec z(2); z[0] = x[0]; z[1] = x[1];
 
-        bool first_order = arma::norm(df(z)) < opts.ftol; // check gradient = 0
+        bool first_order = arma::norm(df(z)) < rtol; // check gradient = 0
         bool second_order = arma::all(arma::eig_sym(H(z)) > 0); // check hessian > 0
 
         if (not (first_order and second_order and (g.n_evals > 0))) {
@@ -229,9 +237,10 @@ int main()
     
         arma::vec x = 0.5*arma::ones(n); // this produces a negative definite hessian
         OptimizationOptions<double> opts;
+        double rtol = opts.ftol * std::max<double>(1.0, arma::norm(grad(x)));
         newton_min(x, fun, grad, hess, opts);
 
-        bool first_order = arma::norm(grad(x)) < opts.ftol;
+        bool first_order = arma::norm(grad(x)) < rtol;
         bool second_order = arma::all(arma::eig_sym(arma::mat(hess(x))) > 0);
 
         if (not (first_order and second_order)) {
@@ -280,9 +289,10 @@ int main()
 
         arma::fvec x = 0.5f*arma::ones<arma::fvec>(n);
         OptimizationOptions<float> opts;
+        float rtol = opts.ftol * std::max<float>(1.0, arma::norm(grad(x)));
         newton_min(x, fun, grad, hess, opts);
 
-        bool first_order = arma::norm(grad(x)) < opts.ftol;
+        bool first_order = arma::norm(grad(x)) < rtol;
 
         if (not first_order) {
             std::cout << "newton_min() failed armadillo single precision w/ hessian operator test\n";
