@@ -185,7 +185,7 @@ namespace numerics
     * --- catch_zero: rounds near zero elements to zero.
     * --- npt : number of number of points to use in FD, npt = 1 uses f(x) and f(x+h), npt=2,4 do not use f(x) but instead use points f(x +/- h), f(x +/- 2h). npt=1 is the default since it uses n+1 calls to f; npt=2 uses 2*n calls to f, and npt=4 uses 4*n calls to f. */
     template<scalar_field_type scalar, std::invocable<arma::Col<scalar>> Func>
-    arma::Mat<scalar> jacobian(Func f, const arma::Col<scalar>& x, precision_t<scalar> h=100*std::sqrt(std::numeric_limits<precision_t<scalar>>::epsilon()), short npt=1) {
+    arma::Mat<scalar> jacobian(Func f, const arma::Col<scalar>& x, precision_t<scalar> h=10*std::sqrt(std::numeric_limits<precision_t<scalar>>::epsilon()), short npt=1) {
         typedef precision_t<scalar> precision;
 
         u_long n = x.size(); // num variables -> num cols

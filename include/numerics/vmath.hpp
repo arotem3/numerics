@@ -47,14 +47,20 @@ namespace numerics
             return dot;
         }
 
-        template <scalar_field_type T>
-        precision_t<T> norm_impl(T x)
+        template <std::floating_point T>
+        inline T norm_impl(T x)
+        {
+            return std::abs(x);
+        }
+
+        template <std::floating_point T>
+        inline T norm_impl(std::complex<T> x)
         {
             return std::abs(x);
         }
 
         template <class vec, std::floating_point precision = precision_t<typename vec::value_type>>
-        precision norm_impl(const vec& x)
+        inline precision norm_impl(const vec& x)
         {
             return std::sqrt(std::abs(dot_impl(x,x)));
         }
