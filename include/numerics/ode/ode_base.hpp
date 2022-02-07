@@ -1,6 +1,10 @@
 #ifndef NUMERICS_ODE_BASE_HPP
 #define NUMERICS_ODE_BASE_HPP
 
+#if defined(ARMA_INCLUDES) && !defined(NUMERICS_WITH_ARMA)
+#define NUMERICS_WITH_ARMA
+#endif
+
 #include <concepts>
 #include <cmath>
 #include <vector>
@@ -27,6 +31,7 @@ namespace numerics {
             bool dense_output = false;
             bool grid_only = false;
             real initial_step = 0;
+            real max_step = 0;
         };
 
 
@@ -218,6 +223,35 @@ namespace numerics {
                     return t;
                 }
             };
+
+            // hermite quartic polynomial which collocates a function at
+            // {0,1/2,1} and its derivative at {0,1}. This function evaluates
+            // the basis function for the Value at zero, for the value at 1 use
+            // hquarticv(1-w).
+            template <std::floating_point real>
+            inline real hquarticv(real w)
+            {
+                return -2*(4*w+1)*(w-1)*(w-1)*(w-real(0.5));
+            }
+
+            // hermite quartic polynomial which collocates a function at
+            // {0,1/2,1} and its derivative at {0,1}. This function evaluates
+            // the basis function for the Derivative at zero, for the derivative
+            // at 1 use -hquarticd(1-w).
+            template <std::floating_point real>
+            inline real hquarticd(real w)
+            {
+                return -2*w*(w-1)*(w-1)*(w-real(0.5));
+            }
+
+            // hermite quartic polynomial which collocates a function at
+            // {0,1/2,1} and its derivative at {0,1}. This function evaluates
+            // the basis function for the value at 1/2 (the Center).
+            template <std::floating_point real>
+            inline real hquarticc(real w)
+            {
+                return 16*w*w*(w-1)*(w-1);
+            }
         } // namespace __ivp_helper
     } // namespace ode
 } // namespace numerics

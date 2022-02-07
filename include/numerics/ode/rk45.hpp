@@ -42,14 +42,14 @@ namespace numerics
                 real k = (this->t.at(i+1) - this->t.at(i));
                 real theta = (s - this->t.at(i)) / k;
                 // quartic-polynomial hermite interpolation basis
-                real b0 = (theta-1)*(theta-1)*(1+2*theta-8*theta*theta);
-                real b1 = theta*(theta-1)*(theta-1)*(1-2*theta);
-                real b2 = 16*theta*theta*(theta-1)*(theta-1);
-                real b3 = theta*theta*(1-2*theta)*(4*theta-5);
-                real b4 = -theta*theta*(1-2*theta)*(theta-1);
+                real b0 = _ivp_helper::hquarticv(theta);
+                real b1 = k * _ivp_helper::hquarticd(theta);
+                real b2 = _ivp_helper::hquarticc(theta);
+                real b3 = -k * _ivp_helper::hquarticd(1-theta);
+                real b4 = _ivp_helper::hquarticv(1-theta);
 
-                vec u = b0*this->y.at(i) + (k*b1)*this->f.at(i) + b2*y_half.at(i) + b3*this->y.at(i+1) + (k*b4)*this->f.at(i+1);
-                // vec u = b0*this->y[i] + b1*this->f[i] + b2*this->y_half[i] + b3*this->y[i+1] + b4*this->f[i+1];
+                vec u = b0*this->y.at(i) + b1*this->f.at(i) + b2*y_half.at(i) + b3*this->f.at(i+1) + b4*this->y.at(i+1);
+                // vec u = b0*this->y[i] + b1*this->f[i] + b2*y_half[i] + b3*this->f[i+1] + b4*this->y[i+1];
                 return u;
             }
 
@@ -73,10 +73,6 @@ namespace numerics
                 if (i > 0)
                     --i;
 
-                auto A = [&](real w) -> real {return -2*(4*w+1)*(w-1)*(w-1)*(w-real(0.5));};
-                auto B = [&](real w) -> real {return -2*w*(w-1)*(w-1)*(w-real(0.5));};
-                auto C = [&](real w) -> real {return 16*w*w*(w-1)*(w-1);};
-
                 for (real w : s)
                 {
                     while (this->t.at(i+1) < w)
@@ -85,13 +81,13 @@ namespace numerics
                     real k = this->t.at(i+1) - this->t.at(i);
                     real theta = (w - this->t.at(i)) / k;
                     
-                    real b0 = A(theta);
-                    real b1 = k*B(theta);
-                    real b2 = C(theta);
-                    real b3 = -k*B(1-theta);
-                    real b4 = A(1-theta);
+                    real b0 = _ivp_helper::hquarticv(theta);
+                    real b1 = k*_ivp_helper::hquarticd(theta);
+                    real b2 = _ivp_helper::hquarticc(theta);
+                    real b3 = -k*_ivp_helper::hquarticd(1-theta);
+                    real b4 = _ivp_helper::hquarticv(1-theta);
 
-                    // vec v = b0*this->y[i] + b1*this->f[i] + b2*y_half[i] + b3*this->y[i+1] + b4*this->f[i+1];
+                    // vec v = b0*this->y[i] + b1*this->f[i] + b2*y_half[i] + b3*this->f[i+1] + b4*this->y[i+1];
                     vec v = b0*this->y.at(i) + b1*this->f.at(i) + b2*y_half.at(i) + b3*this->f.at(i+1) + b4*this->y.at(i+1);
                     u.push_back(std::move(v));
                 }
@@ -135,9 +131,9 @@ namespace numerics
             real t = *T;
             vec y = y0;
             vec F = f(t, y);
-            real k = opts.initial_step;
-            if (k <= 0)
-                k = (tspan[1] - tspan[0]) / 100;
+            
+            real k = (opts.initial_step <= 0) ? real(0.01)*(tspan[1] - tspan[0]) : opts.initial_step;
+            const real max_step = (opts.max_step <= 0) ? real(0.1)*(tspan.back() - tspan.front()) : opts.max_step;
 
             rk45Results<real,vec> sol(opts.dense_output);
             sol.t.push_back(t);
@@ -187,6 +183,7 @@ namespace numerics
 
                         real res = __vmath::norm_impl(static_cast<vec>(rk5-rk4));
                         real k1 = k * std::min<real>(10.0, std::max<real>(0.1, real(0.9)*std::pow(tol/res, real(0.2))));
+                        k1 = std::min<real>(k1, max_step);
 
                         if (k1 < (std::abs(t)+1)*std::numeric_limits<real>::epsilon()) {
                             sol.flag = ExitFlag::STEP_FAIL;

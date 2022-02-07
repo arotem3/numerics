@@ -1,9 +1,6 @@
 #ifndef NUMERICS_ODE_TRBDF2_HPP
 #define NUMERICS_ODE_TRBDF2_HPP
 
-#include <armadillo>
-#define NUMERICS_WITH_ARMA
-
 #include "numerics/ode/ode_base.hpp"
 #include "numerics/optimization/fzero.hpp"
 #include "numerics/optimization/newton.hpp"
@@ -14,11 +11,11 @@ namespace numerics
     namespace ode
     {
         template <typename vec>
-        class __rk2_step
+        class __trbdf2_step
         {
         public:
             template <std::floating_point real, std::invocable<real,vec> Func, typename Dummy>
-            __rk2_step(real t, const vec& y, Func f, Dummy jac_dummy) {}
+            __trbdf2_step(real t, const vec& y, Func f, Dummy jac_dummy) {}
 
             template <std::floating_point real, std::invocable<real,vec> Func>
             std::tuple<bool,real,vec,vec> operator()(real t, const vec& y, const vec& F, real k, Func f, int jac_dummy, const ivpOpts<real>& opts)
@@ -64,11 +61,11 @@ namespace numerics
         };
 
         template <scalar_field_type T>
-        class __rk2_step<T>
+        class __trbdf2_step<T>
         {
         public:
             template <std::floating_point real, std::invocable<real,T> Func, typename Dummy>
-            __rk2_step(real t, const T& y, Func f, Dummy jac_dummy) {}
+            __trbdf2_step(real t, const T& y, Func f, Dummy jac_dummy) {}
 
             template <std::floating_point real, std::invocable<real,T> Func>
             std::tuple<bool,real,T,T> operator()(real t, const T& y, const T& F, real k, Func f, int jac_dummy, const ivpOpts<real>& opts)
@@ -151,21 +148,22 @@ namespace numerics
             }
         };
 
+        #ifdef NUMERICS_WITH_ARMA
         template <scalar_field_type eT>
-        class __rk2_step<arma::Col<eT>>
+        class __trbdf2_step<arma::Col<eT>>
         {
         private:
             arma::Mat<eT> J;
 
         public:
             template <std::floating_point real, std::invocable<real,arma::Col<eT>> Func, std::invocable<real,arma::Col<eT>> Jacobian>
-            __rk2_step(real t, const arma::Col<eT>& y, Func f, Jacobian jacobian)
+            __trbdf2_step(real t, const arma::Col<eT>& y, Func f, Jacobian jacobian)
             {
                 J = jacobian(t, y);
             }
 
             template <std::floating_point real, std::invocable<real,arma::Col<eT>> Func>
-            __rk2_step(real t, const arma::Col<eT>& y, Func f, int jac_dummy)
+            __trbdf2_step(real t, const arma::Col<eT>& y, Func f, int jac_dummy)
             {
                 auto F = [&](const arma::Col<eT>& u) -> arma::Col<eT>
                 {
@@ -254,6 +252,7 @@ namespace numerics
                 return std::make_tuple(true, res, std::move(Y), std::move(F1));
             }
         };
+        #endif
 
         template <std::floating_point real, typename vec, std::invocable<real,vec> Func, typename Jacobian>
         ivpResults<real,vec> trbdf2(Func f, Jacobian jac, const std::vector<real>& tspan, const vec& y0, const ivpOpts<real>& opts = {}, const std::vector<Event<real,vec>>& events = {})
@@ -266,9 +265,9 @@ namespace numerics
             real t = *T;
             vec y = y0;
             vec F = f(t, y);
-            real k = opts.initial_step;
-            if (k <= 0)
-                k = (tspan[1] - tspan[0]) * real(0.01);
+
+            real k = (opts.initial_step <= 0) ? real(0.01)*(tspan[1] - tspan[0]) : opts.initial_step;
+            const real max_step = (opts.max_step <= 0) ? real(0.1)*(tspan.back() - tspan.front()) : opts.max_step;
 
             ivpResults<real,vec> sol(opts.dense_output);
             sol.t.push_back(t);
@@ -286,7 +285,7 @@ namespace numerics
                     else
                         k = std::min(k, tf - t);
 
-                    __rk2_step<vec> rk2(t, y, std::forward<Func>(f), std::forward<Jacobian>(jac));
+                    __trbdf2_step<vec> rk2(t, y, std::forward<Func>(f), std::forward<Jacobian>(jac));
                     real tol = std::max<real>(opts.rtol*__vmath::norm_impl(y), opts.atol);
 
                     while (true)
@@ -299,6 +298,7 @@ namespace numerics
                         }
 
                         real k1 = k * std::min<real>(10.0, std::max<real>(0.1, real(0.9)*std::sqrt(tol/err)));
+                        k1 = std::min<real>(k1, max_step);
 
                         if (k1 < (std::abs(t)+1)*std::numeric_limits<real>::epsilon()) {
                             sol.flag = ExitFlag::STEP_FAIL;

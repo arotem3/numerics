@@ -22,7 +22,7 @@ namespace numerics
             vec v = k * F0;
             y += rk4b[0]*v;
             #pragma unroll
-            for (short i=1; i < 5; ++i)
+            for (int i=1; i < 5; ++i)
             {
                 real s = t + rk4c[i]*k;
                 v = rk4a[i]*v + k*f(s, y);
@@ -72,7 +72,7 @@ namespace numerics
                         vec v = k * F;
                         vec p = y + rk4b[0]*v;
                         #pragma unroll
-                        for (short i=1; i < 5; ++i)
+                        for (int i=1; i < 5; ++i)
                         {
                             real s = t + rk4c[i]*k;
                             v = rk4a[i]*v + k*f(s, p);

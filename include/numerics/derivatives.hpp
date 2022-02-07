@@ -23,7 +23,7 @@ namespace numerics
     * --- catch_zero : rounds near zero elements to zero.
     * --- npt : number of points to use in FD, npt = 1 uses f(x) and f(x+h), npt=2,4 do not use f(x) but instead use points f(x +/- h), f(x +/- 2h). Since npt=2 and npt=1 require the same number of f evals, npt 2 is used for its better accuracy. */
     template<class Vec, std::invocable<Vec> Func, typename Real = typename Vec::value_type>
-    Vec jacobian_diag(Func f, const Vec& x, Real h = std::sqrt(std::numeric_limits<Real>::epsilon()), short npt=1)
+    Vec jacobian_diag(Func f, const Vec& x, Real h = std::sqrt(std::numeric_limits<Real>::epsilon()), int npt=1)
     {
         u_long m = x.size();
         Vec J(m);
@@ -70,7 +70,7 @@ namespace numerics
     * --- catch_zero: rounds near zero elements to zero.
     * --- npt : number of points to use in FD, npt = 1 uses f(x) and f(x+h), npt=2,4 do not use f(x) but instead use points f(x +/- h), f(x +/- 2h). npt=1 is the default since it uses n+1 calls to f; npt=2 uses 2*n calls to f, and npt=4 uses 4*n calls to f. */
     template<class Vec, std::invocable<Vec> Func, scalar_field_type scalar = typename Vec::value_type>
-    Vec grad(Func f, const Vec& x, precision_t<scalar> h=std::sqrt(std::numeric_limits<precision_t<scalar>>::epsilon()), short npt=1)
+    Vec grad(Func f, const Vec& x, precision_t<scalar> h=std::sqrt(std::numeric_limits<precision_t<scalar>>::epsilon()), int npt=1)
     {
         u_long n = x.size();
         Vec g(n);
@@ -109,7 +109,7 @@ namespace numerics
     * --- abstol: round anyvalue less than abstol to zero.
     * --- npt : number of points to use in FD, npt = 1 uses f(x) and f(x+h), npt=2,4 do not use f(x) but instead use points f(x +/- h), f(x +/- 2h). Since npt=2 and npt=1 require the same number of f evals, npt 2 is used for its better accuracy. */
     template<scalar_field_type T, std::invocable<T> Func>
-    inline T deriv(Func f, const T& x, precision_t<T> h=std::sqrt(std::numeric_limits<precision_t<T>>::epsilon()), short npt=2) {
+    inline T deriv(Func f, const T& x, precision_t<T> h=std::sqrt(std::numeric_limits<precision_t<T>>::epsilon()), int npt=2) {
         T df;
         T e = h*std::max<precision_t<T>>(std::abs(x), 1.0f);
         if (npt == 1)
@@ -150,7 +150,7 @@ namespace numerics
     * --- abstol : rounds near zero elements to zero if less than abstol.
     * --- npt : number of points to use in FD. */
     template<class Vec, std::invocable<Vec> Func, scalar_field_type scalar = typename Vec::value_type>
-    Vec directional_grad(Func f, const Vec& x, const Vec& v, precision_t<scalar> h=std::sqrt(std::numeric_limits<precision_t<scalar>>::epsilon()), short npt=2) {
+    Vec directional_grad(Func f, const Vec& x, const Vec& v, precision_t<scalar> h=std::sqrt(std::numeric_limits<precision_t<scalar>>::epsilon()), int npt=2) {
         typedef precision_t<scalar> precision;
         
         if (x.size() != v.size()) {
@@ -185,7 +185,7 @@ namespace numerics
     * --- catch_zero: rounds near zero elements to zero.
     * --- npt : number of number of points to use in FD, npt = 1 uses f(x) and f(x+h), npt=2,4 do not use f(x) but instead use points f(x +/- h), f(x +/- 2h). npt=1 is the default since it uses n+1 calls to f; npt=2 uses 2*n calls to f, and npt=4 uses 4*n calls to f. */
     template<scalar_field_type scalar, std::invocable<arma::Col<scalar>> Func>
-    arma::Mat<scalar> jacobian(Func f, const arma::Col<scalar>& x, precision_t<scalar> h=10*std::sqrt(std::numeric_limits<precision_t<scalar>>::epsilon()), short npt=1) {
+    arma::Mat<scalar> jacobian(Func f, const arma::Col<scalar>& x, precision_t<scalar> h=10*std::sqrt(std::numeric_limits<precision_t<scalar>>::epsilon()), int npt=1) {
         typedef precision_t<scalar> precision;
 
         u_long n = x.size(); // num variables -> num cols
