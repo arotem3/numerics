@@ -19,7 +19,7 @@
 
 namespace numerics {
     namespace optimization {
-        enum ExitFlag
+        enum struct ExitFlag
         {
             CONVERGED,
             MIN_STEP_SIZE,
@@ -43,13 +43,13 @@ namespace numerics {
             {
                 std::stringstream msg;
                 msg << "after " << n_iter << " iterations, ";
-                if (flag == CONVERGED)
+                if (flag == ExitFlag::CONVERGED)
                     msg << "first order conditions satisfied within ftol.";
-                else if (flag == MIN_STEP_SIZE)
+                else if (flag == ExitFlag::MIN_STEP_SIZE)
                     msg << "solution could not be improved (step size < xtol).";
-                else if (flag == MAX_ITER)
+                else if (flag == ExitFlag::MAX_ITER)
                     msg << "maximum number of iterations reached.";
-                else if (flag == STEP_FAILED)
+                else if (flag == ExitFlag::STEP_FAILED)
                     msg << "failed to compute step.";
                 else {
                     msg.str("solver never called.");
@@ -129,7 +129,7 @@ namespace numerics {
                 precision xtol = std::max<precision>(1, __vmath::norm_impl(x)) * opts.xtol;
 
                 u_long n_iter = 0;
-                ExitFlag flag = NONE;
+                ExitFlag flag = ExitFlag::NONE;
                 while (true)
                 {
                     bool successful_step = false;
@@ -142,7 +142,7 @@ namespace numerics {
 
                     if (not successful_step)
                     {
-                        flag = STEP_FAILED;
+                        flag = ExitFlag::STEP_FAILED;
                         if (opts.verbose)
                             verbose.failed_step_flag();
                         break;
@@ -158,7 +158,7 @@ namespace numerics {
 
                     if (f0 < ftol)
                     {
-                        flag = CONVERGED;
+                        flag = ExitFlag::CONVERGED;
                         if (opts.verbose)
                             verbose.success_flag();
                         break;
@@ -166,7 +166,7 @@ namespace numerics {
 
                     if (__vmath::norm_impl(dx) < xtol)
                     {
-                        flag = MIN_STEP_SIZE;
+                        flag = ExitFlag::MIN_STEP_SIZE;
                         if (opts.verbose)
                             verbose.min_step_flag();
                         break;
@@ -174,7 +174,7 @@ namespace numerics {
 
                     if (n_iter >= opts.max_iter)
                     {
-                        flag = MAX_ITER;
+                        flag = ExitFlag::MAX_ITER;
                         if (opts.verbose)
                             verbose.max_iter_flag();
                         break;
@@ -201,7 +201,7 @@ namespace numerics {
                 eT xtol = std::max<eT>(1, __vmath::norm_impl(x)) * opts.xtol;
 
                 u_long n_iter = 0;
-                ExitFlag flag = NONE;
+                ExitFlag flag = ExitFlag::NONE;
                 while (true)
                 {
                     bool successful_step = false;
@@ -214,7 +214,7 @@ namespace numerics {
 
                     if (not successful_step)
                     {
-                        flag = STEP_FAILED;
+                        flag = ExitFlag::STEP_FAILED;
                         if (opts.verbose)
                             T.failed_step_flag();
                         break;
@@ -227,7 +227,7 @@ namespace numerics {
 
                     if (__vmath::norm_impl(g) < gtol)
                     {
-                        flag = CONVERGED;
+                        flag = ExitFlag::CONVERGED;
                         if (opts.verbose)
                             T.success_flag();
                         break;
@@ -235,7 +235,7 @@ namespace numerics {
 
                     if (__vmath::norm_impl(dx) < xtol)
                     {
-                        flag = MIN_STEP_SIZE;
+                        flag = ExitFlag::MIN_STEP_SIZE;
                         if (opts.verbose)
                             T.min_step_flag();
                         break;
@@ -243,7 +243,7 @@ namespace numerics {
 
                     if (n_iter >= opts.max_iter)
                     {
-                        flag = MAX_ITER;
+                        flag = ExitFlag::MAX_ITER;
                         if (opts.verbose)
                             T.max_iter_flag();
                         break;

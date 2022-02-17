@@ -1,8 +1,6 @@
 #ifndef NUMERICS_ODE_RK34I
 #define NUMERICS_ODE_RK34I
 
-#include <armadillo>
-
 #include "numerics/ode/ode_base.hpp"
 #include "numerics/derivatives.hpp"
 #include "numerics/optimization/newton.hpp"
@@ -34,12 +32,14 @@ namespace numerics
                     return this->y.front();
                 else if (s == this->t.back())
                     return this->y.back();
+                else if (s < this->t.front() || this->t.back() < s)
+                    throw std::runtime_error("interpolation error: t = " + std::to_string(s) + " outside of domain (" + std::to_string(this->t.front()) + ", " + std::to_string(this->t.back()) + ").");
 
-                size_t i = std::distance(this->t.begin(), std::lower_bound(this->t.begin(), this->t.end(), s));
-                if ((i == 0) or (i == this->t.size()))
-                    throw std::runtime_error("rk45Results operator() error: t =" + std::to_string(s) + " outside of solution range (" + std::to_string(this->t.front()) + ", " + std::to_string(this->t.back()) + ").");
-                
-                --i;
+
+                size_t i = std::distance(this->t.begin(), std::lower_bound(this->t.begin(), this->t.end(), s));                
+                if (i > 0)
+                    --i;
+
                 real k = (this->t.at(i+1) - this->t.at(i));
                 real theta = (s - this->t.at(i)) / k;
                 // quartic-polynomial hermite interpolation basis
@@ -63,12 +63,7 @@ namespace numerics
                 std::vector<vec> u;
                 u.reserve(s.size());
 
-                if (s.front() < this->t.front() or this->t.back() < s.back()) {
-                    std::stringstream err;
-                    err << "rk34i operator() error: requested interpolation points t {min(t)=" << s.front() << ", max(t)="
-                        << s.back() << "} is out bounds of the computed solution range: (" << this->t.front() << ", " << this->t.back() << ").";
-                    throw std::runtime_error(err.str());
-                }
+                _ivp_helper::check_interp_range(s, this->t);
 
                 size_t i = std::distance(this->t.begin(), std::lower_bound(this->t.begin(), this->t.end(), s.front()));
                 if (i > 0)
@@ -266,6 +261,7 @@ namespace numerics
             }
         };
 
+        #ifdef NUMERICS_WITH_ARMA
         template <scalar_field_type eT>
         class __rk34i_step<arma::Col<eT>>
         {
@@ -359,6 +355,7 @@ namespace numerics
                 return std::make_tuple(true, abs_err, std::move(Y), std::move(F1), std::move(y_half));
             }
         };
+        #endif
 
         template <std::floating_point real, typename vec, std::invocable<real,vec> Func, typename Jacobian>
         rk34iResults<real,vec> rk34i(Func f, Jacobian jac, const std::vector<real>& tspan, const vec& y0, const ivpOpts<real>& opts = {}, const std::vector<Event<real,vec>>& events = {})

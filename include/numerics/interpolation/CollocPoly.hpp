@@ -1,189 +1,211 @@
 #ifndef NUMERICS_INTERPOLATION_COLLOCPOLY_HPP
 #define NUMERICS_INTERPOLATION_COLLOCPOLY_HPP
 
-#if defined(ARMA_INCLUDES) && !defined(NUMERICS_WITH_ARMA)
-#define NUMERICS_WITH_ARMA
-#endif
-
 #include <cmath>
-#include <unordered_map>
 #include <string>
+#include <vector>
 
-#ifdef NUMERICS_WITH_ARMA
-namespace numerics
-{
+namespace numerics {
+    template <std::floating_point real, typename vec>
+    class CollocPoly
+    {
+    protected:
+        real _a, _b;
+        std::vector<real> _x, _w;
+        std::vector<vec> _f;
 
-template <typename Real>
-class CollocPoly
-{
-protected:
-    arma::Col<Real> _x, _w;
-    arma::Mat<Real> _f;
-    Real _a, _b;
+        CollocPoly() {}
 
-    CollocPoly() {}
+    public:
+        const real& a = _a;
+        const real& b = _b;
 
-public:
-    typedef Real value_type;
+        typedef real value_type;
 
-    const Real& a = _a;
-    const Real& b = _b;
+        CollocPoly(CollocPoly<real,vec>&&);
+        CollocPoly(const CollocPoly<real,vec>&);
 
-    CollocPoly(CollocPoly<Real>&& p);
-    CollocPoly(const CollocPoly& p);
+        CollocPoly<real,vec>& operator=(CollocPoly<real,vec>&&);
+        CollocPoly<real,vec>& operator=(const CollocPoly<real,vec>&);
 
-    CollocPoly<Real>& operator=(CollocPoly<Real>&& p);
-    CollocPoly<Real>& operator=(const CollocPoly<Real>& p);
+        // implements stable evaluation of Lagrange polynomials using Barycentric
+        // interpolation. Takes O(n^2) to construct and O(n) to evaluate. See
+        // Berrut, Jean-Paul, and Lloyd N. Trefethen. “Barycentric Lagrange
+        // Interpolation.” SIAM Review, vol. 46, no. 3, 2004, pp. 501–517.,
+        // doi:10.1137/S0036144502417715.
+        template <typename real_it, typename vec_it>
+        explicit CollocPoly(real_it x_first, real_it x_last, vec_it f_first, vec_it f_last);
 
-    // implements stable evaluation of Lagrange polynomials using Barycentric
-    // interpolation. Takes O(n^2) to construct and O(n) to evaluate. See
-    // Berrut, Jean-Paul, and Lloyd N. Trefethen. “Barycentric Lagrange
-    // Interpolation.” SIAM Review, vol. 46, no. 3, 2004, pp. 501–517.,
-    // doi:10.1137/S0036144502417715.
-    explicit CollocPoly(const arma::Col<Real>& xx, const arma::Mat<Real>& ff);
+        // evaluate the interpolation
+        vec operator()(real) const;
+    };
 
-    arma::Mat<Real> operator()(const arma::Col<Real>& xx) const;
-};
+    template <std::floating_point real, typename vec>
+    CollocPoly<real,vec>::CollocPoly(CollocPoly<real,vec>&& p)  {
+        _x = std::move(p._x);
+        _w = std::move(p._w);
+        _f = std::move(p._f);
+        _a = p._a;
+        _b = p._b;
+    }
 
-template <typename Real>
-CollocPoly<Real>::CollocPoly(CollocPoly<Real>&& p)  {
-    _x = std::move(p._x);
-    _w = std::move(p._w);
-    _f = std::move(p._f);
-    _a = std::move(p._a);
-    _b = std::move(p._b);
-}
+    template <std::floating_point real, typename vec>
+    CollocPoly<real,vec>::CollocPoly(const CollocPoly<real,vec>& p)  {
+        _x = p._x;
+        _w = p._w;
+        _f = p._f;
+        _a = p._a;
+        _b = p._b;
+    }
 
-template <typename Real>
-CollocPoly<Real>::CollocPoly(const CollocPoly<Real>& p)  {
-    _x = p._x;
-    _w = p._w;
-    _f = p._f;
-    _a = p._a;
-    _b = p._b;
-}
+    template <std::floating_point real, typename vec>
+    CollocPoly<real,vec>& CollocPoly<real,vec>::operator=(CollocPoly<real,vec>&& p) {
+        _x = std::move(p._x);
+        _w = std::move(p._w);
+        _f = std::move(p._f);
+        _a = p._a;
+        _b = p._b;
+        return *this;
+    }
 
-template <typename Real>
-CollocPoly<Real>& CollocPoly<Real>::operator=(CollocPoly<Real>&& p) {
-    _x = std::move(p._x);
-    _w = std::move(p._w);
-    _f = std::move(p._f);
-    _a = std::move(p._a);
-    _b = std::move(p._b);
-    return *this;
-}
+    template <std::floating_point real, typename vec>
+    CollocPoly<real,vec>& CollocPoly<real,vec>::operator=(const CollocPoly<real,vec>& p) {
+        _x = p._x;
+        _w = p._w;
+        _f = p._f;
+        _a = p._a;
+        _b = p._b;
+        return *this;
+    }
 
-template <typename Real>
-CollocPoly<Real>& CollocPoly<Real>::operator=(const CollocPoly<Real>& p) {
-    _x = p._x;
-    _w = p._w;
-    _f = p._f;
-    _a = p._a;
-    _b = p._b;
-    return *this;
-}
+    template <std::floating_point real, typename vec>
+    template <typename real_it, typename vec_it>
+    CollocPoly<real,vec>::CollocPoly(real_it x_first, real_it x_last, vec_it f_first, vec_it f_last)
+    {
+        for (; x_first != x_last; ++x_first)
+            _x.push_back(*x_first);
+        for (; f_first != f_last; ++f_first)
+            _f.push_back(*f_first);
 
-template <typename Real>
-CollocPoly<Real>::CollocPoly(const arma::Col<Real>& xx, const arma::Mat<Real>& ff) {
-    _a = xx.min(); _b = xx.max();
-    _x = 2*(xx - _a)/(_b - _a) - 1; // map to [-1, 1]
-    _f = ff;
+        auto [minit, maxit] = std::minmax_element(_x.begin(), _x.end());
+        _a = *minit;
+        _b = *maxit;
 
-    _w = arma::ones<arma::Col<Real>>(_x.n_elem);
-    for (u_long i=0; i < _x.n_elem; ++i) {
-        for (u_long j=0; j < _x.n_elem; ++j) {
-            if (i != j) _w(i) *= _x(i) - _x(j);
+        _w.assign(_x.size(), real(1));
+
+        real w_max = 0;
+        real w_min = 0;
+
+        auto wi = _w.begin();
+        for (auto xi = _x.cbegin(); xi != _x.cend(); ++xi, ++wi)
+        {
+            for (auto xj = _x.cbegin(); xj != _x.cend(); ++xj)
+            {
+                if (xi != xj)
+                    (*wi) *= (*xi) - (*xj);
+            }
+            
+            (*wi) = 1 / (*wi);
+            w_max = std::max<real>(w_max, *wi);
+            w_min = std::min<real>(w_min, *wi);
         }
-    }
-    _w = 1/_w;
-}
 
-template <typename Real>
-arma::Mat<Real> CollocPoly<Real>::operator()(const arma::Col<Real>& xx) const {
-    arma::Col<Real> z = 2*(xx - _a)/(_b - _a) - 1;
-    
-    arma::Mat<Real> numer = arma::zeros<arma::Mat<Real>>(z.n_elem, _f.n_cols);
-    arma::Col<Real> denom = arma::zeros<arma::Col<Real>>(z.n_elem);
+        real D = 1 / (w_max - w_min);
 
-    std::unordered_map<u_long, u_long> exact; // for evaluating exactly on the grid points
-
-    for (u_long j=0; j < _x.n_elem; ++j) {
-        arma::Col<Real> xdiff = z - _x(j);
-
-        arma::uvec exct = arma::find(xdiff == 0);
-        for (arma::uword e : exct) exact[e] = j;
-
-        arma::Col<Real> tmp = _w(j) / xdiff;
-        numer += tmp * _f.row(j);
-        denom += tmp;
+        std::for_each(_w.begin(), _w.end(), [D](real& z)->void{z *= D;});
     }
 
-    arma::Mat<Real> ff = std::move(numer);
-    ff.each_col() /= denom;
-    
-    for (auto e : exact) ff.row(e.first) = _f.row(e.second);
+    template <std::floating_point real, typename vec>
+    vec CollocPoly<real,vec>::operator()(real x) const
+    {
+        vec numer = real(0) * _f.front();
+        real denom = 0;
 
-    return ff;
-}
+        auto xi = _x.begin();
+        auto fi = _f.begin();
+        auto wi = _w.begin();
 
-template <typename Real>
-class ChebInterp : public CollocPoly<Real>
-{
-public:
-    // interpolate func on [a, b] using Chebyshev nodes. func should take a Real
-    // and return arma::Mat<Real>
-    template <class Func>
-    explicit ChebInterp(u_long N, Real a, Real b, const Func& func);
-    // construct interpolation from data, assuming xx are Chebyshev nodes. This
-    // implementation differs from CollocPoly in that exact Barycentric weights
-    // are used.
-    explicit ChebInterp(const arma::Col<Real>& xx, const arma::Mat<Real>& ff);
-};
+        for (; xi != _x.end(); ++xi, ++fi, ++wi)
+        {
+            real xdiff = x - (*xi);
+            if (xdiff == 0)
+                return *fi;
+            
+            real C = (*wi) / xdiff;
+            numer += C * (*fi);
+            denom += C;
+        }
 
-template <typename Real>
-template <class Func>
-ChebInterp<Real>::ChebInterp(u_long N, Real aa, Real bb, const Func& func) : CollocPoly<Real>() {
-    N--;
-    this->_a = aa;
-    this->_b = bb;
-    this->_x = arma::cos(arma::regspace<arma::Col<Real>>(0,N)*M_PI/N);
-    
-    Real t = 0.5*(this->_x(0) + 1)*(this->_b - this->_a) + this->_a;
-    arma::Mat<Real> tmp = func(t);
-    this->_f.set_size(N+1, tmp.n_elem);
-    this->_f.row(0) = tmp.as_row();
-    for (u_long i=1; i < N+1; ++i) {
-        t = 0.5*(this->_x(i) + 1)*(this->_b - this->_a) + this->_a;
-        this->_f.row(i) = func(t).as_row();
+        numer = (1/denom) * numer;
+
+        return numer;
     }
 
-    this->_w = arma::ones<arma::Col<Real>>(N+1);
-    this->_w(arma::regspace<arma::uvec>(1,2,N)) *= -1;
-    this->_w(0) *= 0.5;
-    this->_w(N) *= 0.5;
-}
+    template <std::floating_point real, typename vec>
+    class ChebInterp : public CollocPoly<real, vec>
+    {
+    public:
+        // interpolate func on [a, b] using Chebyshev nodes.
+        template <std::invocable<real> Func>
+        explicit ChebInterp(u_long N, real a, real b, Func func);
 
-template <typename Real>
-ChebInterp<Real>::ChebInterp(const arma::Col<Real>& xx, const arma::Mat<Real>& ff) : CollocPoly<Real>() {
-    if (xx.empty())
-        throw std::invalid_argument("ChebInterp error: xx is empty");
-    if (xx.n_rows != ff.n_rows)
-        throw std::invalid_argument(
-            "ChebInterp error: xx.n_rows (=" + std::to_string(xx.n_rows)
-            + ") != ff.n_rows (=" + std::to_string(ff.n_rows) + ")."
-        );
+        // construct interpolation from data, assuming xx are Chebyshev nodes. This
+        // implementation differs from CollocPoly in that exact Barycentric weights
+        // are used.
+        template <typename real_it, typename vec_it>
+        explicit ChebInterp(real_it x_first, real_it x_last, vec_it f_first, vec_it f_last);
+    };
 
-    this->_a = xx.min();
-    this->_b = xx.max();
-    this->_x = 2*(xx - this->_a)/(this->_b - this->_a) - 1;
-    this->_f = ff;
-    u_long N = xx.n_elem - 1;
-    this->_w = arma::ones<arma::Col<Real>>(N+1);
-    this->_w(arma::regspace<arma::uvec>(1,2,N)) *= -1;
-    this->_w(0) *= 0.5;
-    this->_w(N) *= 0.5;
-}
+    template <std::floating_point real, typename vec>
+    template <std::invocable<real> Func>
+    ChebInterp<real,vec>::ChebInterp(u_long N, real a, real b, Func func) : CollocPoly<real,vec>() {
+        if (N < 2)
+            throw std::invalid_argument("ChebInterp error: cannot construct interpolation on fewer than two points.");
+        
+        N--;
+        this->_x.resize(N+1);
+        this->_f.resize(N+1);
+        this->_w.resize(N+1);
+        this->_a = a;
+        this->_b = b;
 
-}
-#endif
+        auto xi = this->_x.begin();
+        auto fi = this->_f.begin();
+        auto wi = this->_w.begin();
+        for (u_long i=0; i <= N; ++i, ++xi, ++fi, ++wi)
+        {
+            real t = -std::cos(i * M_PI / N);
+            t = 0.5*(t + 1) * (b - a) + a;
+            *xi = t;
+            *fi = func(t);
+            *wi = (i & 1) ? -1 : 1;
+        }
+
+        this->_w.front() *= 0.5;
+        this->_w.back() *= 0.5;
+    }
+
+    template <std::floating_point real, typename vec>
+    template <typename real_it, typename vec_it>
+    ChebInterp<real,vec>::ChebInterp(real_it x_first, real_it x_last, vec_it f_first, vec_it f_last) : CollocPoly<real,vec>() {
+        for (; x_first != x_last; ++x_first)
+            this->_x.push_back(*x_first);
+        for (; f_last != f_last; ++f_first)
+            this->_f.push_back(*f_first);
+
+        if (this->_x.size() < 2)
+            throw std::invalid_argument("ChebInterp error: cannot construct interpolation on fewer than two points.");
+
+        std::tie(this->_a, this->_b) = std::minmax({this->_x.front(), this->_x.back()});
+
+        u_long N = this->_x.size() - 1;
+        this->_w.resize(N+1);
+
+        auto wi = this->_w.begin();
+        for (size_t i=0; i <= N; ++i, ++wi)
+            *wi = (i & 1) ? -1 : 1;
+        this->_w.front() *= 0.5;
+        this->_w.back() *= 0.5;
+    }
+} //namespace numerics
 #endif

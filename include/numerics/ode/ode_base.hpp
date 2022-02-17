@@ -34,8 +34,6 @@ namespace numerics {
             real max_step = 0;
         };
 
-
-
         enum struct EventDir
         {
             ALL = 0,
@@ -57,108 +55,6 @@ namespace numerics {
             STEP_FAIL,
             NL_FAIL,
             EVENT
-        };
-
-        template <std::floating_point real, typename vec>
-        struct ivpResults
-        {
-            std::vector<real> t;
-            std::vector<vec>  y; // y(t)
-            std::vector<vec>  f; // f(t,y(t))
-            std::optional<u_long> stopping_event;
-            ExitFlag flag;
-            const bool dense;
-
-            ivpResults(bool dense=false) : dense(dense), flag(ExitFlag::NONE) {}
-
-            std::string get_flag() const
-            {
-                switch (flag)
-                {
-                    case ExitFlag::NONE:
-                        return "solver never called?";
-                        break;
-                    case ExitFlag::SUCCESS:
-                        return "solver computed solution successfully.";
-                        break;
-                    case ExitFlag::STEP_FAIL:
-                        return "solver failed because step-size less than machine epsilon.";
-                        break;
-                    case ExitFlag::NL_FAIL:
-                        return "solver failed because non-linear solver could not produce a solution.";
-                        break;
-                    case ExitFlag::EVENT:
-                        return "solver encountered event.";
-                        break;
-                }
-                return "";
-            }
-
-            // C1 interpolation using cubic Hermite spline
-            virtual vec operator()(real s) const
-            {
-                if (not dense)
-                    throw std::runtime_error("ivpResults operator() error: solution is not dense, cannot evaluate.");
-
-                if (s == t.front())
-                    return y.front();
-                else if (s == t.back())
-                    return y.back();
-
-                size_t i = std::distance(t.begin(), std::lower_bound(t.begin(), t.end(), s));
-                if ((i == 0) or (i == t.size()))
-                    throw std::runtime_error("ivpResults operator() error: t =" + std::to_string(s) + " outside of solution range (" + std::to_string(t.front()) + ", " + std::to_string(t.back()) + ").");
-                
-                --i;
-                real theta = (s - t.at(i)) / (t.at(i+1) - t.at(i));
-                real h = t.at(i+1) - t.at(i);
-                real b0 = (1+2*theta)*(1-theta)*(1-theta);
-                real b1 = theta*(1-theta)*(1-theta);
-                real b2 = theta*theta*(3-2*theta);
-                real b3 = theta*theta*(theta-1);
-
-                vec u = b0*y.at(i) + h*b1*f.at(i) + b2*y.at(i+1) + h*b3*f.at(i+1);
-                return u;
-            }
-
-            virtual std::vector<vec> operator()(std::vector<real> s) const
-            {
-                if (not dense)
-                    throw std::runtime_error("ivpResults operator() error: solution is not dense, cannot evaluate.");
-                
-                std::sort(s.begin(), s.end());    
-                std::vector<vec> u;
-                u.reserve(s.size());
-
-                if (s.front() < t.front() or t.back() < s.back()) {
-                    std::stringstream err;
-                    err << "ivpResults operator() error: requested interpolation points t {min(t)=" << t.front() << ", max(t)="
-                        << t.back() << "} is out bounds of the computed solution range: (" << t.front() << ", " << t.back() << ").";
-                    throw std::runtime_error(err.str());
-                }
-
-                size_t i = std::distance(t.begin(), std::lower_bound(t.begin(), t.end(), s.front()));
-                if (i > 0)
-                    --i;
-
-                auto phi = [](real w) -> real {return (1 + 2*w)*(1-w)*(1-w);}; // phi(0) = 1, phi'(0) = 0, phi(1) = 0, phi'(1) = 0
-                auto psi = [](real w) -> real {return w*(1-w)*(1-w);}; // psi(0) = 0, psi'(0) = 1, psi(1) = 0, psi'(1) = 0
-                
-                for (real w : s)
-                {
-                    while (t.at(i+1) < w)
-                        ++i;
-
-                    real theta = (w - t.at(i)) / (t.at(i+1) - t.at(i));
-                    real h = t.at(i+1) - t.at(i);
-                    // real theta = (w - t[i]) / (t[i+1] - t[i]);
-                    vec v = phi(theta)*y.at(i) + h*psi(theta)*f.at(i) + phi(1-theta)*y.at(i+1) - h*psi(1-theta)*f.at(i+1);
-                    // vec v = phi(theta)*y[i] + h*psi(theta)*f[i] + phi(1-theta)*y[i+1] - h*psi(1-theta)*f[i+1];
-                    u.push_back(std::move(v));
-                }
-
-                return u;
-            }
         };
 
         namespace _ivp_helper
@@ -224,6 +120,26 @@ namespace numerics {
                 }
             };
 
+            // hermite cubic polynomial which collocates a function at {0,1} and
+            // its derivative at {0,1}. This function evaluates the basis
+            // function for the Value at zero, for the value at 1, use
+            // hcubicv(1-w).
+            template <std::floating_point real>
+            inline real hcubicv(real w)
+            {
+                return (w-1)*(w-1)*(1+2*w);
+            }
+
+            // hermite cubic polynomial which collocates a function at {0,1} and
+            // its derivative at {0,1}. This function evaluates the basis
+            // function for the derivative at zero, for the derivative at 1, use
+            // -hcubicd(1-w).
+            template <std::floating_point real>
+            inline real hcubicd(real w)
+            {
+                return w*(w-1)*(w-1);
+            }
+
             // hermite quartic polynomial which collocates a function at
             // {0,1/2,1} and its derivative at {0,1}. This function evaluates
             // the basis function for the Value at zero, for the value at 1 use
@@ -252,7 +168,118 @@ namespace numerics {
             {
                 return 16*w*w*(w-1)*(w-1);
             }
+
+            template <std::floating_point real>
+            inline void check_interp_range(const std::vector<real>& s, const std::vector<real>& t)
+            {
+                if (s.front() < t.front() or t.back() < s.back()) {
+                    std::stringstream err;
+                    err << "interpolation error: requested interpolation points t {min(t)=" << s.front() << ", max(t)="
+                        << s.back() << "} is out bounds of the domain: (" << t.front() << ", " << t.back() << ").";
+                    throw std::runtime_error(err.str());
+                }
+            }
         } // namespace __ivp_helper
+
+        template <std::floating_point real, typename vec>
+        struct ivpResults
+        {
+            std::vector<real> t;
+            std::vector<vec>  y; // y(t)
+            std::vector<vec>  f; // f(t,y(t))
+            std::optional<u_long> stopping_event;
+            ExitFlag flag;
+            const bool dense;
+
+            ivpResults(bool dense=false) : dense(dense), flag(ExitFlag::NONE) {}
+
+            std::string get_flag() const
+            {
+                switch (flag)
+                {
+                    case ExitFlag::NONE:
+                        return "solver never called?";
+                        break;
+                    case ExitFlag::SUCCESS:
+                        return "solver computed solution successfully.";
+                        break;
+                    case ExitFlag::STEP_FAIL:
+                        return "solver failed because step-size less than machine epsilon.";
+                        break;
+                    case ExitFlag::NL_FAIL:
+                        return "solver failed because non-linear solver could not produce a solution.";
+                        break;
+                    case ExitFlag::EVENT:
+                        return "solver encountered event.";
+                        break;
+                }
+                return "";
+            }
+
+            // C1 interpolation using cubic Hermite spline
+            virtual vec operator()(real s) const
+            {
+                if (not dense)
+                    throw std::runtime_error("ivpResults operator() error: solution is not dense, cannot evaluate.");
+
+                if (s == t.front())
+                    return y.front();
+                else if (s == t.back())
+                    return y.back();
+                else if (s < t.front() || t.back() < s)
+                    throw std::runtime_error("interpolation error: t = " + std::to_string(s) + " outside of domain (" + std::to_string(t.front()) + ", " + std::to_string(t.back()) + ").");
+
+                size_t i = std::distance(t.begin(), std::lower_bound(t.begin(), t.end(), s));
+                if (i > 0)
+                    --i;
+
+                real h = t.at(i+1) - t.at(i);
+                real theta = (s - t.at(i)) / h;
+                
+                real b0 = _ivp_helper::hcubicv(theta);
+                real b1 = h*_ivp_helper::hcubicd(theta);
+                real b2 = _ivp_helper::hcubicv(1-theta);
+                real b3 = -h*_ivp_helper::hcubicd(1-theta);
+
+                vec u = b0*y.at(i) + b1*f.at(i) + b2*y.at(i+1) + b3*f.at(i+1);
+                return u;
+            }
+
+            virtual std::vector<vec> operator()(std::vector<real> s) const
+            {
+                if (not dense)
+                    throw std::runtime_error("ivpResults operator() error: solution is not dense, cannot evaluate.");
+                
+                std::sort(s.begin(), s.end());    
+                std::vector<vec> u;
+                u.reserve(s.size());
+
+                _ivp_helper::check_interp_range(s, t);
+
+                size_t i = std::distance(t.begin(), std::lower_bound(t.begin(), t.end(), s.front()));
+                if (i > 0)
+                    --i;
+
+                for (real w : s)
+                {
+                    while (t.at(i+1) < w)
+                        ++i;
+
+                    real h = t.at(i+1) - t.at(i);
+                    real theta = (w - t.at(i)) / h;
+                    
+                    real b0 = _ivp_helper::hcubicv(theta);
+                    real b1 = h*_ivp_helper::hcubicd(theta);
+                    real b2 = _ivp_helper::hcubicv(1-theta);
+                    real b3 = -h*_ivp_helper::hcubicd(1-theta);
+
+                    vec v = b0*y.at(i) + b1*f.at(i) + b2*y.at(i+1) + b3*f.at(i+1);
+                    u.push_back(std::move(v));
+                }
+
+                return u;
+            }
+        };
     } // namespace ode
 } // namespace numerics
 
