@@ -19,6 +19,8 @@ namespace numerics {
     public:
         const real& a = _a;
         const real& b = _b;
+        const std::vector<real>& x = _x;
+        const std::vector<vec>& f = _f;
 
         typedef real value_type;
 
@@ -190,7 +192,7 @@ namespace numerics {
     ChebInterp<real,vec>::ChebInterp(real_it x_first, real_it x_last, vec_it f_first, vec_it f_last) : CollocPoly<real,vec>() {
         for (; x_first != x_last; ++x_first)
             this->_x.push_back(*x_first);
-        for (; f_last != f_last; ++f_first)
+        for (; f_first != f_last; ++f_first)
             this->_f.push_back(*f_first);
 
         if (this->_x.size() < 2)

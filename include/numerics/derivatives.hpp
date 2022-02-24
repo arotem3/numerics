@@ -245,38 +245,6 @@ namespace numerics
 
         return J;
     }
-
-    #ifdef NUMERICS_INTERPOLATION_COLLOCPOLY_HPP
-    template <std::floating_point Real, std::invocable<Real> Func>
-    ChebInterp<Real> spectral_deriv(Func f, Real a, Real b, u_long sample_points = 32) {
-        std::complex<Real> i(0.0,1.0); // i^2 = -1
-        u_long N = sample_points - 1;
-
-        arma::Col<Real> y = arma::cos( arma::regspace<arma::Col<Real>>(0,N)*M_PI/N );
-        arma::Col<Real> v = y;
-        v.for_each([&f,&b,&a](Real& u){u = f(0.5f*(u+1)*(b-a)+a);});
-        
-        arma::uvec ii = arma::regspace<arma::uvec>(0,N-1);
-        
-        arma::Col<Real> V = arma::join_cols(v, arma::reverse(v(arma::span(1,N-1))));
-        V = arma::Real(arma::fft(V));
-        
-        arma::Col<std::complex<Real>> u(2*N);
-        u(arma::span(0,N-1)) = i*arma::regspace<arma::Col<std::complex<Real>>>(0,N-1);
-        u(N) = 0;
-        u(arma::span(N+1,2*N-1)) = i*arma::regspace<arma::Col<std::complex<Real>>>(1.0-(double)N, -1);
-        
-        arma::Col<Real> W = arma::Real(arma::ifft(u%V));
-        W.rows(1,N-1) = -W.rows(1,N-1) / arma::sqrt(1 - arma::square(y.rows(1,N-1)));
-        W(0) = 0.5*N*V(N) + arma::accu(arma::square(ii) % V.rows(ii)) / N;
-        arma::Col<Real> j = arma::ones<arma::Col<Real>>(N); j.rows(arma::regspace<arma::uvec>(1,2,N-1)) *= -1;
-        W(N) = 0.5*std::pow(-1,N+1)*N*V(N) + arma::accu(j % arma::square(ii) % V.rows(ii)) / N;
-        W = W.rows(0,N);
-        W /= (b-a)/2;
-
-        return ChebInterp<Real>(0.5*(y+1)*(b-a) + a, W);
-    }
-    #endif // NUMERICS_INTERPOLATION_POLYNOMIAL_HPP
     #endif // NUMERICS_WITH_ARMA
 } // namespace nuemerics
 
