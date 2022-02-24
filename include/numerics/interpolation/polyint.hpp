@@ -5,21 +5,19 @@
 
 namespace numerics
 {
+    // fills Ip_first .. with the coefficients of the integral of the polynomial
+    // whose coefficients are specified by p_first to p_last (excluding p_last).
+    // The integral does populate the constant term of the integral (n+1th
+    // coef).
+    template <typename precision_t, typename in_it, typename out_it>
+    void polyint(in_it p_first, in_it p_last, out_it Ip_first)
+    {
+        in_it p = p_first;
+        u_long n = std::distance(p_first, p_last);
 
-/* polyint(p, c) : return the integral of a polynomial.
- * --- p : polynomial to integrate.
- * --- c : integration constant. */
-template<class Vec, class VecLike>
-Vec polyint(const VecLike& p, double c) {
-    u_long n = p.size() + 1;
-    Vec ip(n);
-    for (u_long i=0; i < n-1; ++i) {
-        ip[i] = p[i] / (n-1-i);
+        for (u_long i=0; i < n; ++i, ++p, ++Ip_first)
+            *Ip_first = (precision_t(1)/precision_t(n-i)) * (*p);
     }
-    ip[n-1] = c;
-    return ip;
-}
-
 }
 
 #endif

@@ -5,24 +5,18 @@
 
 namespace numerics
 {
-/* polyder(p, k) : return the k^th derivative of a polynomial.
- * --- p : polynomial to differentiate.
- * --- k : the derivative order (k = 1 by default, i.e. first derivative). */
-template <class Vec, class VecLike>
-Vec polyder(const VecLike& p, u_int k = 1) {
-    if (p.size() <= k) {
-        Vec dp(1);
-        dp[0] = 0.0;
-        return dp;
+    // fills dp_first.. with the k-th derivative of a polynomial with
+    // coefficients specified by p_first to p_last (excluding p_last).
+    // precision_t should be specified as either float or double to indicate the
+    // precision of the coefficients.
+    template <std::floating_point precision_t, typename in_it, typename out_it>
+    void polyder(in_it p_first, in_it p_last, out_it dp_first, int k=1)
+    {
+        in_it pi = p_first;
+        precision_t n = std::distance(p_first, p_last);
+        for (precision_t i=0; i < n-k; ++i, ++pi, ++dp_first)
+            *dp_first = (std::tgamma(n-i) / std::tgamma(n-i-k)) * (*pi);
     }
-    u_long n = p.size() - k;
-    Vec dp(n);
-    for (u_long i=0; i < n; ++i) {
-        dp[i] = std::tgamma(n-i+1.0) / std::tgamma(n-i-k+1.0) * p[i];
-    }
-    return dp;
-}
-
 } // namespace numerics
 
 #endif
