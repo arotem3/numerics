@@ -15,84 +15,77 @@
 namespace numerics {
     namespace optimization {
         namespace __gmres {
-            template <scalar_field_type scalar>
-            void givens_rotation(std::vector<scalar>& h, std::vector<scalar>& cs, std::vector<scalar>& sn, u_long k)
+            template <std::floating_point scalar>
+            inline scalar _square(scalar x)
             {
-                for (u_long i=0; i < k; ++i)
-                {
-                    scalar t = cs[i]*h[i] + sn[i]*h[i+1];
-                    h[i+1] = -sn[i]*h[i] + cs[i]*h[i+1];
-                    h[i] = t;
-                }
-
-                precision_t<scalar> t = std::sqrt( std::pow(std::abs(h[k]),2) + std::pow(std::abs(h[k+1]), 2) );
-                cs.push_back(h[k] / t);
-                sn.push_back(h[k+1] / t);
-
-                h[k] = cs[k]*h[k] + sn[k]*h[k+1];
-                h[k+1] = 0;
+                return x*x;
             }
 
-            template<scalar_field_type scalar>
-            bool solve_trimatu(std::vector<scalar>& y, const std::vector<std::vector<scalar>>& H, const std::vector<scalar>& beta)
+            template <std::floating_point real>
+            inline real _square(std::complex<real> x)
             {
-                long k = H.size();
-                
-            #if defined(NUMERICS_WITH_ARMA) && !defined(GMRES_NO_ARMA)
-                arma::Col<scalar> b(k);
-                for (long i=0; i < k; ++i)
-                    b[i] = beta[i];
+                return std::norm(x);
+            }
 
-                arma::Mat<scalar> U(k,k);
-                for (long j=0; j < k; ++j)
-                    for (long i=0; i <= j; ++i)
-                        U.at(i,j) = H[j][i];
-
-                bool success = arma::solve(b, arma::trimatu(U), b);
-                if (success)
-                    y = arma::conv_to<std::vector<scalar>>::from(b);
-
-                return success;
-            #else
-                // back solve H*y = beta
-                y = beta;
-                if (std::abs(H[k-1][k-1]) == 0)
-                    return false;
-
-                y[k-1] /= H[k-1][k-1];
-                for (long i=k-2; i >= 0; --i)
+            template <scalar_field_type scalar, typename Iter>
+            void givens_rotation(Iter h, std::vector<scalar>& cs, std::vector<scalar>& sn, u_long k)
+            {
+                auto c = cs.begin();
+                auto s = sn.begin();
+                Iter hp = h;
+                ++hp;
+                for (u_long i=0; i < k; ++i, ++c, ++s, ++h, ++hp)
                 {
-                    for (long j=k-1; j >= i+1; --j)
-                        y[i] -= H[j][i] * y[j];
+                    scalar t = (*c) * (*h) + (*s) * (*hp);
+                    (*hp) = -(*s) * (*h) + (*c) * (*hp);
+                    (*h) = t;
+                }
 
-                    if (std::abs(H[i][i]) == 0)
+                precision_t<scalar> t = std::sqrt( _square(*h) + _square(*hp) );
+                cs.push_back((*h) / t);
+                sn.push_back((*hp) / t);
+
+                (*h) = cs.back() * (*h) + sn.back() * (*hp);
+                (*hp) = scalar(0.0);
+            }
+
+            template<typename rIter_A, typename rIter_b>
+            bool solve_trimatu(rIter_A a, rIter_b b_rbegin, rIter_b b_rend)
+            {
+                typedef precision_t<std::remove_reference_t<decltype(*a)>> precision;
+
+                for (rIter_b x = b_rbegin; x != b_rend; ++x)
+                {
+                    if (std::abs(*a) == precision(0.0))
                         return false;
 
-                    y[i] /= H[i][i];
+                    (*x) *= precision(1.0) / (*a);
+                    ++a;
+
+                    rIter_b y = x; ++y;
+                    for (; y != b_rend; ++y, ++a)
+                        (*y) -= (*a) * (*x);
                 }
 
                 return true;
-            #endif
             }
 
-            template <class Vec, scalar_field_type scalar=typename Vec::value_type>
-            bool solve_update(Vec& x, const std::vector<Vec>& Q, const std::vector<std::vector<scalar>>& H, const std::vector<scalar>& beta)
+            template <typename Vec, typename rIter, scalar_field_type scalar = typename Vec::value_type>
+            bool solve_update(Vec& x, const std::vector<Vec>& Q, rIter H, std::vector<scalar>& beta)
             {
-                long k = H.size();
-                std::vector<scalar> y;
-                bool success = solve_trimatu(y, H, beta);
+                bool success = solve_trimatu(H, beta.rbegin()+1, beta.rend());
                 if (not success)
                     return false;
 
-                // orthogonal solve Q'*x = y
-                for (u_long i=0; i < k; ++i)
-                    x += Q[i] * y[i];
+                auto q = Q.begin();
+                for (auto y = beta.begin(); y != beta.end(); ++y, ++q)
+                    x += (*y) * (*q);
 
                 return true;
             }
         } // namespace __gmres
 
-        // solves a general square system of linear equations A*x == b using the
+        // solves a general _square system of linear equations A*x == b using the
         // preconditioned restarted Generalized Minimum Residual method. The vector x
         // should be intialized; any appropriately scaled vector, or the zero vector is
         // likely to converge, however a good initial guess can accelerate convergence.
@@ -142,7 +135,7 @@ namespace numerics {
                 std::vector<scalar> beta = {rnorm};
 
                 std::vector<Vec> Q = {r/rnorm};
-                std::vector<std::vector<scalar>> H;
+                std::vector<scalar> H;
 
                 for (u_long k = 0; k < restart; ++k)
                 {
@@ -152,33 +145,34 @@ namespace numerics {
                     Vec q = A(Q.back());
                     q = precond(q);
                     std::vector<scalar> h(k+2);
-                    for (u_long i=0; i <= k; ++i)
+                    auto hi = h.begin();
+                    for (auto qi = Q.begin(); qi != Q.end(); ++qi, ++hi)
                     {
-                        // h[i] = dot(Q[i], q);
-                        h[i] = dot(q, Q[i]); // for compatibility with armadillo which computes dot(x,y) = x'*y instead of y'*x
-                        q -= h[i] * Q[i];
+                        (*hi) = dot(q, *qi);
+                        q -= (*hi) * (*qi);
                     }
-                    h[k+1] = std::sqrt( std::abs(dot(q,q)) );
-                    q /= h[k+1];
+                    (*hi) = sqrt( std::real(dot(q,q)) );
+                    q *= precision(1.0) / (*hi);
 
                     Q.push_back(std::move(q));
 
-                    __gmres::givens_rotation(h, cs, sn, k);
-                    H.push_back(std::move(h));
+                    __gmres::givens_rotation(h.begin(), cs, sn, k);
+                    h.pop_back(); // h was a column of an upper Hessenberg matrix, but after givens rotations, it is now a column of an upper triangular matrix, so remove last element.
+                    H.insert(H.end(), h.begin(), h.end());
 
-                    beta.push_back(-sn.at(k) * beta.at(k));
-                    beta.at(k) = cs.at(k) * beta.at(k);
+                    beta.push_back(-sn[k] * beta[k]);
+                    beta[k] = cs[k] * beta[k];
 
-                    err = std::abs( beta.at(k+1) );
+                    err = std::abs( beta[k+1] );
                     res = err;
                     if (err < rtol*bnorm + atol) {
                         success = true;
                         break;
                     }
                 }
-                bool qr = __gmres::solve_update(x, Q, H, beta);
-                success = success && qr;
-                if (success or (not qr))
+                bool solve = __gmres::solve_update(x, Q, H.rbegin(), beta);
+                success = success && solve;
+                if (success or (not solve))
                     break;
             }
 
@@ -196,7 +190,7 @@ namespace numerics {
         }
 
         #ifdef NUMERICS_WITH_ARMA
-        // solves a general square system of linear equations A*x == b using the
+        // solves a general _square system of linear equations A*x == b using the
         // preconditioned restarted Generalized Minimum Residual method. This function
         // is a wrapper for gmres for armadillo types. If x is not initialized, it is
         // initialized with zeros.
@@ -204,7 +198,7 @@ namespace numerics {
         inline LinearSolverResults<precision_t<scalar>> gmres(arma::Col<scalar>& x, const arma::Mat<scalar>& A, const arma::Col<scalar>& b, Precond precond, precision_t<scalar> rtol, precision_t<scalar> atol, u_long restart, u_long max_cycles)
         {
             if (not A.is_square())
-                throw std::invalid_argument("gmres() error: matrix A is not square.");
+                throw std::invalid_argument("gmres() error: matrix A is not _square.");
             if (A.n_rows != b.n_rows)
                 throw std::invalid_argument("gmres() error: A.n_rows (=" + std::to_string(A.n_rows) + ") != b.n_rows (=" + std::to_string(b.n_rows) + ")");
             if (x.n_cols != A.n_cols)
@@ -220,7 +214,7 @@ namespace numerics {
             return gmres(x, a, b, arma::cdot<arma::Col<scalar>,arma::Col<scalar>>, std::forward<Precond>(precond), rtol, atol, restart, max_cycles);
         }
 
-        // solves a general square system of linear equations A*x == b using the
+        // solves a general _square system of linear equations A*x == b using the
         // preconditioned restarted Generalized Minimum Residual method. This function
         // is a wrapper for gmres for armadillo types. If x is not initialized, it is
         // initialized with zeros.
@@ -228,7 +222,7 @@ namespace numerics {
         inline LinearSolverResults<precision_t<scalar>> gmres(arma::Col<scalar>& x, const arma::Mat<scalar>& A, const arma::Col<scalar>& b, precision_t<scalar> rtol, precision_t<scalar> atol, u_long restart, u_long max_cycles)
         {
             if (not A.is_square())
-                throw std::invalid_argument("gmres() error: matrix A is not square.");
+                throw std::invalid_argument("gmres() error: matrix A is not _square.");
             if (A.n_rows != b.n_rows)
                 throw std::invalid_argument("gmres() error: A.n_rows (=" + std::to_string(A.n_rows) + ") != b.n_rows (=" + std::to_string(b.n_rows) + ")");
             if (x.n_cols != A.n_cols)
@@ -243,7 +237,7 @@ namespace numerics {
             return gmres(x, a, b, arma::cdot<arma::Col<scalar>,arma::Col<scalar>>, IdentityPreconditioner{}, rtol, atol, restart, max_cycles);
         }
 
-        // solves a general square system of linear equations A*x == b using the
+        // solves a general _square system of linear equations A*x == b using the
         // preconditioned restarted Generalized Minimum Residual method. This function
         // is a wrapper for gmres for armadillo types. If x is not initialized, it is
         // initialized with zeros.
@@ -251,7 +245,7 @@ namespace numerics {
         inline LinearSolverResults<precision_t<scalar>> gmres(arma::Col<scalar>& x, const arma::SpMat<scalar>& A, const arma::Col<scalar>& b, Precond precond, precision_t<scalar> rtol, precision_t<scalar> atol, u_long restart, u_long max_cycles)
         {
             if (not A.is_square())
-                throw std::invalid_argument("gmres() error: matrix A is not square.");
+                throw std::invalid_argument("gmres() error: matrix A is not _square.");
             if (A.n_rows != b.n_rows)
                 throw std::invalid_argument("gmres() error: A.n_rows (=" + std::to_string(A.n_rows) + ") != b.n_rows (=" + std::to_string(b.n_rows) + ")");
             if (x.n_cols != A.n_cols)
@@ -266,7 +260,7 @@ namespace numerics {
             return gmres(x, a, b, arma::cdot<arma::Col<scalar>,arma::Col<scalar>>, std::forward<Precond>(precond), rtol, atol, restart, max_cycles);
         }
 
-        // solves a general square system of linear equations A*x == b using the
+        // solves a general _square system of linear equations A*x == b using the
         // preconditioned restarted Generalized Minimum Residual method. This function
         // is a wrapper for gmres for armadillo types. If x is not initialized, it is
         // initialized with zeros.
@@ -274,7 +268,7 @@ namespace numerics {
         inline LinearSolverResults<precision_t<scalar>> gmres(arma::Col<scalar>& x, const arma::SpMat<scalar>& A, const arma::Col<scalar>& b, precision_t<scalar> rtol, precision_t<scalar> atol, u_long restart, u_long max_cycles)
         {
             if (not A.is_square())
-                throw std::invalid_argument("gmres() error: matrix A is not square.");
+                throw std::invalid_argument("gmres() error: matrix A is not _square.");
             if (A.n_rows != b.n_rows)
                 throw std::invalid_argument("gmres() error: A.n_rows (=" + std::to_string(A.n_rows) + ") != b.n_rows (=" + std::to_string(b.n_rows) + ")");
             if (x.n_cols != A.n_cols)
